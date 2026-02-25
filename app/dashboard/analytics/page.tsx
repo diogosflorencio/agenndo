@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis,
   Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
-import { WEEKLY_CHART_DATA, HEATMAP_DATA } from "@/lib/mock-data";
+import { useDashboard } from "@/lib/dashboard-context";
+import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
 import { useTheme } from "@/lib/theme-context";
+
+const DAYS_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 type Period = "hoje" | "7d" | "30d" | "90d";
 
@@ -29,51 +32,76 @@ const CLIENT_EVOLUTION = [
 
 export default function AnalyticsPage() {
   const { theme } = useTheme();
+  const { business } = useDashboard();
   const [period, setPeriod] = useState<Period>("30d");
+  const [appointments, setAppointments] = useState<{ date: string; time_start: string; price_cents: number; status: string }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!business?.id) return;
+    const supabase = createClient();
+    const start = new Date();
+    start.setDate(start.getDate() - 90);
+    supabase
+      .from("appointments")
+      .select("date, time_start, price_cents, status")
+      .eq("business_id", business.id)
+      .gte("date", start.toISOString().slice(0, 10))
+      .then(({ data }) => {
+        setAppointments((data ?? []) as { date: string; time_start: string; price_cents: number; status: string }[]);
+        setLoading(false);
+      });
+  }, [business?.id]);
+
+  const WEEKLY_CHART_DATA = (() => {
+    const byDay: Record<string, { agendamentos: number; receita: number }> = {};
+    DAYS_LABELS.forEach((d) => (byDay[d] = { agendamentos: 0, receita: 0 }));
+    const start = new Date();
+    start.setDate(start.getDate() - 6);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      const dayName = DAYS_LABELS[d.getDay()];
+      const dateStr = d.toISOString().slice(0, 10);
+      const dayApts = appointments.filter((a) => a.date === dateStr);
+      byDay[dayName].agendamentos = dayApts.length;
+      byDay[dayName].receita = dayApts.reduce((s, a) => s + (a.price_cents ?? 0), 0);
+    }
+    return DAYS_LABELS.map((day) => ({ day, ...byDay[day] }));
+  })();
+
+  const heatmapByKey: Record<string, number> = {};
+  appointments.forEach((a) => {
+    const d = new Date(a.date);
+    const day = DAYS_LABELS[d.getDay()];
+    const hour = parseInt(a.time_start?.slice(0, 2) ?? "0", 10);
+    const key = `${day}-${hour}`;
+    heatmapByKey[key] = (heatmapByKey[key] ?? 0) + 1;
+  });
+  const HEATMAP_DATA = DAYS_LABELS.flatMap((day) =>
+    Array.from({ length: 12 }, (_, i) => {
+      const hour = i + 8;
+      return { day, hour, value: heatmapByKey[`${day}-${hour}`] ?? 0 };
+    })
+  );
+  const maxHeat = Math.max(...HEATMAP_DATA.map((h) => h.value), 1);
+
   const isDark = theme === "dark";
   const tooltipStyle = isDark
     ? { background: "#0f1c15", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }
     : { background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" };
   const tickFill = isDark ? "#9ca3af" : "#6b7280";
 
-  const DAYS_OF_WEEK = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const DAYS_OF_WEEK = DAYS_LABELS;
   const HOURS = Array.from({ length: 12 }, (_, i) => i + 8);
 
-  const getHeatValue = (day: string, hour: number) => {
-    return HEATMAP_DATA.find((h) => h.day === day && h.hour === hour)?.value ?? 0;
-  };
-
-  const maxHeat = Math.max(...HEATMAP_DATA.map((h) => h.value));
+  const getHeatValue = (day: string, hour: number) => HEATMAP_DATA.find((h) => h.day === day && h.hour === hour)?.value ?? 0;
 
   const exportCsv = () => {
-    const rows: string[] = [];
-    rows.push("Relatório Analytics - Agenndo");
-    rows.push(`Período,${period}`);
-    rows.push("");
-    rows.push("Métricas gerais");
-    rows.push("Indicador,Valor,Comparativo");
-    rows.push("Agendamentos,127,+12% vs período anterior");
-    rows.push("Taxa de presença,89%,+3% vs período anterior");
-    rows.push("Cancelamentos,8%,-2% vs período anterior");
-    rows.push("Receita total,R$ 9.100,00,+18% vs anterior");
-    rows.push("Ticket médio,R$ 71,65,+5% vs anterior");
-    rows.push("Novos clientes,22,34% do total");
-    rows.push("");
-    rows.push("Agendamentos por dia");
-    rows.push("Dia,Agendamentos,Receita");
+    const rows: string[] = ["Relatório Analytics - Agenndo", `Período,${period}`, "", "Dia,Agendamentos,Receita"];
     WEEKLY_CHART_DATA.forEach((r) => rows.push(`${r.day},${r.agendamentos},${r.receita}`));
-    rows.push("");
-    rows.push("Horários mais populares (dia;hora;quantidade)");
-    rows.push("Dia da semana;Horário;Agendamentos");
+    rows.push("", "Dia da semana;Horário;Agendamentos");
     HEATMAP_DATA.forEach((h) => rows.push(`${h.day};${h.hour};${h.value}`));
-    rows.push("");
-    rows.push("Funil de conversão");
-    rows.push("Etapa;Quantidade;Percentual");
-    FUNNEL_DATA.forEach((f) => rows.push(`${f.step};${f.value};${f.pct}%`));
-    rows.push("");
-    rows.push("Evolução de clientes");
-    rows.push("Mês;Novos;Recorrentes");
-    CLIENT_EVOLUTION.forEach((c) => rows.push(`${c.mes};${c.novos};${c.recorrentes}`));
     const csv = rows.join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");

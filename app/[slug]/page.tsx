@@ -2,11 +2,15 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useState } from "react";
-import { MOCK_USER, MOCK_SERVICES, MOCK_COLLABORATORS } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
 
 type Step = 1 | 2 | 3 | 4 | 5;
+
+type BusinessRow = { id: string; name: string; slug: string; city: string | null; phone: string | null; primary_color: string | null };
+type ServiceRow = { id: string; name: string; duration_minutes: number; price_cents: number; emoji: string | null; collaborator_services: { collaborator_id: string }[] };
+type CollabRow = { id: string; name: string; role: string | null; color: string | null };
 
 const AVAILABLE_TIMES = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30",
@@ -26,9 +30,14 @@ function getFirstDay(year: number, month: number) {
 export default function PublicPage() {
   const params = useParams();
   const slug = typeof params?.slug === "string" ? params.slug : "";
+  const [business, setBusiness] = useState<BusinessRow | null>(null);
+  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [collaborators, setCollaborators] = useState<CollabRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [step, setStep] = useState<Step>(1);
-  const [selectedService, setSelectedService] = useState<typeof MOCK_SERVICES[0] | null>(null);
-  const [selectedCollab, setSelectedCollab] = useState<typeof MOCK_COLLABORATORS[0] | "any" | null>(null);
+  const [selectedService, setSelectedService] = useState<ServiceRow | null>(null);
+  const [selectedCollab, setSelectedCollab] = useState<CollabRow | "any" | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
@@ -39,6 +48,33 @@ export default function PublicPage() {
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calYear, setCalYear] = useState(today.getFullYear());
 
+  useEffect(() => {
+    if (!slug) {
+      setLoading(false);
+      return;
+    }
+    const supabase = createClient();
+    (async () => {
+      try {
+        const { data: biz } = await supabase.from("businesses").select("id, name, slug, city, phone, primary_color").eq("slug", slug).single();
+        if (!biz) {
+          setLoading(false);
+          return;
+        }
+        setBusiness(biz as BusinessRow);
+        const bid = (biz as BusinessRow).id;
+        const [sRes, cRes] = await Promise.all([
+          supabase.from("services").select("id, name, duration_minutes, price_cents, emoji, collaborator_services(collaborator_id)").eq("business_id", bid).eq("active", true),
+          supabase.from("collaborators").select("id, name, role, color").eq("business_id", bid).eq("active", true),
+        ]);
+        setServices((sRes.data as ServiceRow[]) ?? []);
+        setCollaborators((cRes.data as CollabRow[]) ?? []);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [slug]);
+
   const daysInMonth = getDaysInMonth(calYear, calMonth);
   const firstDay = getFirstDay(calYear, calMonth);
 
@@ -46,15 +82,21 @@ export default function PublicPage() {
   const afternoonTimes = AVAILABLE_TIMES.filter((t) => Number(t.split(":")[0]) >= 12 && Number(t.split(":")[0]) < 17);
   const eveningTimes = AVAILABLE_TIMES.filter((t) => Number(t.split(":")[0]) >= 17);
 
-  const handleBook = () => {
-    setBooked(true);
-  };
+  const handleBook = () => setBooked(true);
 
   const collabForService = selectedService
-    ? MOCK_COLLABORATORS.filter((c) => selectedService.collaborators.includes(c.id))
-    : MOCK_COLLABORATORS;
+    ? collaborators.filter((c) => (selectedService.collaborator_services ?? []).some((cs) => cs.collaborator_id === c.id))
+    : collaborators;
 
-  if (slug !== MOCK_USER.slug) {
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#020403] flex flex-col items-center justify-center">
+        <div className="size-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!business) {
     return (
       <div className="min-h-screen bg-[#020403] flex flex-col items-center justify-center px-4 text-center">
         <h1 className="text-xl font-bold text-white mb-2">Página não encontrada</h1>
@@ -65,7 +107,7 @@ export default function PublicPage() {
   }
 
   if (booked) {
-    return <SuccessScreen service={selectedService} collab={selectedCollab} date={selectedDate} time={selectedTime} slug={slug} />;
+    return <SuccessScreen service={selectedService} collab={selectedCollab} date={selectedDate} time={selectedTime} slug={slug} businessName={business.name} />;
   }
 
   return (
@@ -76,15 +118,17 @@ export default function PublicPage() {
         <div className="max-w-4xl lg:max-w-5xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-4">
             <div className="size-14 sm:size-16 rounded-xl bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-2xl font-bold text-primary flex-shrink-0">
-              {MOCK_USER.businessName[0]}
+              {business.name[0]}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold text-white truncate">{MOCK_USER.businessName}</h1>
+              <h1 className="text-lg sm:text-xl font-bold text-white truncate">{business.name}</h1>
               <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                {business.city && (
                 <div className="flex items-center gap-1 text-xs text-gray-400">
                   <span className="material-symbols-outlined text-xs">location_on</span>
-                  {MOCK_USER.city}
+                  {business.city}
                 </div>
+                )}
                 <div className="flex items-center gap-1 text-xs text-yellow-400">
                   <span className="material-symbols-outlined text-xs filled">star</span>
                   4.9 (127 avaliações)
@@ -99,7 +143,7 @@ export default function PublicPage() {
               Entrar
             </Link>
             <a
-              href={`https://wa.me/5511999998888`}
+              href={business.phone ? `https://wa.me/55${business.phone.replace(/\D/g, "")}` : "#"}
               target="_blank"
               rel="noopener noreferrer"
               className="size-10 rounded-xl bg-[#25D366]/10 border border-[#25D366]/20 flex items-center justify-center flex-shrink-0 hover:bg-[#25D366]/20 transition-colors"
@@ -154,9 +198,10 @@ export default function PublicPage() {
               />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-              {MOCK_SERVICES.map((service) => (
+              {services.map((service) => (
                 <button
                   key={service.id}
+                  type="button"
                   onClick={() => { setSelectedService(service); setStep(2); }}
                   className={`flex items-center gap-4 p-4 rounded-xl border text-left transition-all hover:-translate-y-0.5 ${
                     selectedService?.id === service.id
@@ -165,11 +210,11 @@ export default function PublicPage() {
                   }`}
                 >
                   <div className="size-12 rounded-xl bg-[#213428] flex items-center justify-center text-2xl flex-shrink-0">
-                    {service.emoji}
+                    {service.emoji ?? "✂️"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-white font-semibold truncate">{service.name}</p>
-                    <p className="text-gray-400 text-xs mt-0.5">{service.duration}min · {formatCurrency(service.price)}</p>
+                    <p className="text-gray-400 text-xs mt-0.5">{service.duration_minutes}min · {formatCurrency(service.price_cents / 100)}</p>
                   </div>
                 </button>
               ))}
@@ -195,25 +240,26 @@ export default function PublicPage() {
                 </div>
                 <span className="material-symbols-outlined text-gray-500 text-base flex-shrink-0">chevron_right</span>
               </button>
-              {collabForService.map((collab) => (
-                <button
-                  key={collab.id}
-                  onClick={() => { setSelectedCollab(collab); setStep(3); }}
-                  className="flex items-center gap-4 p-4 rounded-xl border border-[#213428] bg-[#14221A] hover:border-primary/40 text-left transition-all"
-                >
-                  <div
-                    className="size-12 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0"
-                    style={{ backgroundColor: collab.color + "30", border: `2px solid ${collab.color}40` }}
+              {collabForService.map((collab) => {
+                const color = collab.color ?? "#3B82F6";
+                return (
+                  <button
+                    key={collab.id}
+                    type="button"
+                    onClick={() => { setSelectedCollab(collab); setStep(3); }}
+                    className="flex items-center gap-4 p-4 rounded-xl border border-[#213428] bg-[#14221A] hover:border-primary/40 text-left transition-all"
                   >
-                    <span style={{ color: collab.color }}>{collab.name[0]}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-semibold">{collab.name}</p>
-                    <p className="text-gray-400 text-xs mt-0.5">{collab.role}</p>
-                  </div>
-                  <span className="material-symbols-outlined text-gray-500 text-base flex-shrink-0">chevron_right</span>
-                </button>
-              ))}
+                    <div className="size-12 rounded-xl flex items-center justify-center text-white font-bold text-lg flex-shrink-0" style={{ backgroundColor: `${color}30`, border: `2px solid ${color}40` }}>
+                      <span style={{ color }}>{collab.name[0]}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-white font-semibold">{collab.name}</p>
+                      <p className="text-gray-400 text-xs mt-0.5">{collab.role ?? "—"}</p>
+                    </div>
+                    <span className="material-symbols-outlined text-gray-500 text-base flex-shrink-0">chevron_right</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
@@ -331,7 +377,7 @@ export default function PublicPage() {
                   {
                     icon: "person",
                     label: "Profissional",
-                    value: selectedCollab === "any" ? "Primeiro disponível" : (selectedCollab as typeof MOCK_COLLABORATORS[0])?.name ?? "",
+                    value: selectedCollab === "any" ? "Primeiro disponível" : (selectedCollab as CollabRow)?.name ?? "",
                   },
                   {
                     icon: "calendar_today",
@@ -339,8 +385,8 @@ export default function PublicPage() {
                     value: selectedDate ? new Date(selectedDate).toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" }) : "",
                   },
                   { icon: "schedule", label: "Horário", value: selectedTime ?? "" },
-                  { icon: "timer", label: "Duração", value: `${selectedService?.duration}min` },
-                  { icon: "payments", label: "Valor", value: formatCurrency(selectedService?.price ?? 0), highlight: true },
+                  { icon: "timer", label: "Duração", value: `${selectedService?.duration_minutes ?? 0}min` },
+                  { icon: "payments", label: "Valor", value: formatCurrency((selectedService?.price_cents ?? 0) / 100), highlight: true },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-gray-400 text-base w-5">{item.icon}</span>
@@ -427,7 +473,7 @@ export default function PublicPage() {
             <div className="flex-1 flex items-center gap-2 bg-[#14221A] border border-[#213428] rounded-xl px-4 text-sm overflow-hidden">
               {selectedService && (
                 <span className="text-gray-400 truncate">
-                  {selectedService.emoji} {selectedService.name}
+                  {selectedService.emoji ?? "✂️"} {selectedService.name}
                   {selectedTime && ` · ${selectedTime}`}
                 </span>
               )}
@@ -450,15 +496,18 @@ export default function PublicPage() {
 
 function SuccessScreen({
   service,
+  collab,
   date,
   time,
   slug,
+  businessName,
 }: {
-  service: typeof MOCK_SERVICES[0] | null;
-  collab: typeof MOCK_COLLABORATORS[0] | "any" | null;
+  service: ServiceRow | null;
+  collab: CollabRow | "any" | null;
   date: string | null;
   time: string | null;
   slug: string;
+  businessName: string;
 }) {
   return (
     <div className="min-h-screen bg-[#020403] flex flex-col items-center justify-center px-4 py-8 sm:py-12">
@@ -480,7 +529,7 @@ function SuccessScreen({
                 { label: "Serviço", value: service?.name ?? "" },
                 { label: "Data", value: date ? new Date(date).toLocaleDateString("pt-BR") : "" },
                 { label: "Horário", value: time ?? "" },
-                { label: "Valor", value: formatCurrency(service?.price ?? 0), highlight: true },
+                { label: "Valor", value: formatCurrency((service?.price_cents ?? 0) / 100), highlight: true },
               ].map((item) => (
                 <div key={item.label} className="flex justify-between items-center">
                   <span className="text-gray-400 text-sm">{item.label}</span>

@@ -1,32 +1,29 @@
 "use client";
 
-import { useState } from "react";
-import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, Cell, PieChart, Pie, Legend,
-} from "recharts";
-import { MOCK_FINANCIAL_RECORDS, MONTHLY_CHART_DATA } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { useDashboard } from "@/lib/dashboard-context";
+import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
 import { useTheme } from "@/lib/theme-context";
 
-const SERVICE_REVENUE = [
-  { name: "Corte + Barba", value: 3200, pct: 35 },
-  { name: "Corte Masculino", value: 2100, pct: 23 },
-  { name: "Barba", value: 1800, pct: 20 },
-  { name: "Manicure", value: 1200, pct: 13 },
-  { name: "Pedicure", value: 800, pct: 9 },
-];
-
-const COLLAB_REVENUE = [
-  { name: "Carlos", value: 5200 },
-  { name: "Lucas", value: 3600 },
-  { name: "Ana", value: 2300 },
-];
+type RecordRow = {
+  id: string;
+  date: string;
+  client_name: string | null;
+  service_name: string | null;
+  collaborator_name: string | null;
+  amount_cents: number;
+  paid: boolean;
+};
 
 const PIE_COLORS = ["#13EC5B", "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B"];
 
 export default function FinanceiroPage() {
   const { theme } = useTheme();
+  const { business } = useDashboard();
+  const [records, setRecords] = useState<RecordRow[]>([]);
+  const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"day" | "week" | "month">("month");
   const [showAddModal, setShowAddModal] = useState(false);
   const isDark = theme === "dark";
@@ -34,40 +31,69 @@ export default function FinanceiroPage() {
     ? { background: "#0f1c15", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }
     : { background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" };
 
-  const totalMonth = MOCK_FINANCIAL_RECORDS.reduce((sum, r) => sum + r.amount, 0);
-  const paidMonth = MOCK_FINANCIAL_RECORDS.filter((r) => r.paid).reduce((sum, r) => sum + r.amount, 0);
+  useEffect(() => {
+    if (!business?.id) return;
+    const supabase = createClient();
+    const start = new Date();
+    start.setMonth(start.getMonth() - 3);
+    supabase
+      .from("financial_records")
+      .select("id, date, client_name, service_name, collaborator_name, amount_cents, paid")
+      .eq("business_id", business.id)
+      .gte("date", start.toISOString().slice(0, 10))
+      .order("date", { ascending: false })
+      .then(({ data }) => {
+        setRecords((data as RecordRow[]) ?? []);
+        setLoading(false);
+      });
+  }, [business?.id]);
+
+  const totalMonth = records.reduce((s, r) => s + Number(r.amount_cents), 0);
+  const paidMonth = records.filter((r) => r.paid).reduce((s, r) => s + Number(r.amount_cents), 0);
   const pendingMonth = totalMonth - paidMonth;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const weekStart = new Date();
+  weekStart.setDate(weekStart.getDate() - 7);
+  const weekStr = weekStart.toISOString().slice(0, 10);
+  const todayTotal = records.filter((r) => r.date === todayStr).reduce((s, r) => s + Number(r.amount_cents), 0);
+  const weekTotal = records.filter((r) => r.date >= weekStr).reduce((s, r) => s + Number(r.amount_cents), 0);
+
+  const byService: Record<string, number> = {};
+  records.forEach((r) => {
+    const name = r.service_name ?? "Outros";
+    byService[name] = (byService[name] ?? 0) + Number(r.amount_cents);
+  });
+  const totalS = Object.values(byService).reduce((a, b) => a + b, 0);
+  const SERVICE_REVENUE = Object.entries(byService)
+    .map(([name, value]) => ({ name, value, pct: totalS ? Math.round((value / totalS) * 100) : 0 }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 8);
+
+  const byCollab: Record<string, number> = {};
+  records.forEach((r) => {
+    const name = r.collaborator_name ?? "—";
+    byCollab[name] = (byCollab[name] ?? 0) + Number(r.amount_cents);
+  });
+  const COLLAB_REVENUE = Object.entries(byCollab).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
+
+  const byDay: Record<number, number> = {};
+  const start = new Date();
+  start.setDate(start.getDate() - 29);
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    byDay[d.getDate()] = 0;
+  }
+  records.forEach((r) => {
+    const day = new Date(r.date).getDate();
+    byDay[day] = (byDay[day] ?? 0) + Number(r.amount_cents);
+  });
+  const MONTHLY_CHART_DATA = Object.entries(byDay).map(([day, receita]) => ({ day: Number(day), receita })).sort((a, b) => a.day - b.day);
 
   const exportCsv = () => {
-    const rows: string[] = [];
-    rows.push("Relatório Financeiro - Agenndo");
-    rows.push(`Exportado em,${new Date().toLocaleString("pt-BR")}`);
-    rows.push("");
-    rows.push("Resumo");
-    rows.push("Indicador;Valor;Observação");
-    rows.push("Hoje;R$ 480,00;3 atendimentos");
-    rows.push("Esta semana;R$ 2.140,00;14 atend.");
-    rows.push(`Este mês;${formatCurrency(totalMonth)};Receita bruta`);
-    rows.push(`Pendente;${formatCurrency(pendingMonth)};A receber`);
-    rows.push("");
-    rows.push("Lançamentos (data;cliente;serviço;colaborador;valor;pago)");
-    MOCK_FINANCIAL_RECORDS.forEach((r) =>
-      rows.push(`${r.date};${r.client};${r.service};${r.collaborator};${r.amount};${r.paid ? "Sim" : "Não"}`)
-    );
-    rows.push("");
-    rows.push("Receita por serviço");
-    rows.push("Serviço;Valor;%");
-    SERVICE_REVENUE.forEach((s) => rows.push(`${s.name};${s.value};${s.pct}%`));
-    rows.push("");
-    rows.push("Receita por colaborador");
-    rows.push("Colaborador;Valor");
-    COLLAB_REVENUE.forEach((c) => rows.push(`${c.name};${c.value}`));
-    rows.push("");
-    rows.push("Receita por dia (período)");
-    rows.push("Dia;Receita;Agendamentos");
-    MONTHLY_CHART_DATA.slice(0, 30).forEach((d) => rows.push(`${d.day};${d.receita};${d.agendamentos}`));
-    const csv = rows.join("\n");
-    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    const rows: string[] = ["Relatório Financeiro - Agenndo", `Exportado em,${new Date().toLocaleString("pt-BR")}`, "", "Indicador;Valor", `Este mês;${formatCurrency(totalMonth / 100)}`, `Pendente;${formatCurrency(pendingMonth / 100)}`, "", "data;cliente;serviço;colaborador;valor;pago"];
+    records.forEach((r) => rows.push(`${r.date};${r.client_name ?? ""};${r.service_name ?? ""};${r.collaborator_name ?? ""};${(r.amount_cents / 100).toFixed(2)};${r.paid ? "Sim" : "Não"}`));
+    const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `financeiro-agenndo-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -104,10 +130,10 @@ export default function FinanceiroPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
-          { label: "Hoje", value: formatCurrency(480), sub: "3 atendimentos", color: "text-gray-900" },
-          { label: "Esta semana", value: formatCurrency(2140), sub: "14 atend.", color: "text-gray-900" },
-          { label: "Este mês", value: formatCurrency(totalMonth), sub: "Receita bruta", color: "text-primary" },
-          { label: "Pendente", value: formatCurrency(pendingMonth), sub: "A receber", color: "text-yellow-600" },
+          { label: "Hoje", value: formatCurrency(todayTotal / 100), sub: `${records.filter((r) => r.date === todayStr).length} atend.`, color: "text-gray-900" },
+          { label: "Esta semana", value: formatCurrency(weekTotal / 100), sub: "Últimos 7 dias", color: "text-gray-900" },
+          { label: "Este mês", value: formatCurrency(totalMonth / 100), sub: "Receita bruta", color: "text-primary" },
+          { label: "Pendente", value: formatCurrency(pendingMonth / 100), sub: "A receber", color: "text-yellow-600" },
         ].map((card) => (
           <div key={card.label} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
             <p className="text-xs text-gray-500 mb-2">{card.label}</p>
@@ -156,7 +182,7 @@ export default function FinanceiroPage() {
               contentStyle={tooltipStyle}
               labelStyle={{ color: isDark ? "#e5e7eb" : "#111827" }}
               itemStyle={{ color: "#13EC5B" }}
-              formatter={(v) => [formatCurrency(Number(v)), "Receita"]}
+              formatter={(v) => [formatCurrency(Number(v) / 100), "Receita"]}
             />
             <Line
               type="monotone"
@@ -181,7 +207,7 @@ export default function FinanceiroPage() {
                   <span className="text-xs text-gray-400">{item.name}</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-500">{item.pct}%</span>
-                    <span className="text-xs font-bold text-gray-900">{formatCurrency(item.value)}</span>
+                    <span className="text-xs font-bold text-gray-900">{formatCurrency(item.value / 100)}</span>
                   </div>
                 </div>
                 <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -212,10 +238,10 @@ export default function FinanceiroPage() {
                 tickLine={false}
                 width={50}
               />
-              <Tooltip contentStyle={tooltipStyle} formatter={(v) => [formatCurrency(Number(v)), "Receita"]} />
+              <Tooltip contentStyle={tooltipStyle} formatter={(v) => [formatCurrency(Number(v) / 100), "Receita"]} />
               <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                 {COLLAB_REVENUE.map((_, i) => (
-                  <Cell key={i} fill={["#13EC5B", "#3B82F6", "#EC4899"][i]} />
+                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                 ))}
               </Bar>
             </BarChart>
@@ -233,26 +259,30 @@ export default function FinanceiroPage() {
           </button>
         </div>
 
-        <div className="divide-y divide-[#213428]">
-          {MOCK_FINANCIAL_RECORDS.map((record) => (
-            <div key={record.id} className="flex items-center gap-4 p-4 hover:bg-white/2 transition-colors">
-              <div className="flex-1 min-w-0">
-                <p className="text-gray-900 text-sm font-medium truncate">{record.client}</p>
-                <p className="text-gray-500 text-xs mt-0.5">{record.service} · {record.collaborator}</p>
+        <div className="divide-y divide-gray-200">
+          {loading ? (
+            <div className="p-8 flex justify-center"><div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" /></div>
+          ) : records.length === 0 ? (
+            <div className="p-8 text-center text-gray-500 text-sm">Nenhum lançamento. Entradas aparecem ao marcar agendamentos como compareceu ou por entrada manual.</div>
+          ) : (
+            records.map((record) => (
+              <div key={record.id} className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <p className="text-gray-900 text-sm font-medium truncate">{record.client_name ?? "—"}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{record.service_name ?? "—"} · {record.collaborator_name ?? "—"}</p>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs text-gray-500">{new Date(record.date).toLocaleDateString("pt-BR")}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${record.paid ? "bg-primary/10 text-primary" : "bg-yellow-400/10 text-yellow-400"}`}>
+                    {record.paid ? "Pago" : "Pendente"}
+                  </span>
+                  <span className="text-sm font-bold text-gray-900">{formatCurrency(record.amount_cents / 100)}</span>
+                </div>
               </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-xs text-gray-500">{record.date}</p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
-                  record.paid ? "bg-primary/10 text-primary" : "bg-yellow-400/10 text-yellow-400"
-                }`}>
-                  {record.paid ? "Pago" : "Pendente"}
-                </span>
-                <span className="text-sm font-bold text-gray-900">{formatCurrency(record.amount)}</span>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>
