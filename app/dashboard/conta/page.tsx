@@ -1,29 +1,38 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MOCK_USER } from "@/lib/mock-data";
+import { useDashboard } from "@/lib/dashboard-context";
+import { createClient } from "@/lib/supabase/client";
 import { calculateDynamicPlan } from "@/lib/planCalculator";
 
 type Tab = "plano" | "negocio" | "seguranca";
 
-const INVOICES = [
-  { id: "1", date: "01/01/2024", amount: 89.90, status: "pago" },
-  { id: "2", date: "01/12/2023", amount: 89.90, status: "pago" },
-  { id: "3", date: "01/11/2023", amount: 89.90, status: "pago" },
-];
+const INVOICES: { id: string; date: string; amount: number; status: string }[] = [];
 
 export default function ContaPage() {
+  const { business, profile } = useDashboard();
   const [tab, setTab] = useState<Tab>("plano");
   const [form, setForm] = useState({
-    businessName: MOCK_USER.businessName,
-    phone: MOCK_USER.phone,
-    city: MOCK_USER.city,
-    slug: MOCK_USER.slug,
-    segment: MOCK_USER.segment,
+    businessName: "",
+    phone: "",
+    city: "",
+    slug: "",
+    segment: "",
   });
 
-  // Plano dinâmico: o que o usuário vê é o plano destinado a ele (vindo do onboarding ou mock)
-  const dynamicPlan = calculateDynamicPlan("2-5", 15, 80); // mock: mesmo perfil do onboarding
+  useEffect(() => {
+    if (business) {
+      setForm({
+        businessName: business.name ?? "",
+        phone: business.phone ?? "",
+        city: business.city ?? "",
+        slug: business.slug ?? "",
+        segment: business.segment ?? "",
+      });
+    }
+  }, [business]);
+
+  const dynamicPlan = calculateDynamicPlan("2-5", 15, 80);
   const [monthlyPrice, setMonthlyPrice] = useState(89.9);
   useEffect(() => {
     const p = localStorage.getItem("agenndo_plan_price");
@@ -192,10 +201,7 @@ export default function ContaPage() {
             </div>
           </div>
 
-          <button className="w-full py-4 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2">
-            <span className="material-symbols-outlined text-base">save</span>
-            Salvar alterações
-          </button>
+          <SaveNegocioButton businessId={business?.id} form={form} />
         </div>
       )}
 
@@ -209,8 +215,8 @@ export default function ContaPage() {
                 <GoogleIcon />
               </div>
               <div className="flex-1">
-                <p className="text-gray-900 font-semibold text-sm">{MOCK_USER.name}</p>
-                <p className="text-gray-500 text-xs">{MOCK_USER.email}</p>
+                <p className="text-gray-900 font-semibold text-sm">{profile?.full_name ?? "Usuário"}</p>
+                <p className="text-gray-500 text-xs">{profile?.email ?? ""}</p>
                 <p className="text-xs text-primary mt-0.5">Conta Google vinculada</p>
               </div>
             </div>
@@ -251,6 +257,29 @@ export default function ContaPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function SaveNegocioButton({ businessId, form }: { businessId: string | undefined; form: { businessName: string; phone: string; city: string; slug: string; segment: string } }) {
+  const [saving, setSaving] = useState(false);
+  if (!businessId) return null;
+  const handleSave = async () => {
+    setSaving(true);
+    const supabase = createClient();
+    await supabase.from("businesses").update({
+      name: form.businessName || undefined,
+      phone: form.phone || undefined,
+      city: form.city || undefined,
+      slug: form.slug || undefined,
+      segment: form.segment || undefined,
+    }).eq("id", businessId);
+    setSaving(false);
+  };
+  return (
+    <button type="button" onClick={handleSave} disabled={saving} className="w-full py-4 bg-primary hover:bg-primary/90 disabled:opacity-70 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2">
+      <span className="material-symbols-outlined text-base">save</span>
+      {saving ? "Salvando..." : "Salvar alterações"}
+    </button>
   );
 }
 

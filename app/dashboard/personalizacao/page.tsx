@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { MOCK_USER } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import { useDashboard } from "@/lib/dashboard-context";
 
 const PALETTE = [
   { value: "#13EC5B", label: "Verde" },
@@ -19,21 +19,33 @@ const PALETTE = [
 ];
 
 export default function PersonalizacaoPage() {
+  const { business } = useDashboard();
   const [form, setForm] = useState({
-    businessName: MOCK_USER.businessName,
+    businessName: "",
     tagline: "Seu visual, nossa paixão",
     primaryColor: "#13EC5B",
-    about: "Bem-vindo à Barbearia Elite! Somos especializados em cortes modernos e barba tradicional.",
-    instagram: "@barbeariaelite",
-    whatsapp: "(11) 99999-8888",
-    address: "Rua das Flores, 123 - São Paulo/SP",
+    about: "",
+    instagram: "",
+    whatsapp: "",
+    address: "",
     floatingWhatsapp: true,
     darkPage: false,
   });
   const [activeTab, setActiveTab] = useState<"aparencia" | "conteudo" | "contato" | "compartilhar">("aparencia");
   const [copied, setCopied] = useState(false);
 
-  const publicUrl = `agenndo.com/${MOCK_USER.slug}`;
+  useEffect(() => {
+    if (business) {
+      setForm((f) => ({
+        ...f,
+        businessName: business.name ?? "",
+        primaryColor: business.primary_color ?? "#13EC5B",
+        whatsapp: business.phone ?? "",
+      }));
+    }
+  }, [business]);
+
+  const publicUrl = typeof window !== "undefined" ? `${window.location.host}/${business?.slug ?? ""}` : "";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(`https://${publicUrl}`);

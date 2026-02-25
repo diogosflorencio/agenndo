@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { MOCK_USER } from "@/lib/mock-data";
+import { useDashboard } from "@/lib/dashboard-context";
 
 const DEFAULT_FG = "#111827";
 const DEFAULT_BG = "#ffffff";
@@ -26,8 +26,10 @@ export default function QrCodePage() {
   const [topText, setTopText] = useState("Escaneie para agendar");
   const [bottomText, setBottomText] = useState("Adicione à tela inicial para acessar rápido");
 
+  const { business } = useDashboard();
+  const slug = business?.slug ?? "";
   const baseUrl = typeof window !== "undefined" ? `${window.location.origin}` : "";
-  const qrDataUrl = `${baseUrl}/${MOCK_USER.slug}`;
+  const qrDataUrl = slug ? `${baseUrl}/${slug}` : "";
 
   useEffect(() => {
     if (!qrContainerRef.current || !qrDataUrl || !baseUrl) return;
@@ -122,7 +124,7 @@ export default function QrCodePage() {
       const w = window.open("", "_blank");
       if (!w) return;
       w.document.write(`
-        <!DOCTYPE html><html><head><title>QR Code - ${MOCK_USER.businessName}</title></head>
+        <!DOCTYPE html><html><head><title>QR Code - ${business?.name ?? "Agenndo"}</title></head>
         <body style="margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh;background:#f5f5f5;">
           <img src="${imgData}" alt="QR Code" style="max-width:100%;height:auto;" />
         </body></html>
@@ -271,7 +273,7 @@ export default function QrCodePage() {
             )}
           </div>
           <p className="text-xs text-gray-500 mt-3 text-center">
-            Link: {baseUrl || "..."}/{MOCK_USER.slug}
+            Link: {baseUrl || "..."}/{slug || "—"}
           </p>
         </div>
       </div>

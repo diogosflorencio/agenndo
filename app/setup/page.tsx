@@ -31,7 +31,6 @@ type SetupFormData = {
   businessName: string;
   segment: string;
   phone: string;
-  city: string;
   slug: string;
   teamSize: "1" | "2-5" | "6-15" | "16+";
   dailyAppointments: number;
@@ -40,6 +39,13 @@ type SetupFormData = {
   logo: File | null;
 };
 
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits ? `(${digits}` : "";
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
 export default function SetupPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
@@ -47,7 +53,6 @@ export default function SetupPage() {
     businessName: "",
     segment: "",
     phone: "",
-    city: "",
     slug: "",
     teamSize: "1" as "1" | "2-5" | "6-15" | "16+",
     dailyAppointments: 10,
@@ -86,8 +91,7 @@ export default function SetupPage() {
       name: data.businessName || "Meu Negócio",
       slug,
       segment: data.segment || null,
-      phone: data.phone || null,
-      city: data.city || null,
+      phone: data.phone ? formatPhone(data.phone) : null,
       primary_color: data.primaryColor || "#13EC5B",
       plan: planId,
     });
@@ -197,21 +201,6 @@ export default function SetupPage() {
             <p className="text-[10px] font-semibold text-white/30 uppercase tracking-widest text-center mb-6">
               {stepLabel}
             </p>
-          {/* Step indicator dots */}
-          <div className="flex items-center justify-center gap-2 mb-10">
-            {Array.from({ length: totalSteps }, (_, i) => (
-              <div
-                key={i}
-                className={`rounded-full transition-all duration-300 ${
-                  i + 1 === step
-                    ? "w-8 h-2.5 bg-primary"
-                    : i + 1 < step
-                    ? "w-2.5 h-2.5 bg-primary/60"
-                    : "w-2.5 h-2.5 bg-white/10"
-                }`}
-              />
-            ))}
-          </div>
 
           {/* Step content */}
           {step === 1 && (
@@ -298,26 +287,15 @@ function Step1({ data, update, segments }: { data: SetupFormData; update: (f: st
           </select>
         </FormField>
 
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Telefone">
-            <input
-              type="tel"
-              value={data.phone}
-              onChange={(e) => update("phone", e.target.value)}
-              placeholder="(11) 99999-9999"
-              className="w-full h-12 bg-[#14221A] border border-[#213428] focus:border-primary rounded-xl px-4 text-white placeholder-gray-600 outline-none transition-colors text-sm"
-            />
-          </FormField>
-          <FormField label="Cidade">
-            <input
-              type="text"
-              value={data.city}
-              onChange={(e) => update("city", e.target.value)}
-              placeholder="São Paulo"
-              className="w-full h-12 bg-[#14221A] border border-[#213428] focus:border-primary rounded-xl px-4 text-white placeholder-gray-600 outline-none transition-colors text-sm"
-            />
-          </FormField>
-        </div>
+        <FormField label="Telefone">
+          <input
+            type="tel"
+            value={formatPhone(data.phone)}
+            onChange={(e) => update("phone", e.target.value.replace(/\D/g, "").slice(0, 11))}
+            placeholder="(11) 99999-9999"
+            className="w-full h-12 bg-[#14221A] border border-[#213428] focus:border-primary rounded-xl px-4 text-white placeholder-gray-600 outline-none transition-colors text-sm"
+          />
+        </FormField>
       </div>
     </div>
   );
