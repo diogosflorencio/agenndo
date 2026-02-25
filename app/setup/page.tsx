@@ -104,7 +104,7 @@ export default function SetupPage() {
       if (planId !== "free") {
         localStorage.setItem("agenndo_plan_price", String(dynamicPlan.monthlyPrice));
       }
-      router.push("/dashboard");
+      window.location.href = "/dashboard";
       return;
     }
 
@@ -113,7 +113,8 @@ export default function SetupPage() {
     if (planId !== "free") {
       localStorage.setItem("agenndo_plan_price", String(dynamicPlan.monthlyPrice));
     }
-    router.push("/dashboard");
+    // Redirecionamento completo para garantir que o servidor receba os cookies e veja o negócio recém-criado
+    window.location.href = "/dashboard";
   };
 
   const updateData = (field: string, value: unknown) => {
