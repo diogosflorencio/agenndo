@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // distDir absoluto em outro disco NÃO funciona: o Next faz path.join(projeto, distDir) e no Windows
-  // vira Z:\projeto\C:\Users\... Use scripts/ensure-next-on-local-disk.mjs (predev/prebuild) + junction em .next.
+  // distDir absoluto em outro disco NÃO funciona no Next (path.join quebra no Windows).
+  // Junction .next → AppData é opt-in (AGENNDO_LOCAL_NEXT_DIST=1): em drive Z: com node_modules no Z:,
+  // server bundles em C:\ não resolvem `require('next/...')` → 404 nas API routes. Padrão: .next no projeto.
   images: {
     domains: ["lh3.googleusercontent.com", "avatars.githubusercontent.com"],
   },

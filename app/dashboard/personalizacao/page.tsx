@@ -709,12 +709,13 @@ type PreviewForm = {
 const PREVIEW_MAX_SERVICES = 8;
 
 function PagePreview({ form, services }: { form: PreviewForm; services: PreviewServiceRow[] }) {
-  const bg = form.darkPage ? "bg-[#020403]" : "bg-gray-50";
-  const cardBg = form.darkPage ? "bg-[#14221A] border-[#213428]" : "bg-white border-gray-200";
-  const cardBgSoft = form.darkPage ? "bg-[#0f1c15] border-white/5" : "bg-gray-50 border-gray-200";
-  const text = form.darkPage ? "text-white" : "text-gray-900";
-  const subtext = form.darkPage ? "text-gray-400" : "text-gray-500";
-  const avatarBorder = form.darkPage ? "border-[#020403]" : "border-gray-50";
+  /* Modo claro: cores literais — o dashboard usa data-theme=dark e globals.css força .bg-white/.text-gray-* etc. */
+  const bg = form.darkPage ? "bg-[#020403]" : "bg-[#f9fafb]";
+  const cardBg = form.darkPage ? "bg-[#14221A] border-[#213428]" : "bg-[#ffffff] border-[#e5e7eb]";
+  const cardBgSoft = form.darkPage ? "bg-[#0f1c15] border-white/5" : "bg-[#f9fafb] border-[#e5e7eb]";
+  const text = form.darkPage ? "text-white" : "text-[#111827]";
+  const subtext = form.darkPage ? "text-gray-400" : "text-[#6b7280]";
+  const avatarBorder = form.darkPage ? "border-[#020403]" : "border-[#f9fafb]";
   const shown = services.slice(0, PREVIEW_MAX_SERVICES);
   const restCount = Math.max(0, services.length - shown.length);
 
@@ -722,7 +723,7 @@ function PagePreview({ form, services }: { form: PreviewForm; services: PreviewS
     <div
       className={cn(
         "rounded-2xl border shadow-[0_12px_40px_-8px_rgba(0,0,0,0.25)] overflow-visible",
-        form.darkPage ? "border-white/10" : "border-gray-200",
+        form.darkPage ? "border-white/10" : "border-[#e5e7eb]",
         bg
       )}
     >
@@ -831,13 +832,13 @@ function PagePreview({ form, services }: { form: PreviewForm; services: PreviewS
                 <div
                   className={cn(
                     "size-9 rounded-lg flex items-center justify-center text-base shrink-0",
-                    form.darkPage ? "bg-[#213428]" : "bg-gray-100"
+                    form.darkPage ? "bg-[#213428]" : "bg-[#f3f4f6]"
                   )}
                 >
                   {s.emoji ? (
                     <span className="leading-none">{s.emoji}</span>
                   ) : (
-                    <span className="material-symbols-outlined text-gray-500 text-lg">category</span>
+                    <span className="material-symbols-outlined text-[#6b7280] text-lg">category</span>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">

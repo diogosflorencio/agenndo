@@ -3,8 +3,9 @@
  * viram Z:\projeto\C:\Users\... (inválido). Solução: manter distDir como ".next" e criar
  * junction (Win) ou symlink (Unix) .next -> pasta em disco local.
  *
- * AGENNDO_LOCAL_NEXT_DIST=0 — não faz nada.
- * AGENNDO_LOCAL_NEXT_DIST=1 — força link mesmo com projeto em C:\.
+ * AGENNDO_LOCAL_NEXT_DIST=0 — não usa junction (recomendado: .next fica ao lado de node_modules).
+ * AGENNDO_LOCAL_NEXT_DIST=1 — junction .next → AppData (só use se souber o impacto; em projeto em Z: e
+ *   node_modules em Z:, emitir server em C:\ quebra require('next/...') nas API routes → 404).
  */
 import fs from "fs";
 import path from "path";
@@ -27,10 +28,7 @@ function localTargetDir() {
 function shouldUseLocal() {
   if (process.env.AGENNDO_LOCAL_NEXT_DIST === "0") return false;
   if (process.env.AGENNDO_LOCAL_NEXT_DIST === "1") return true;
-  if (process.platform !== "win32") return false;
-  const uncOrNonC =
-    root.startsWith("\\\\") || (/^[A-Za-z]:/.test(root) && root[0].toUpperCase() !== "C");
-  return uncOrNonC;
+  return false;
 }
 
 function readLinkTarget(p) {
@@ -55,9 +53,21 @@ function createLink(targetAbs) {
 }
 
 function main() {
-  if (!shouldUseLocal()) return;
-
   const targetAbs = path.resolve(localTargetDir());
+
+  if (!shouldUseLocal()) {
+    if (fs.existsSync(linkPath)) {
+      const linkTarget = readLinkTarget(linkPath);
+      if (linkTarget !== null && sameResolved(linkTarget, targetAbs)) {
+        fs.unlinkSync(linkPath);
+        console.log(
+          "[agenndo] Junction .next → disco local removido. Output fica no projeto (mesmo volume que node_modules); evita 404 em rotas /api."
+        );
+      }
+    }
+    return;
+  }
+
   fs.mkdirSync(targetAbs, { recursive: true });
 
   if (!fs.existsSync(linkPath)) {

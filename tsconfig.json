@@ -31,8 +31,7 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts",
-    "C:\\Users\\Diooo\\AppData\\Local\\agenndo-next\\fa7a19126954/types/**/*.ts"
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
