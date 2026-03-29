@@ -11,6 +11,7 @@ import {
   getVisitedPublicPages,
   type VisitedPublicPage,
 } from "@/lib/visited-public-pages";
+import { useAppAlert } from "@/components/app-alert-provider";
 
 type ClientLink = {
   id: string;
@@ -49,6 +50,7 @@ function embedName(embed: { name: string } | { name: string }[] | null | undefin
 }
 
 export default function ContaClientePage() {
+  const { showAlert } = useAppAlert();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -151,7 +153,7 @@ export default function ContaClientePage() {
       if (!res.ok) throw new Error(j.error || "Não foi possível cancelar");
       await load();
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Erro");
+      showAlert(e instanceof Error ? e.message : "Erro", { title: "Cancelar agendamento" });
     } finally {
       setCancelingId(null);
     }

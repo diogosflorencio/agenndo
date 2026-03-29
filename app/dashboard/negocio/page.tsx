@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
+import { formatBrazilPhoneFromDigits, maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
+import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
 
 export default function NegocioPage() {
   const { business } = useDashboard();
+  const [savedBaseline, setSavedBaseline] = useState<string | null>(null);
   const [form, setForm] = useState({
     businessName: "",
     phone: "",
@@ -16,20 +19,31 @@ export default function NegocioPage() {
 
   useEffect(() => {
     if (business) {
-      setForm({
+      const next = {
         businessName: business.name ?? "",
-        phone: business.phone ?? "",
+        phone: formatBrazilPhoneFromDigits(business.phone ?? ""),
         city: business.city ?? "",
         slug: business.slug ?? "",
         segment: business.segment ?? "",
-      });
+      };
+      const j = JSON.stringify(next);
+      setForm(next);
+      setSavedBaseline(j);
     }
   }, [business]);
+
+  const isDirty = useMemo(() => {
+    if (!business || savedBaseline === null) return false;
+    return JSON.stringify(form) !== savedBaseline;
+  }, [business, form, savedBaseline]);
 
   return (
     <div className="w-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Dados do negócio</h1>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h1 className="text-2xl font-bold text-gray-900">Dados do negócio</h1>
+          <UnsavedChangesIndicator dirty={isDirty} variant="inline" />
+        </div>
         <p className="text-gray-600 text-sm mt-1">Nome, contato e link público do seu estabelecimento</p>
       </div>
 
@@ -45,8 +59,16 @@ export default function NegocioPage() {
               <label className="text-sm font-medium text-gray-700 block mb-1.5">{field.label}</label>
               <input
                 type={field.type}
+                inputMode={field.key === "phone" ? "tel" : undefined}
+                autoComplete={field.key === "phone" ? "tel" : undefined}
                 value={form[field.key as keyof typeof form]}
-                onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    [field.key]:
+                      field.key === "phone" ? maskPhoneInputRaw(e.target.value) : e.target.value,
+                  })
+                }
                 className="w-full h-11 bg-gray-50 border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm"
               />
             </div>
@@ -72,7 +94,14 @@ export default function NegocioPage() {
           </div>
         </div>
 
-        <SaveNegocioButton businessId={business?.id} form={form} />
+        <SaveNegocioButton
+          businessId={business?.id}
+          form={form}
+          onSaved={() => {
+            setSavedBaseline(JSON.stringify(form));
+          }}
+          isDirty={isDirty}
+        />
       </div>
     </div>
   );
@@ -81,9 +110,13 @@ export default function NegocioPage() {
 function SaveNegocioButton({
   businessId,
   form,
+  onSaved,
+  isDirty,
 }: {
   businessId: string | undefined;
   form: { businessName: string; phone: string; city: string; slug: string; segment: string };
+  onSaved?: () => void;
+  isDirty: boolean;
 }) {
   const [saving, setSaving] = useState(false);
   if (!businessId) return null;
@@ -94,20 +127,23 @@ function SaveNegocioButton({
       .from("businesses")
       .update({
         name: form.businessName || undefined,
-        phone: form.phone || undefined,
+        phone: phoneDigitsOnly(form.phone) || undefined,
         city: form.city || undefined,
         slug: form.slug || undefined,
         segment: form.segment || undefined,
       })
       .eq("id", businessId);
     setSaving(false);
+    onSaved?.();
   };
   return (
     <button
       type="button"
       onClick={handleSave}
       disabled={saving}
-      className="w-full py-4 bg-primary hover:bg-primary/90 disabled:opacity-70 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+      className={`w-full py-4 bg-primary hover:bg-primary/90 disabled:opacity-70 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+        isDirty ? "ring-2 ring-amber-500/45" : ""
+      }`}
     >
       <span className="material-symbols-outlined text-base">save</span>
       {saving ? "Salvando..." : "Salvar alterações"}

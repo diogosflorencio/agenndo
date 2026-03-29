@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useTheme } from "@/lib/theme-context";
+import { SwitchToggle } from "@/components/switch-toggle";
 
 type NotifConfig = {
   newAppointmentEmail: boolean;
@@ -31,6 +33,9 @@ const DEFAULT_CONFIG: NotifConfig = {
 const TEMPLATE_VARS = ["{nome}", "{data}", "{hora}", "{servico}", "{colaborador}", "{endereco}", "{link}"];
 
 export default function NotificacoesPage() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
   const [config, setConfig] = useState<NotifConfig>(DEFAULT_CONFIG);
   const [activeTemplate, setActiveTemplate] = useState<"confirmacao" | "lembrete" | "avaliacao" | "reativacao">("confirmacao");
 
@@ -42,20 +47,6 @@ export default function NotificacoesPage() {
   };
 
   const [templateTexts, setTemplateTexts] = useState(templates);
-
-  const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
-    <button
-      onClick={onChange}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
-        checked ? "bg-primary" : "bg-gray-200"
-      }`}
-    >
-      <span
-        className="inline-block size-4 rounded-full bg-white transition-transform"
-        style={{ transform: checked ? "translateX(18px)" : "translateX(2px)" }}
-      />
-    </button>
-  );
 
   return (
     <div className="w-full">
@@ -77,7 +68,11 @@ export default function NotificacoesPage() {
               </div>
             </div>
 
-            <div className="divide-y divide-gray-200">
+            <div
+              className={
+                isDark ? "divide-y divide-white/[0.06]" : "divide-y divide-gray-200"
+              }
+            >
               {[
                 {
                   key: "newAppointmentEmail" as keyof NotifConfig,
@@ -112,9 +107,10 @@ export default function NotificacoesPage() {
                       <p className="text-xs text-gray-500">{item.desc}</p>
                     </div>
                   </div>
-                  <Toggle
+                  <SwitchToggle
                     checked={config[item.key] as boolean}
                     onChange={() => setConfig({ ...config, [item.key]: !config[item.key] })}
+                    trackOffClassName={isDark ? "bg-gray-500" : "bg-gray-300"}
                   />
                 </div>
               ))}
@@ -128,12 +124,16 @@ export default function NotificacoesPage() {
                 <span className="material-symbols-outlined text-blue-400 text-base">group</span>
               </div>
               <div>
-                <h2 className="text-sm font-bold text-white">Notificações dos clientes</h2>
+                <h2 className="text-sm font-bold text-gray-900">Notificações dos clientes</h2>
                 <p className="text-xs text-gray-500">Mensagens automáticas enviadas</p>
               </div>
             </div>
 
-            <div className="divide-y divide-gray-200">
+            <div
+              className={
+                isDark ? "divide-y divide-white/[0.06]" : "divide-y divide-gray-200"
+              }
+            >
               {[
                 {
                   key: "clientConfirmation" as keyof NotifConfig,
@@ -179,9 +179,10 @@ export default function NotificacoesPage() {
                       <p className="text-xs text-gray-500">{item.desc}</p>
                     </div>
                   </div>
-                  <Toggle
+                  <SwitchToggle
                     checked={config[item.key] as boolean}
                     onChange={() => setConfig({ ...config, [item.key]: !config[item.key] })}
+                    trackOffClassName={isDark ? "bg-gray-500" : "bg-gray-300"}
                   />
                 </div>
               ))}
@@ -189,9 +190,17 @@ export default function NotificacoesPage() {
 
             {/* Reactivation days slider */}
             {config.clientReactivation && (
-              <div className="p-4 border-t border-gray-200 bg-purple-400/5">
+              <div
+                className={`p-4 border-t bg-purple-400/5 ${
+                  isDark ? "border-white/[0.06]" : "border-gray-200"
+                }`}
+              >
                 <div className="flex justify-between items-center mb-2">
-                  <label className="text-xs font-medium text-gray-300">Dias de inatividade para reativar</label>
+                  <label
+                    className={`text-xs font-medium ${isDark ? "text-white/70" : "text-gray-700"}`}
+                  >
+                    Dias de inatividade para reativar
+                  </label>
                   <span className="text-purple-400 font-bold text-sm">{config.reactivationDays} dias</span>
                 </div>
                 <input
@@ -217,7 +226,11 @@ export default function NotificacoesPage() {
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
             <div className="p-4 border-b border-gray-200">
               <h2 className="text-sm font-bold text-gray-900 mb-3">Templates de mensagem</h2>
-              <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+              <div
+                className={`flex gap-1 p-1 rounded-lg ${
+                  isDark ? "bg-white/[0.06]" : "bg-gray-100"
+                }`}
+              >
                 {[
                   { key: "confirmacao", label: "Confirmação" },
                   { key: "lembrete", label: "Lembrete" },
@@ -226,9 +239,14 @@ export default function NotificacoesPage() {
                 ].map((t) => (
                   <button
                     key={t.key}
+                    type="button"
                     onClick={() => setActiveTemplate(t.key as typeof activeTemplate)}
                     className={`flex-1 py-1.5 rounded text-xs font-semibold transition-all ${
-                      activeTemplate === t.key ? "bg-primary text-black" : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
+                      activeTemplate === t.key
+                        ? "bg-primary text-black"
+                        : isDark
+                          ? "text-white/60 hover:text-white hover:bg-white/10"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
                     }`}
                   >
                     {t.label}
@@ -273,7 +291,11 @@ export default function NotificacoesPage() {
                   <span className="material-symbols-outlined text-xs">preview</span>
                   Preview (com dados reais)
                 </p>
-                <p className="text-xs text-gray-300 whitespace-pre-line leading-relaxed">
+                <p
+                  className={`text-xs whitespace-pre-line leading-relaxed ${
+                    isDark ? "text-white/75" : "text-gray-700"
+                  }`}
+                >
                   {templateTexts[activeTemplate]
                     .replace("{nome}", "João Silva")
                     .replace("{data}", "24/01/2024")

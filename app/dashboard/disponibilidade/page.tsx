@@ -20,6 +20,8 @@ import {
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/lib/theme-context";
+import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
+import { cn } from "@/lib/utils";
 import {
   DEFAULT_WEEKLY_SCHEDULE,
   UI_DAY_ORDER,
@@ -162,7 +164,7 @@ function InteractiveTimeline({
         {hourMarks.map((h) => (
           <span
             key={h}
-            className={`absolute text-[9px] font-mono -translate-x-1/2 ${isDark ? "text-white/30" : "text-gray-400"}`}
+            className={`absolute text-[9px] font-mono -translate-x-1/2 ${isDark ? "text-white/50" : "text-gray-400"}`}
             style={{ left: `${tlPct(h * 60)}%` }}
           >
             {h === 24 ? "24h" : `${h}h`}
@@ -173,20 +175,26 @@ function InteractiveTimeline({
       {/* Bar */}
       <div
         ref={barRef}
-        className={`relative h-7 rounded-lg select-none touch-none ${isDark ? "bg-white/8" : "bg-gray-200/70"}`}
+        className={`relative h-7 rounded-lg select-none touch-none ${
+          isDark
+            ? "bg-white/[0.14] ring-1 ring-inset ring-white/25 shadow-[inset_0_1px_2px_rgba(0,0,0,0.45)]"
+            : "bg-gray-200/70"
+        }`}
       >
         {/* Grid lines */}
         {hourMarks.map((h) => (
           <div
             key={h}
-            className={`absolute top-0 bottom-0 w-px ${isDark ? "bg-white/8" : "bg-gray-300/60"}`}
+            className={`absolute top-0 bottom-0 w-px ${isDark ? "bg-white/25" : "bg-gray-300/60"}`}
             style={{ left: `${tlPct(h * 60)}%` }}
           />
         ))}
 
         {/* Active range */}
         <div
-          className="absolute top-1 bottom-1 rounded cursor-grab active:cursor-grabbing bg-primary/75"
+          className={`absolute top-1 bottom-1 rounded cursor-grab active:cursor-grabbing ${
+            isDark ? "bg-primary/85 shadow-[0_0_12px_rgba(19,236,91,0.22)]" : "bg-primary/75"
+          }`}
           style={{ left: `${lo}%`, width: `${hi - lo}%` }}
           onMouseDown={(e) => startDrag(e, "move")}
           onTouchStart={(e) => startDrag(e, "move")}
@@ -200,7 +208,7 @@ function InteractiveTimeline({
             <div
               key={i}
               className={`absolute top-1 bottom-1 rounded cursor-grab active:cursor-grabbing border ${
-                isDark ? "bg-[#020403] border-white/15" : "bg-gray-100 border-gray-300"
+                isDark ? "bg-[#0a1510] border-white/30 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.35)]" : "bg-gray-100 border-gray-300"
               }`}
               style={{ left: `${blo}%`, width: `${bhi - blo}%` }}
               onMouseDown={(e) => startDrag(e, { brk: "move", i })}
@@ -208,14 +216,14 @@ function InteractiveTimeline({
             >
               <div
                 className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 size-3 rounded-full border-2 cursor-ew-resize z-10 ${
-                  isDark ? "bg-[#020403] border-amber-400" : "bg-white border-amber-500"
+                  isDark ? "bg-[#0a1510] border-amber-400 shadow-sm" : "bg-white border-amber-500"
                 }`}
                 onMouseDown={(e) => { e.stopPropagation(); startDrag(e, { brk: "start", i }); }}
                 onTouchStart={(e) => { e.stopPropagation(); startDrag(e, { brk: "start", i }); }}
               />
               <div
                 className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 size-3 rounded-full border-2 cursor-ew-resize z-10 ${
-                  isDark ? "bg-[#020403] border-amber-400" : "bg-white border-amber-500"
+                  isDark ? "bg-[#0a1510] border-amber-400 shadow-sm" : "bg-white border-amber-500"
                 }`}
                 onMouseDown={(e) => { e.stopPropagation(); startDrag(e, { brk: "end", i }); }}
                 onTouchStart={(e) => { e.stopPropagation(); startDrag(e, { brk: "end", i }); }}
@@ -226,8 +234,10 @@ function InteractiveTimeline({
 
         {/* Start handle */}
         <div
-          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 size-4 rounded-full border-2 border-primary cursor-ew-resize z-20 shadow ${
-            isDark ? "bg-[#020403]" : "bg-white"
+          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 size-4 rounded-full border-2 border-primary cursor-ew-resize z-20 ${
+            isDark
+              ? "bg-[#0a1510] shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_2px_8px_rgba(19,236,91,0.25)]"
+              : "bg-white shadow"
           }`}
           style={{ left: `${lo}%` }}
           onMouseDown={(e) => startDrag(e, "start")}
@@ -235,8 +245,10 @@ function InteractiveTimeline({
         />
         {/* End handle */}
         <div
-          className={`absolute top-1/2 -translate-y-1/2 translate-x-1/2 size-4 rounded-full border-2 border-primary cursor-ew-resize z-20 shadow ${
-            isDark ? "bg-[#020403]" : "bg-white"
+          className={`absolute top-1/2 -translate-y-1/2 translate-x-1/2 size-4 rounded-full border-2 border-primary cursor-ew-resize z-20 ${
+            isDark
+              ? "bg-[#0a1510] shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_2px_8px_rgba(19,236,91,0.25)]"
+              : "bg-white shadow"
           }`}
           style={{ right: `${100 - hi}%` }}
           onMouseDown={(e) => startDrag(e, "end")}
@@ -561,9 +573,10 @@ export default function DisponibilidadePage() {
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [schedule, setSchedule] = useState<Record<WeekKey, DaySchedule>>(() => ({ ...DEFAULT_WEEKLY_SCHEDULE }));
-  const [buffer, setBuffer] = useState(15);
-  const [minAdvance, setMinAdvance] = useState(2);
-  const [maxFutureDays, setMaxFutureDays] = useState(60);
+  const [buffer, setBuffer] = useState(0);
+  const [minAdvance, setMinAdvance] = useState(0);
+  const [maxFutureDays, setMaxFutureDays] = useState(30);
+  const [publicBookingTimeUi, setPublicBookingTimeUi] = useState<"slider" | "blocks">("slider");
   const [scope, setScope] = useState<Scope>("padrao");
   const [selDay, setSelDay] = useState(() => dk(new Date()));
   const [selWeekMonday, setSelWeekMonday] = useState(() => dk(startOfWeek(new Date(), { weekStartsOn: 1 })));
@@ -572,6 +585,25 @@ export default function DisponibilidadePage() {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(() => new Set(UI_DAY_ORDER.map((o) => o.key)));
   const [saveState, setSaveState] = useState<"idle" | "loading" | "ok" | "err">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+
+  const buildPersistSnapshot = useCallback(() => {
+    return JSON.stringify({
+      weekly: schedule,
+      overrides,
+      booking: {
+        bufferMinutes: buffer,
+        minAdvanceHours: minAdvance,
+        maxFutureDays: maxFutureDays,
+        publicBookingTimeUi,
+      },
+    });
+  }, [schedule, overrides, buffer, minAdvance, maxFutureDays, publicBookingTimeUi]);
+
+  const isDirty = useMemo(() => {
+    if (!hydrated || loadError || savedSnapshot === null) return false;
+    return buildPersistSnapshot() !== savedSnapshot;
+  }, [hydrated, loadError, savedSnapshot, buildPersistSnapshot]);
 
   useEffect(() => {
     if (scope === "padrao") setExpandedRows(new Set(UI_DAY_ORDER.map((o) => o.key)));
@@ -597,9 +629,22 @@ export default function DisponibilidadePage() {
         setSchedule(wkSch);
         const ov = (data.overrides ?? {}) as Record<string, DaySchedule>;
         setOverrides(Object.fromEntries(Object.entries(ov).map(([k, v]) => [k, sanitizeDaySchedule({ ...v })])));
-        setBuffer(data.booking?.bufferMinutes ?? 15);
-        setMinAdvance(data.booking?.minAdvanceHours ?? 2);
-        setMaxFutureDays(data.booking?.maxFutureDays ?? 60);
+        setBuffer(data.booking?.bufferMinutes ?? 0);
+        setMinAdvance(data.booking?.minAdvanceHours ?? 0);
+        setMaxFutureDays(data.booking?.maxFutureDays ?? 30);
+        setPublicBookingTimeUi(data.booking?.publicBookingTimeUi === "blocks" ? "blocks" : "slider");
+        setSavedSnapshot(
+          JSON.stringify({
+            weekly: wkSch,
+            overrides: Object.fromEntries(Object.entries(ov).map(([k, v]) => [k, sanitizeDaySchedule({ ...v })])),
+            booking: {
+              bufferMinutes: data.booking?.bufferMinutes ?? 0,
+              minAdvanceHours: data.booking?.minAdvanceHours ?? 0,
+              maxFutureDays: data.booking?.maxFutureDays ?? 30,
+              publicBookingTimeUi: data.booking?.publicBookingTimeUi === "blocks" ? "blocks" : "slider",
+            },
+          })
+        );
         setLoadError(null);
       } catch {
         if (ok) setLoadError("Falha de rede");
@@ -734,20 +779,37 @@ export default function DisponibilidadePage() {
         body: JSON.stringify({
           weekly: schedule,
           overrides,
-          booking: { bufferMinutes: buffer, minAdvanceHours: minAdvance, maxFutureDays: maxFutureDays },
+          booking: {
+            bufferMinutes: buffer,
+            minAdvanceHours: minAdvance,
+            maxFutureDays: maxFutureDays,
+            publicBookingTimeUi,
+          },
         }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Erro ao salvar");
+      setSavedSnapshot(buildPersistSnapshot());
       setSaveState("ok");
       setTimeout(() => setSaveState("idle"), 2200);
     } catch (e) {
       setSaveState("err");
       setSaveError(e instanceof Error ? e.message : "Erro");
     }
-  }, [schedule, overrides, buffer, minAdvance, maxFutureDays]);
+  }, [schedule, overrides, buffer, minAdvance, maxFutureDays, publicBookingTimeUi, buildPersistSnapshot]);
 
   const personalizedCount = Object.keys(overrides).length;
+
+  /** Maior janela início→fim entre dias ativos do modelo semanal (para aviso slider vs blocos). */
+  const maxExpedienteMinutesWeek = useMemo(() => {
+    let max = 0;
+    for (const { key } of UI_DAY_ORDER) {
+      const d = schedule[key];
+      if (!d?.active) continue;
+      max = Math.max(max, toM(d.end) - toM(d.start));
+    }
+    return max;
+  }, [schedule]);
 
   const pageBg = isDark ? "bg-[#020403]" : "bg-gray-50";
   const textMuted = isDark ? "text-white/50" : "text-gray-600";
@@ -840,7 +902,12 @@ export default function DisponibilidadePage() {
       <div className="w-full px-1 sm:px-0 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-gray-900"}`}>Disponibilidade</h1>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-gray-900"}`}>
+                Disponibilidade
+              </h1>
+              <UnsavedChangesIndicator dirty={isDirty} variant="inline" />
+            </div>
             <p className={`text-sm mt-1 ${textMuted}`}>
               Horários salvos no servidor
               {personalizedCount > 0 && (
@@ -958,7 +1025,7 @@ export default function DisponibilidadePage() {
                 ) : undefined
               }
             />
-            <div className={`divide-y ${isDark ? "divide-white/10" : "divide-gray-100"}`}>
+            <div className={`divide-y ${isDark ? "divide-white/[0.06]" : "divide-gray-100"}`}>
               {scheduleRows.map((row, idx) => {
                 const day = resolveRowSchedule(row);
                 const expanded = expandedRows.has(row.id);
@@ -1104,10 +1171,20 @@ export default function DisponibilidadePage() {
           <Card isDark={isDark}>
             <CardHeader
               title="Regras de agendamento"
-              subtitle="Controle como os clientes podem reservar horários com você. É importante ser bem criterioso nessa parte, ao limitar os intervalos e horarios minimos vc pode perder agendamentos. por outro lado, se permitir um agendamento apos o outro, pode fazer seu cliente esperar"
+              subtitle="Controle como os clientes podem reservar horários com você. Valores mais restritivos reduzem opções no link público; valores mais abertos exigem mais organização no dia a dia."
               isDark={isDark}
             />
             <div className="px-5">
+              <p
+                className={`text-xs leading-relaxed mb-4 rounded-lg px-3 py-2.5 border ${
+                  isDark ? "border-primary/25 bg-primary/5 text-gray-300" : "border-primary/20 bg-primary/5 text-gray-700"
+                }`}
+              >
+                <span className="font-semibold text-primary">Intervalo entre atendimentos:</span> idealmente deixe em{" "}
+                <strong>zero</strong>. Ao colocar um intervalo, você limita as possibilidades de encaixe no agendamento
+                público além do tempo do próprio serviço: os inícios válidos passam a saltar de acordo com{" "}
+                <strong>duração do serviço + esse intervalo</strong> (não há mais encaixe minuto a minuto).
+              </p>
               <SliderRow
                 label="Intervalo entre atendimentos"
                 sublabel={
@@ -1145,15 +1222,112 @@ export default function DisponibilidadePage() {
                 sublabel={`Clientes podem reservar horários com até ${maxFutureDays} dias de antecedência`}
                 value={maxFutureDays}
                 onChange={setMaxFutureDays}
-                min={7}
+                min={1}
                 max={365}
                 step={1}
-                marks={["7", "90", "180", "270", "365"]}
+                marks={["1", "30", "90", "180", "365"]}
                 unit=" dias"
                 isDark={isDark}
               />
             </div>
           </Card>
+
+          <Card isDark={isDark}>
+            <CardHeader
+              title="Página pública: escolha do horário"
+              subtitle="Define como aparece o passo de horários no link do seu negócio (mesma opção no celular e no computador)."
+              isDark={isDark}
+            />
+            <div className="px-5 pb-5 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label
+                  className={cn(
+                    "relative flex cursor-pointer rounded-xl border p-4 transition-all",
+                    publicBookingTimeUi === "slider"
+                      ? "border-primary bg-primary/10 ring-2 ring-primary/35 shadow-[0_0_0_1px_rgba(19,236,91,0.2)]"
+                      : isDark
+                        ? "border-white/10 bg-white/[0.03] hover:border-white/20"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="publicBookingTimeUi"
+                    className="sr-only"
+                    checked={publicBookingTimeUi === "slider"}
+                    onChange={() => setPublicBookingTimeUi("slider")}
+                  />
+                  <div className="flex gap-3 min-w-0">
+                    <span className="material-symbols-outlined text-primary text-2xl shrink-0" aria-hidden>
+                      view_timeline
+                    </span>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-bold ${isDark ? "text-white" : "text-gray-900"}`}>Linha do tempo</p>
+                      <p className={`text-xs mt-1 leading-relaxed ${isDark ? "text-white/50" : "text-gray-500"}`}>
+                        Arrastar o bloco no expediente para escolher o início do atendimento.
+                      </p>
+                    </div>
+                  </div>
+                </label>
+                <label
+                  className={cn(
+                    "relative flex cursor-pointer rounded-xl border p-4 transition-all",
+                    publicBookingTimeUi === "blocks"
+                      ? "border-primary bg-primary/10 ring-2 ring-primary/35 shadow-[0_0_0_1px_rgba(19,236,91,0.2)]"
+                      : isDark
+                        ? "border-white/10 bg-white/[0.03] hover:border-white/20"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="publicBookingTimeUi"
+                    className="sr-only"
+                    checked={publicBookingTimeUi === "blocks"}
+                    onChange={() => setPublicBookingTimeUi("blocks")}
+                  />
+                  <div className="flex gap-3 min-w-0">
+                    <span className="material-symbols-outlined text-primary text-2xl shrink-0" aria-hidden>
+                      grid_view
+                    </span>
+                    <div className="min-w-0">
+                      <p className={`text-sm font-bold ${isDark ? "text-white" : "text-gray-900"}`}>
+                        Blocos de horários
+                      </p>
+                      <p className={`text-xs mt-1 leading-relaxed ${isDark ? "text-white/50" : "text-gray-500"}`}>
+                        Grade com botões (manhã, tarde, noite) — toque no horário livre.
+                      </p>
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {maxExpedienteMinutesWeek > 600 && (
+                <div
+                  className={cn(
+                    "rounded-xl border px-4 py-3 flex gap-3 text-sm leading-relaxed",
+                    isDark
+                      ? "border-amber-400/35 bg-amber-500/10 text-amber-100/95"
+                      : "border-amber-200 bg-amber-50 text-amber-950"
+                  )}
+                >
+                  <span className="material-symbols-outlined text-xl shrink-0 text-amber-500">info</span>
+                  <p>
+                    <span className="font-semibold">Expediente longo (mais de 10h entre abertura e fechamento no modelo semanal).</span>{" "}
+                    Nesse caso a <strong>linha do tempo</strong> (slider) na página pública tende a ficar muito comprimida e difícil de usar no celular.
+                    O mais indicado é <strong>Blocos de horários</strong>.
+                    {publicBookingTimeUi === "slider" ? (
+                      <span className="block mt-1.5 font-medium text-amber-700 dark:text-amber-200/95">
+                        Você está com a linha do tempo ativa — considere mudar para blocos e salvar.
+                      </span>
+                    ) : null}
+                  </p>
+                </div>
+              )}
+            </div>
+          </Card>
+
+          <UnsavedChangesIndicator dirty={isDirty} className="w-full" />
 
           {saveError && <p className={`text-sm ${isDark ? "text-red-400" : "text-red-600"}`}>{saveError}</p>}
           <button
@@ -1163,7 +1337,9 @@ export default function DisponibilidadePage() {
             className={`w-full py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
               saveState === "ok"
                 ? "bg-primary/15 text-primary border border-primary/30"
-                : "bg-primary text-black hover:opacity-90"
+                : isDirty
+                  ? "bg-primary text-black hover:opacity-90 ring-2 ring-amber-500/50 ring-offset-2 ring-offset-transparent"
+                  : "bg-primary text-black hover:opacity-90"
             } disabled:opacity-50`}
           >
             {saveState === "loading" ? "Salvando…" : saveState === "ok" ? "Salvo no servidor" : "Salvar no servidor"}

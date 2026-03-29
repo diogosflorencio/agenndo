@@ -4,7 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
-import { STATUS_CONFIG, formatCurrency, type AppointmentStatus } from "@/lib/utils";
+import { STATUS_CONFIG, formatCurrency, phoneToWhatsAppHref, type AppointmentStatus } from "@/lib/utils";
+import { hasFullServiceAccess } from "@/lib/billing-access";
+import {
+  setAppointmentAttendance,
+  updateCompareceuPaidAmount,
+  centsToMoneyInput,
+} from "@/lib/appointment-finance";
+import { AppointmentValueModal } from "@/components/appointment-value-modal";
 
 const STATUSES: AppointmentStatus[] = ["agendado", "confirmado", "compareceu", "faltou", "cancelado"];
 
@@ -17,7 +24,7 @@ type AptRow = {
   price_cents: number;
   status: string;
   client_name_snapshot: string | null;
-  clients: { name: string } | null;
+  clients: { name: string; phone: string | null } | null;
   services: { name: string } | null;
   collaborators: { id: string; name: string } | null;
 };
@@ -44,6 +51,17 @@ export default function AgendamentosPage() {
   const [filterCollab, setFilterCollab] = useState("todos");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
+  const [actionMessage, setActionMessage] = useState<{ kind: "info" | "error"; text: string } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [moneyModal, setMoneyModal] = useState<{
+    apt: AptRow;
+    mode: "compareceu" | "edit_paid";
+  } | null>(null);
+
+  const showActionMessage = (text: string, kind: "info" | "error" = "info") => {
+    setActionMessage({ kind, text });
+    window.setTimeout(() => setActionMessage(null), 5000);
+  };
 
   useEffect(() => {
     if (!business?.id) return;
@@ -56,7 +74,7 @@ export default function AgendamentosPage() {
     Promise.all([
       supabase
         .from("appointments")
-        .select("id, client_id, date, time_start, time_end, price_cents, status, client_name_snapshot, clients(name), services(name), collaborators(id, name)")
+        .select("id, client_id, date, time_start, time_end, price_cents, status, client_name_snapshot, clients(name, phone), services(name), collaborators(id, name)")
         .eq("business_id", business.id)
         .gte("date", fromStr)
         .lte("date", toStr)
@@ -81,6 +99,163 @@ export default function AgendamentosPage() {
   const toggleSelect = (id: string) => setSelected((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
   const allSelected = filtered.length > 0 && filtered.every((a) => selected.includes(a.id));
 
+  const openClientWhatsApp = (apt: AptRow) => {
+    if (!apt.client_id) {
+      showActionMessage(
+        "Este agendamento não está vinculado a um cliente com cadastro (apenas nome no agendamento). Não há telefone para abrir o WhatsApp.",
+        "error",
+      );
+      return;
+    }
+    const phone = apt.clients?.phone ?? null;
+    const href = phoneToWhatsAppHref(phone);
+    if (!href) {
+      showActionMessage("Este cliente não tem telefone cadastrado. Abra o cadastro do cliente e adicione o número para usar o WhatsApp.", "error");
+      return;
+    }
+    window.open(href, "_blank", "noopener,noreferrer");
+  };
+
+  const patchAptLocal = (aptId: string, patch: Partial<AptRow>) => {
+    setAppointments((prev) => prev.map((a) => (a.id === aptId ? { ...a, ...patch } : a)));
+  };
+
+  const runMarkFaltou = async (apt: AptRow) => {
+    if (!business?.id) return;
+    setBusyId(apt.id);
+    const supabase = createClient();
+    const res = await setAppointmentAttendance({
+      supabase,
+      businessId: business.id,
+      appointment: {
+        id: apt.id,
+        client_id: apt.client_id,
+        date: apt.date,
+        price_cents: apt.price_cents,
+        status: apt.status,
+      },
+      clientName: apt.clients?.name ?? apt.client_name_snapshot,
+      serviceName: apt.services?.name ?? null,
+      collaboratorName: apt.collaborators?.name ?? null,
+      nextStatus: "faltou",
+    });
+    setBusyId(null);
+    if ("error" in res) {
+      showActionMessage(res.error, "error");
+      return;
+    }
+    patchAptLocal(apt.id, { status: "faltou" });
+  };
+
+  const runMarkCompareceu = async (apt: AptRow, paidCents: number) => {
+    if (!business?.id) return;
+    setBusyId(apt.id);
+    const supabase = createClient();
+    const res = await setAppointmentAttendance({
+      supabase,
+      businessId: business.id,
+      appointment: {
+        id: apt.id,
+        client_id: apt.client_id,
+        date: apt.date,
+        price_cents: apt.price_cents,
+        status: apt.status,
+      },
+      clientName: apt.clients?.name ?? apt.client_name_snapshot,
+      serviceName: apt.services?.name ?? null,
+      collaboratorName: apt.collaborators?.name ?? null,
+      nextStatus: "compareceu",
+      paidCents,
+    });
+    setBusyId(null);
+    if ("error" in res) {
+      showActionMessage(res.error, "error");
+      return;
+    }
+    patchAptLocal(apt.id, { status: "compareceu", price_cents: paidCents });
+    setMoneyModal(null);
+  };
+
+  const runUpdatePaidOnly = async (apt: AptRow, paidCents: number) => {
+    if (!business?.id) return;
+    setBusyId(apt.id);
+    const supabase = createClient();
+    const res = await updateCompareceuPaidAmount({
+      supabase,
+      businessId: business.id,
+      appointmentId: apt.id,
+      clientId: apt.client_id,
+      paidCents,
+      createIfMissing: {
+        date: apt.date,
+        clientName: apt.clients?.name ?? apt.client_name_snapshot,
+        serviceName: apt.services?.name ?? null,
+        collaboratorName: apt.collaborators?.name ?? null,
+      },
+    });
+    setBusyId(null);
+    if ("error" in res) {
+      showActionMessage(res.error, "error");
+      return;
+    }
+    patchAptLocal(apt.id, { price_cents: paidCents });
+    setMoneyModal(null);
+  };
+
+  const bulkMarkCompareceu = async () => {
+    if (!business?.id || selected.length === 0) return;
+    setBusyId("__bulk__");
+    const supabase = createClient();
+    let err: string | null = null;
+    for (const id of selected) {
+      const apt = appointments.find((a) => a.id === id);
+      if (!apt || (apt.status !== "agendado" && apt.status !== "confirmado")) continue;
+      const res = await setAppointmentAttendance({
+        supabase,
+        businessId: business.id,
+        appointment: {
+          id: apt.id,
+          client_id: apt.client_id,
+          date: apt.date,
+          price_cents: apt.price_cents,
+          status: apt.status,
+        },
+        clientName: apt.clients?.name ?? apt.client_name_snapshot,
+        serviceName: apt.services?.name ?? null,
+        collaboratorName: apt.collaborators?.name ?? null,
+        nextStatus: "compareceu",
+        paidCents: apt.price_cents,
+      });
+      if ("error" in res) {
+        err = res.error;
+        break;
+      }
+      patchAptLocal(apt.id, { status: "compareceu", price_cents: apt.price_cents });
+    }
+    setBusyId(null);
+    if (err) showActionMessage(err, "error");
+    setSelected([]);
+  };
+
+  const bulkCancel = async () => {
+    if (!business?.id || selected.length === 0) return;
+    if (!window.confirm(`Cancelar ${selected.length} agendamento(s)?`)) return;
+    setBusyId("__bulk__");
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("appointments")
+      .update({ status: "cancelado" })
+      .in("id", selected)
+      .eq("business_id", business.id);
+    setBusyId(null);
+    if (error) {
+      showActionMessage(error.message || "Não foi possível cancelar.", "error");
+      return;
+    }
+    setAppointments((prev) => prev.map((a) => (selected.includes(a.id) ? { ...a, status: "cancelado" } : a)));
+    setSelected([]);
+  };
+
   const firstDay = new Date(monthYear.year, monthYear.month, 1).getDay();
   const daysInMonth = new Date(monthYear.year, monthYear.month + 1, 0).getDate();
   const calDays = Array.from({ length: daysInMonth }, (_, i) => {
@@ -91,6 +266,8 @@ export default function AgendamentosPage() {
   });
 
   const monthLabel = new Date(monthYear.year, monthYear.month).toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
+  const canCreateAppointments = business ? hasFullServiceAccess(business) : true;
 
   if (loading) {
     return (
@@ -107,19 +284,61 @@ export default function AgendamentosPage() {
           <h1 className="text-2xl font-bold text-gray-900">Agendamentos</h1>
           <p className="text-gray-600 text-sm mt-1">Gerencie todos os seus agendamentos</p>
         </div>
-        <Link href="/dashboard/agendamentos/novo" className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]">
-          <span className="material-symbols-outlined text-base">add</span>
-          Novo
-        </Link>
+        {canCreateAppointments ? (
+          <Link
+            href="/dashboard/agendamentos/novo"
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
+          >
+            <span className="material-symbols-outlined text-base">add</span>
+            Novo
+          </Link>
+        ) : (
+          <Link
+            href="/dashboard/conta"
+            className="flex items-center gap-2 px-4 py-2.5 bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold rounded-xl text-sm transition-all border border-amber-300"
+          >
+            <span className="material-symbols-outlined text-base">gpp_maybe</span>
+            Regularizar plano
+          </Link>
+        )}
       </div>
+
+      {actionMessage && (
+        <div
+          role="alert"
+          className={`mb-4 px-4 py-3 rounded-xl text-sm border ${
+            actionMessage.kind === "error"
+              ? "bg-red-50 border-red-200 text-red-900"
+              : "bg-primary/10 border-primary/30 text-gray-900"
+          }`}
+        >
+          {actionMessage.text}
+        </div>
+      )}
 
       {selected.length > 0 && (
         <div className="flex items-center gap-3 p-3 mb-4 bg-primary/10 border border-primary/30 rounded-xl">
           <span className="text-primary text-sm font-bold">{selected.length} selecionado(s)</span>
-          <div className="flex gap-2 ml-auto">
-            <button className="px-3 py-1.5 bg-primary/20 hover:bg-primary/30 text-primary text-xs font-bold rounded-lg border border-primary/30 transition-colors">Marcar como compareceu</button>
-            <button className="px-3 py-1.5 bg-red-400/10 hover:bg-red-400/20 text-red-400 text-xs font-bold rounded-lg border border-red-400/20 transition-colors">Cancelar selecionados</button>
-            <button onClick={() => setSelected([])} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-600 text-xs font-bold rounded-lg border border-white/10 transition-colors">Limpar</button>
+          <div className="flex gap-2 ml-auto flex-wrap">
+            <button
+              type="button"
+              disabled={busyId !== null}
+              onClick={() => void bulkMarkCompareceu()}
+              className="px-3 py-1.5 bg-primary/20 hover:bg-primary/30 disabled:opacity-50 text-primary text-xs font-bold rounded-lg border border-primary/30 transition-colors"
+            >
+              Marcar como compareceu
+            </button>
+            <button
+              type="button"
+              disabled={busyId !== null}
+              onClick={() => void bulkCancel()}
+              className="px-3 py-1.5 bg-red-400/10 hover:bg-red-400/20 disabled:opacity-50 text-red-400 text-xs font-bold rounded-lg border border-red-400/20 transition-colors"
+            >
+              Cancelar selecionados
+            </button>
+            <button type="button" onClick={() => setSelected([])} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-600 text-xs font-bold rounded-lg border border-white/10 transition-colors">
+              Limpar
+            </button>
           </div>
         </div>
       )}
@@ -255,18 +474,44 @@ export default function AgendamentosPage() {
                           <span className="material-symbols-outlined text-xs">visibility</span> Ver cliente
                         </span>
                       )}
-                      <button type="button" className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-600 hover:text-gray-900 text-xs rounded-lg transition-colors">
+                      <button
+                        type="button"
+                        onClick={() => openClientWhatsApp(apt)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-600 hover:text-gray-900 text-xs rounded-lg transition-colors"
+                      >
                         <span className="material-symbols-outlined text-xs">chat</span> WhatsApp
                       </button>
                       {(apt.status === "agendado" || (apt.status as AppointmentStatus) === "confirmado") && (
                         <>
-                          <button type="button" className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary text-xs rounded-lg transition-colors font-semibold">
+                          <button
+                            type="button"
+                            disabled={busyId === "__bulk__" || busyId === apt.id}
+                            onClick={() =>
+                              setMoneyModal({ apt, mode: "compareceu" })
+                            }
+                            className="flex items-center gap-1 px-3 py-1.5 bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-primary text-xs rounded-lg transition-colors font-semibold"
+                          >
                             <span className="material-symbols-outlined text-xs">check_circle</span> Compareceu
                           </button>
-                          <button type="button" className="flex items-center gap-1 px-3 py-1.5 bg-red-400/10 hover:bg-red-400/20 text-red-400 text-xs rounded-lg transition-colors">
+                          <button
+                            type="button"
+                            disabled={busyId === "__bulk__" || busyId === apt.id}
+                            onClick={() => void runMarkFaltou(apt)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-red-400/10 hover:bg-red-400/20 disabled:opacity-50 text-red-400 text-xs rounded-lg transition-colors"
+                          >
                             <span className="material-symbols-outlined text-xs">person_off</span> Faltou
                           </button>
                         </>
+                      )}
+                      {apt.status === "compareceu" && (
+                        <button
+                          type="button"
+                          disabled={busyId === "__bulk__" || busyId === apt.id}
+                          onClick={() => setMoneyModal({ apt, mode: "edit_paid" })}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs rounded-lg transition-colors font-medium"
+                        >
+                          <span className="material-symbols-outlined text-xs">edit</span> Valor cobrado
+                        </button>
                       )}
                     </div>
                   </div>
@@ -276,6 +521,21 @@ export default function AgendamentosPage() {
           </div>
         </div>
       </div>
+
+      <AppointmentValueModal
+        open={moneyModal != null}
+        title={moneyModal?.mode === "edit_paid" ? "Editar valor cobrado" : "Cliente compareceu"}
+        subtitle={moneyModal ? `${moneyModal.apt.clients?.name ?? moneyModal.apt.client_name_snapshot ?? "Cliente"} · ${moneyModal.apt.services?.name ?? "Serviço"}` : undefined}
+        initialValueReais={moneyModal ? centsToMoneyInput(moneyModal.apt.price_cents) : "0,00"}
+        confirmLabel={moneyModal?.mode === "edit_paid" ? "Salvar" : "Confirmar comparecimento"}
+        loading={moneyModal != null && busyId === moneyModal.apt.id}
+        onClose={() => busyId !== "__bulk__" && busyId !== moneyModal?.apt.id && setMoneyModal(null)}
+        onConfirm={(cents) => {
+          if (!moneyModal) return;
+          if (moneyModal.mode === "edit_paid") void runUpdatePaidOnly(moneyModal.apt, cents);
+          else void runMarkCompareceu(moneyModal.apt, cents);
+        }}
+      />
     </div>
   );
 }

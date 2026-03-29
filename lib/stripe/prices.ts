@@ -1,32 +1,23 @@
 import type { PlanId } from "@/lib/plans";
 
+function env(name: string): string | undefined {
+  return process.env[name]?.trim();
+}
+
 /**
- * `price_...` no Stripe por variante interna plano_1 | plano_2 | plano_3.
- * Ordem: STRIPE_PRICE_PLANO_1/2/3 → legados (infra / perfil / starter…).
+ * 20 preços Stripe (`price_…`), um por degrau `paid_01` … `paid_20` (menor → maior valor).
+ * Env: `STRIPE_PRICE_PAID_01` … `STRIPE_PRICE_PAID_20`.
  */
 export function getStripePriceIdForPlan(planId: PlanId): string | null {
-  if (planId === "free") return null;
-  const raw =
-    planId === "plano_1"
-      ? process.env.STRIPE_PRICE_PLANO_1 ??
-        process.env.STRIPE_PRICE_PLANO_UNICO_INFRAESTRUTURA_1 ??
-        process.env.STRIPE_PRICE_PERFIL_LEVE ??
-        process.env.STRIPE_PRICE_STARTER
-      : planId === "plano_2"
-        ? process.env.STRIPE_PRICE_PLANO_2 ??
-          process.env.STRIPE_PRICE_PLANO_UNICO_INFRAESTRUTURA_2 ??
-          process.env.STRIPE_PRICE_PERFIL_PADRAO ??
-          process.env.STRIPE_PRICE_GROWTH
-        : planId === "plano_3"
-          ? process.env.STRIPE_PRICE_PLANO_3 ??
-            process.env.STRIPE_PRICE_PLANO_UNICO_INFRAESTRUTURA_3 ??
-            process.env.STRIPE_PRICE_PERFIL_INTENSO ??
-            process.env.STRIPE_PRICE_ENTERPRISE
-          : undefined;
-  const id = raw?.trim();
-  return id && id.startsWith("price_") ? id : null;
+  if (planId === "free" || planId === "plan_enterprise") return null;
+
+  const m = /^paid_(0[1-9]|1[0-9]|20)$/.exec(planId);
+  if (!m) return null;
+  const key = `STRIPE_PRICE_PAID_${m[1]}`;
+  const id = env(key);
+  return id?.startsWith("price_") ? id : null;
 }
 
 export function isStripeConfiguredForPlan(planId: PlanId): boolean {
-  return planId === "free" || getStripePriceIdForPlan(planId) !== null;
+  return planId === "free" || planId === "plan_enterprise" || getStripePriceIdForPlan(planId) !== null;
 }

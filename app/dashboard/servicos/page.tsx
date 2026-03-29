@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
+import { SwitchToggle } from "@/components/switch-toggle";
 import { formatCurrency } from "@/lib/utils";
 
 type ServiceRow = {
@@ -437,9 +438,7 @@ function ServiceModal({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => setForm({ ...form, active: !form.active })} className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.active ? "bg-primary" : "bg-gray-300"}`}>
-              <span className={`inline-block size-4 rounded-full bg-white transition-transform ${form.active ? "translate-x-6" : "translate-x-1"}`} />
-            </button>
+            <SwitchToggle checked={form.active} onChange={() => setForm({ ...form, active: !form.active })} />
             <span className="text-sm text-gray-600">Serviço ativo (visível na página pública)</span>
           </div>
 

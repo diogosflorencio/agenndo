@@ -29,6 +29,39 @@ export function formatTime(date: Date | string): string {
   }).format(d);
 }
 
+/** Hex (#RGB ou #RRGGBB) → `rgba(r,g,b,a)` para sombras e overlays com a cor do negócio. */
+export function rgbaFromHex(hex: string, alpha: number): string {
+  const t = hex.trim();
+  const fallback = `rgba(19, 236, 91, ${alpha})`;
+  if (!t.startsWith("#")) return fallback;
+  let r: number;
+  let g: number;
+  let b: number;
+  if (t.length === 7) {
+    r = parseInt(t.slice(1, 3), 16);
+    g = parseInt(t.slice(3, 5), 16);
+    b = parseInt(t.slice(5, 7), 16);
+  } else if (t.length === 4) {
+    r = parseInt(t[1] + t[1], 16);
+    g = parseInt(t[2] + t[2], 16);
+    b = parseInt(t[3] + t[3], 16);
+  } else {
+    return fallback;
+  }
+  if ([r, g, b].some((n) => Number.isNaN(n))) return fallback;
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/** Retorna URL do WhatsApp (wa.me) ou null se não houver dígitos. Prefixa 55 quando o número for só DDD+número (Brasil). */
+export { formatBrazilPhoneFromDigits, maskPhoneInputRaw, phoneDigitsOnly } from "./phone-mask";
+
+export function phoneToWhatsAppHref(phone: string | null | undefined): string | null {
+  const raw = (phone ?? "").replace(/\D/g, "");
+  if (!raw) return null;
+  const digits = raw.startsWith("55") && raw.length >= 12 ? raw : `55${raw}`;
+  return `https://wa.me/${digits}`;
+}
+
 export function slugify(text: string): string {
   return text
     .toLowerCase()

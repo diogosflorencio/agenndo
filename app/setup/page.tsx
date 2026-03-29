@@ -11,7 +11,7 @@ import {
   resolveEffectiveDynamicPlan,
   type PricingLockPayload,
 } from "@/lib/pricing-lock";
-import { slugify } from "@/lib/utils";
+import { formatBrazilPhoneFromDigits, phoneDigitsOnly, slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
 const SEGMENTS = [
@@ -43,13 +43,6 @@ type SetupFormData = {
   primaryColor: string;
   logo: File | null;
 };
-
-function formatPhone(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 11);
-  if (digits.length <= 2) return digits ? `(${digits}` : "";
-  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
 
 type ProfilePricingRow = {
   recommended_plan: string | null;
@@ -184,7 +177,7 @@ export default function SetupPage() {
         name: data.businessName || "Meu Negócio",
         slug,
         segment: data.segment || null,
-        phone: data.phone ? formatPhone(data.phone) : null,
+        phone: phoneDigitsOnly(data.phone) || null,
         primary_color: data.primaryColor || "#13EC5B",
         plan: planId,
       })
@@ -408,8 +401,10 @@ function Step1({ data, update, segments }: { data: SetupFormData; update: (f: st
         <FormField label="Telefone">
           <input
             type="tel"
-            value={formatPhone(data.phone)}
-            onChange={(e) => update("phone", e.target.value.replace(/\D/g, "").slice(0, 11))}
+            value={formatBrazilPhoneFromDigits(data.phone)}
+            onChange={(e) => update("phone", phoneDigitsOnly(e.target.value))}
+            inputMode="tel"
+            autoComplete="tel"
             placeholder="(11) 99999-9999"
             className="w-full h-12 bg-[#14221A] border border-[#213428] focus:border-primary rounded-xl px-4 text-white placeholder-gray-600 outline-none transition-colors text-sm"
           />

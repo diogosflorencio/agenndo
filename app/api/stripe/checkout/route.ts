@@ -3,10 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getStripe } from "@/lib/stripe/server";
 import { getStripePriceIdForPlan } from "@/lib/stripe/prices";
 import type { PlanId } from "@/lib/plans";
+import { isPaidPlanId } from "@/lib/plans";
 
 export const runtime = "nodejs";
-
-const PAID: PlanId[] = ["plano_1", "plano_2", "plano_3"];
 
 export async function POST(req: Request) {
   try {
@@ -22,16 +21,16 @@ export async function POST(req: Request) {
     const businessId = body.businessId;
     const planId = body.planId as PlanId | undefined;
 
-    if (!businessId || !planId || !PAID.includes(planId)) {
+    if (!businessId || !planId || !isPaidPlanId(planId)) {
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
 
-    const priceId = getStripePriceIdForPlan(planId);
+    const priceId = getStripePriceIdForPlan(planId as PlanId);
     if (!priceId) {
       return NextResponse.json(
         {
           error:
-            "Preço Stripe não configurado. Defina STRIPE_PRICE_PLANO_1, STRIPE_PRICE_PLANO_2 e STRIPE_PRICE_PLANO_3 no servidor.",
+            "Preço Stripe não configurado. Defina STRIPE_PRICE_PAID_01 … STRIPE_PRICE_PAID_20 (cada uma com um price_… do Stripe).",
         },
         { status: 503 }
       );

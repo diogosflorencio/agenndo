@@ -8,7 +8,15 @@ export function describeSubscriptionStatus(
     if (plan === "free") {
       return {
         badge: "Grátis",
-        detail: "Plano gratuito com trial de 7 dias ao criar o negócio.",
+        detail:
+          "Período de teste de 7 dias a partir da criação do negócio. Em Conta → Meu plano você vê a contagem exata e pode assinar.",
+        isPaidActive: false,
+      };
+    }
+    if (plan === "plan_enterprise") {
+      return {
+        badge: "Enterprise",
+        detail: "Plano sob consulta — combine proposta, SLA e integrações com a equipe comercial.",
         isPaidActive: false,
       };
     }

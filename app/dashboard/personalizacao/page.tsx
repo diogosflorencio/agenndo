@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
-import { cn, formatCurrency } from "@/lib/utils";
+import { SwitchToggle } from "@/components/switch-toggle";
+import { cn, formatBrazilPhoneFromDigits, formatCurrency, maskPhoneInputRaw } from "@/lib/utils";
 import {
   uploadBusinessImage,
   tryRelativePathFromPublicUrl,
   removeBusinessObject,
 } from "@/lib/business-assets-storage";
+import { useAppAlert } from "@/components/app-alert-provider";
+import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
 
 const PALETTE = [
   { value: "#13EC5B", label: "Verde" },
@@ -79,6 +82,7 @@ function displayInstagram(url: string | null) {
 }
 
 export default function PersonalizacaoPage() {
+  const { showAlert } = useAppAlert();
   const router = useRouter();
   const { business } = useDashboard();
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -112,6 +116,8 @@ export default function PersonalizacaoPage() {
   const [activeTab, setActiveTab] = useState<"aparencia" | "conteudo" | "contato" | "compartilhar">("aparencia");
   const [copied, setCopied] = useState(false);
   const [previewServices, setPreviewServices] = useState<PreviewServiceRow[]>([]);
+  /** Baseline serializado para `formDirty`; estado (não ref) para recalcular após salvar. */
+  const [formBaseline, setFormBaseline] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     if (!business?.id) {
@@ -145,27 +151,35 @@ export default function PersonalizacaoPage() {
     const p = pers as PersonalizationRow | null;
     if (p?.id) setPersId(p.id);
 
-    setForm({
+    const nextForm = {
       businessName: business.name ?? "",
       tagline: p?.tagline ?? "",
       primaryColor: business.primary_color ?? "#13EC5B",
       about: p?.about ?? "",
       instagram: displayInstagram(p?.instagram_url ?? null),
       facebook: p?.facebook_url?.replace(/^https?:\/\/(www\.)?facebook\.com\//i, "") ?? "",
-      whatsapp: business.phone ?? p?.whatsapp_number ?? "",
+      whatsapp: formatBrazilPhoneFromDigits(business.phone ?? p?.whatsapp_number ?? ""),
       address: p?.address_line ?? "",
       floatingWhatsapp: p?.show_whatsapp_fab !== false,
       darkPage: (p?.public_theme ?? "dark") !== "light",
       logoUrl: business.logo_url ?? null,
       bannerUrl: p?.banner_url ?? null,
       galleryUrls: Array.isArray(p?.gallery_urls) ? [...p.gallery_urls] : [],
-    });
+    };
+    const baseline = JSON.stringify(nextForm);
+    setForm(nextForm);
+    setFormBaseline(baseline);
     setLoading(false);
   }, [business]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
+
+  const formDirty = useMemo(() => {
+    if (loading || formBaseline === null) return false;
+    return JSON.stringify(form) !== formBaseline;
+  }, [loading, form, formBaseline]);
 
   const publicUrl =
     typeof window !== "undefined" ? `${window.location.origin}/${business?.slug ?? ""}` : "";
@@ -192,7 +206,7 @@ export default function PersonalizacaoPage() {
       setForm((f) => ({ ...f, logoUrl: url }));
       router.refresh();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Falha no upload");
+      showAlert(err instanceof Error ? err.message : "Falha no upload", { title: "Upload" });
     } finally {
       setUploading(null);
     }
@@ -210,7 +224,7 @@ export default function PersonalizacaoPage() {
       const url = await uploadBusinessImage(supabase, business.id, `banner.${safe}`, file);
       setForm((f) => ({ ...f, bannerUrl: url }));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Falha no upload");
+      showAlert(err instanceof Error ? err.message : "Falha no upload", { title: "Upload" });
     } finally {
       setUploading(null);
     }
@@ -222,7 +236,7 @@ export default function PersonalizacaoPage() {
     if (!files?.length || !business?.id) return;
     const remaining = 8 - form.galleryUrls.length;
     if (remaining <= 0) {
-      alert("Máximo de 8 fotos na galeria.");
+      showAlert("Máximo de 8 fotos na galeria.", { title: "Galeria" });
       return;
     }
     setUploading("gallery");
@@ -239,7 +253,7 @@ export default function PersonalizacaoPage() {
       }
       setForm((f) => ({ ...f, galleryUrls: next }));
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Falha no upload");
+      showAlert(err instanceof Error ? err.message : "Falha no upload", { title: "Upload" });
     } finally {
       setUploading(null);
     }
@@ -319,6 +333,7 @@ export default function PersonalizacaoPage() {
     }
 
     setSaveMsg("Alterações salvas.");
+    setFormBaseline(JSON.stringify(form));
     setSaving(false);
     router.refresh();
     setTimeout(() => setSaveMsg(null), 4000);
@@ -343,7 +358,10 @@ export default function PersonalizacaoPage() {
   return (
     <div className="w-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Personalização</h1>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <h1 className="text-2xl font-bold text-gray-900">Personalização</h1>
+          <UnsavedChangesIndicator dirty={formDirty} variant="inline" />
+        </div>
         <p className="text-gray-600 text-sm mt-1">Aparência e conteúdo da página pública — salvos no banco e nos arquivos.</p>
         {loadError && <p className="text-red-600 text-sm mt-2">{loadError}</p>}
       </div>
@@ -457,19 +475,7 @@ export default function PersonalizacaoPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-gray-500 text-base">light_mode</span>
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, darkPage: !form.darkPage })}
-                      className={cn(
-                        "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                        form.darkPage ? "bg-primary" : "bg-gray-200"
-                      )}
-                    >
-                      <span
-                        className="inline-block size-4 rounded-full bg-white transition-transform shadow"
-                        style={{ transform: form.darkPage ? "translateX(18px)" : "translateX(2px)" }}
-                      />
-                    </button>
+                    <SwitchToggle checked={form.darkPage} onChange={() => setForm({ ...form, darkPage: !form.darkPage })} />
                     <span className="material-symbols-outlined text-gray-500 text-base">dark_mode</span>
                   </div>
                 </div>
@@ -566,9 +572,17 @@ export default function PersonalizacaoPage() {
                       {field.icon}
                     </span>
                     <input
-                      type="text"
+                      type={field.key === "whatsapp" ? "tel" : "text"}
+                      inputMode={field.key === "whatsapp" ? "tel" : undefined}
+                      autoComplete={field.key === "whatsapp" ? "tel" : undefined}
                       value={form[field.key]}
-                      onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          [field.key]:
+                            field.key === "whatsapp" ? maskPhoneInputRaw(e.target.value) : e.target.value,
+                        })
+                      }
                       placeholder={field.placeholder}
                       className="w-full h-11 bg-gray-50 border border-gray-200 focus:border-primary rounded-xl pl-10 pr-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm"
                     />
@@ -582,19 +596,10 @@ export default function PersonalizacaoPage() {
                     <p className="text-sm font-bold text-gray-900">Botão WhatsApp flutuante</p>
                     <p className="text-xs text-gray-500 mt-0.5">Na página pública (precisa de número em WhatsApp)</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setForm({ ...form, floatingWhatsapp: !form.floatingWhatsapp })}
-                    className={cn(
-                      "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                      form.floatingWhatsapp ? "bg-primary" : "bg-gray-200"
-                    )}
-                  >
-                    <span
-                      className="inline-block size-4 rounded-full bg-white transition-transform shadow"
-                      style={{ transform: form.floatingWhatsapp ? "translateX(18px)" : "translateX(2px)" }}
-                    />
-                  </button>
+                  <SwitchToggle
+                    checked={form.floatingWhatsapp}
+                    onChange={() => setForm({ ...form, floatingWhatsapp: !form.floatingWhatsapp })}
+                  />
                 </div>
               </div>
             </div>
@@ -661,11 +666,15 @@ export default function PersonalizacaoPage() {
           {saveMsg && (
             <p className={cn("text-sm mt-3", saveMsg.includes("salvas") ? "text-green-600" : "text-red-600")}>{saveMsg}</p>
           )}
+          <UnsavedChangesIndicator dirty={formDirty} className="w-full mt-4" />
           <button
             type="button"
             disabled={saving}
             onClick={() => void saveAll()}
-            className="w-full mt-5 py-4 bg-primary hover:bg-primary/90 disabled:opacity-60 text-black font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)] flex items-center justify-center gap-2"
+            className={cn(
+              "w-full mt-3 py-4 bg-primary hover:bg-primary/90 disabled:opacity-60 text-black font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)] flex items-center justify-center gap-2",
+              formDirty && "ring-2 ring-amber-500/45"
+            )}
           >
             <span className="material-symbols-outlined text-base">save</span>
             {saving ? "Salvando…" : "Salvar alterações"}

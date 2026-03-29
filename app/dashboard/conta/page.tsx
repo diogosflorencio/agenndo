@@ -5,8 +5,23 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
-import { getPlan, formatPrice, normalizePlanId } from "@/lib/plans";
+import {
+  getPlan,
+  formatPrice,
+  normalizePlanId,
+  isPaidPlanId,
+  DEFAULT_CHECKOUT_PLAN,
+  type PaidPlanId,
+} from "@/lib/plans";
 import { describeSubscriptionStatus, formatPeriodEnd } from "@/lib/subscription-ui";
+import {
+  formatCountdownPt,
+  hasFullServiceAccess,
+  isPaidSubscriptionActive,
+  primaryBillingDeadlineMs,
+} from "@/lib/billing-access";
+import { isStripeConfiguredForPlan } from "@/lib/stripe/prices";
+import { useAppAlert } from "@/components/app-alert-provider";
 
 type Tab = "plano" | "seguranca";
 
@@ -24,11 +39,14 @@ function StripeQuerySync() {
 }
 
 export default function ContaPage() {
+  const { showAlert } = useAppAlert();
   const { business, profile } = useDashboard();
   const [tab, setTab] = useState<Tab>("plano");
   const [portalLoading, setPortalLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [signOutLoading, setSignOutLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [countdownTick, setCountdownTick] = useState(0);
 
   const safePlan = normalizePlanId(business?.plan ?? null);
   const planInfo = getPlan(safePlan);
@@ -36,6 +54,69 @@ export default function ContaPage() {
   const subUi = describeSubscriptionStatus(safePlan, business?.subscription_status);
   const periodEnd = formatPeriodEnd(business?.subscription_current_period_end ?? null);
   const hasPortal = Boolean(business?.stripe_customer_id);
+
+  const recommendedPlan = normalizePlanId(profile?.recommended_plan ?? null);
+  const planForCheckout: PaidPlanId = isPaidPlanId(safePlan)
+    ? safePlan
+    : isPaidPlanId(recommendedPlan)
+      ? recommendedPlan
+      : DEFAULT_CHECKOUT_PLAN;
+  const checkoutPlanInfo = getPlan(planForCheckout);
+  const stripeOk = isStripeConfiguredForPlan(planForCheckout);
+
+  const fullAccess = business ? hasFullServiceAccess(business) : true;
+  const paidActive = business ? isPaidSubscriptionActive(business) : false;
+  const deadlineMs = business ? primaryBillingDeadlineMs(business) : null;
+  const remainingMs = deadlineMs != null ? deadlineMs - Date.now() : null;
+
+  useEffect(() => {
+    const id = window.setInterval(() => setCountdownTick((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  void countdownTick;
+
+  const st = business?.subscription_status?.trim();
+  const inPaymentGrace =
+    Boolean(
+      business?.stripe_subscription_id &&
+        (st === "past_due" || st === "unpaid") &&
+        business?.billing_issue_deadline &&
+        new Date(business.billing_issue_deadline).getTime() > Date.now()
+    );
+
+  const isEnterprisePlan = safePlan === "plan_enterprise";
+
+  const showSubscribeCta =
+    !isEnterprisePlan &&
+    stripeOk &&
+    !paidActive &&
+    !inPaymentGrace &&
+    !(st === "past_due" || st === "unpaid");
+
+  const periodRowLabel = (() => {
+    if (st === "trialing") return "Fim do trial / próxima cobrança";
+    if (st === "active") return "Próxima renovação";
+    if (st === "past_due" || st === "unpaid") return "Prazo para regularizar pagamento";
+    if (!business?.stripe_subscription_id) return "Fim do teste grátis";
+    return "Fim do período / próxima renovação";
+  })();
+
+  const deadlineHint = (() => {
+    if (st === "trialing") {
+      return "Você está no trial da assinatura (Stripe). Quando acabar, a cobrança mensal será feita no cartão cadastrado.";
+    }
+    if (st === "active") {
+      return "Assinatura ativa. A renovação ocorre automaticamente na data ao lado.";
+    }
+    if (st === "past_due" || st === "unpaid") {
+      return "Houve falha na cobrança. Você tem até 5 dias para corrigir o cartão no portal — depois disso, agendamentos pela página pública e novas ações críticas ficam bloqueados.";
+    }
+    if (!business?.stripe_subscription_id || !st) {
+      return "Teste grátis de 7 dias desde a criação do negócio. Depois, é preciso assinar para manter agendamentos online e o painel liberados.";
+    }
+    return subUi.detail;
+  })();
 
   async function openPortal() {
     if (!business?.id) return;
@@ -52,9 +133,30 @@ export default function ContaPage() {
         window.location.href = json.url;
         return;
       }
-      alert(json.error ?? "Portal indisponível.");
+      showAlert(json.error ?? "Portal indisponível.", { title: "Faturamento" });
     } finally {
       setPortalLoading(false);
+    }
+  }
+
+  async function startCheckout() {
+    if (!business?.id) return;
+    setCheckoutLoading(true);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ businessId: business.id, planId: planForCheckout }),
+      });
+      const json = (await res.json()) as { url?: string; error?: string };
+      if (res.ok && json.url) {
+        window.location.href = json.url;
+        return;
+      }
+      showAlert(json.error ?? "Não foi possível abrir o checkout.", { title: "Assinatura" });
+    } finally {
+      setCheckoutLoading(false);
     }
   }
 
@@ -67,7 +169,7 @@ export default function ContaPage() {
       window.location.href = "/login";
     } catch {
       setSignOutLoading(false);
-      alert("Não foi possível sair. Tente de novo.");
+      showAlert("Não foi possível sair. Tente de novo.", { title: "Sair" });
     }
   }
 
@@ -82,7 +184,7 @@ export default function ContaPage() {
     }
     const typed = window.prompt('Digite EXCLUIR em letras maiúsculas para confirmar:');
     if (typed !== "EXCLUIR") {
-      if (typed !== null) alert("Confirmação incorreta. Nada foi alterado.");
+      if (typed !== null) showAlert("Confirmação incorreta. Nada foi alterado.", { title: "Excluir conta" });
       return;
     }
     setDeleteLoading(true);
@@ -93,7 +195,7 @@ export default function ContaPage() {
       });
       const json = (await res.json()) as { ok?: boolean; error?: string };
       if (!res.ok) {
-        alert(json.error ?? "Não foi possível excluir a conta.");
+        showAlert(json.error ?? "Não foi possível excluir a conta.", { title: "Excluir conta" });
         setDeleteLoading(false);
         return;
       }
@@ -101,7 +203,7 @@ export default function ContaPage() {
       await supabase.auth.signOut();
       window.location.href = "/";
     } catch {
-      alert("Erro de rede. Tente de novo.");
+      showAlert("Erro de rede. Tente de novo.", { title: "Excluir conta" });
       setDeleteLoading(false);
     }
   }
@@ -149,40 +251,91 @@ export default function ContaPage() {
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mb-1">
-                  {safePlan === "free"
-                    ? "Uso gratuito com limites. Assine quando quiser."
-                    : "Assinatura mensal. Detalhes e histórico no portal de pagamento."}
+                  {paidActive
+                    ? "Assinatura em dia. Detalhes no portal Stripe."
+                    : safePlan === "free"
+                      ? "Teste grátis ou plano sem cobrança ativa — assine para manter tudo liberado após o período."
+                      : "Conclua ou regularize a assinatura para não perder agendamentos online."}
                 </p>
                 <p className="text-2xl font-extrabold text-gray-900">
                   {formatPrice(planInfo.price)}
-                  {planInfo.price > 0 && (
+                  {typeof planInfo.price === "number" && planInfo.price > 0 && (
                     <span className="text-sm text-gray-500 font-normal">/mês</span>
                   )}
                 </p>
-                {subUi.detail && <p className="text-xs text-gray-500 mt-2">{subUi.detail}</p>}
+                {isEnterprisePlan && (
+                  <p className="text-xs text-gray-600 mt-2 leading-relaxed">
+                    Grandes operações, franquias e redes: fale com a equipe para proposta, SLA e onboarding dedicado.
+                  </p>
+                )}
+                {subUi.detail && st !== "trialing" && st !== "active" && (
+                  <p className="text-xs text-gray-500 mt-2">{subUi.detail}</p>
+                )}
               </div>
               <span className="material-symbols-outlined text-primary text-4xl shrink-0">workspace_premium</span>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <span className="text-gray-600">Fim do período / próxima renovação</span>
-                <span className="text-gray-900 font-semibold">
-                  {periodEnd ?? "—"}
-                </span>
+            {!fullAccess && (
+              <div className="rounded-xl border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-900 mb-3">
+                <p className="font-bold">Acesso limitado</p>
+                <p className="mt-1 text-xs leading-relaxed">
+                  Sua página pública não aceita novos agendamentos e o uso completo está suspenso até o plano estar ativo
+                  ou o pagamento regularizado.
+                </p>
               </div>
-              <p className="text-xs text-gray-500">
-                Cobrança via Stripe. Trial de 7 dias nos planos pagos quando configurado no checkout.
+            )}
+
+            {fullAccess && remainingMs != null && remainingMs > 0 && (
+              <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 mb-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-sky-800">Contagem regressiva</p>
+                <p className="text-xl font-extrabold text-sky-950 tabular-nums">{formatCountdownPt(remainingMs)}</p>
+                <p className="text-xs text-sky-900 mt-1 leading-relaxed">{deadlineHint}</p>
+                {periodEnd && (
+                  <p className="text-[11px] text-sky-800/80 mt-1">
+                    Data de referência: <span className="font-semibold">{periodEnd}</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <div className="flex justify-between gap-3 text-xs">
+                <span className="text-gray-600 shrink-0">{periodRowLabel}</span>
+                <span className="text-gray-900 font-semibold text-right">{periodEnd ?? "—"}</span>
+              </div>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Cobrança via Stripe. O valor exibido acima é o do seu plano no app; no checkout você verá o mesmo preço
+                mensal (BRL). Novas assinaturas incluem trial de 7 dias no cartão quando o Stripe estiver configurado
+                assim.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              {showSubscribeCta && (
+                <button
+                  type="button"
+                  disabled={checkoutLoading}
+                  onClick={() => void startCheckout()}
+                  className="flex-1 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-60 text-black font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-sm">shopping_cart</span>
+                  {checkoutLoading
+                    ? "Redirecionando…"
+                    : typeof checkoutPlanInfo.price === "number"
+                      ? `Assinar — ${formatPrice(checkoutPlanInfo.price)}/mês`
+                      : "Assinar"}
+                </button>
+              )}
               {hasPortal && (
                 <button
                   type="button"
                   disabled={portalLoading}
                   onClick={() => void openPortal()}
-                  className="flex-1 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-60 text-black font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5"
+                  className={`flex-1 py-2.5 disabled:opacity-60 font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 ${
+                    inPaymentGrace || (st === "past_due" || st === "unpaid")
+                      ? "bg-amber-400 hover:bg-amber-500 text-black"
+                      : "bg-white border border-gray-200 hover:bg-gray-50 text-gray-800"
+                  }`}
                 >
                   <span className="material-symbols-outlined text-sm">payments</span>
                   {portalLoading ? "Abrindo…" : "Fatura e método de pagamento"}
@@ -198,6 +351,12 @@ export default function ContaPage() {
                 Suporte
               </a>
             </div>
+            {!stripeOk && !paidActive && !isEnterprisePlan && (
+              <p className="text-[11px] text-amber-800 mt-2">
+                Checkout indisponível: defina STRIPE_PRICE_PAID_01 … STRIPE_PRICE_PAID_20 (uma env por degrau com o ID{" "}
+                <code className="font-mono">price_…</code> do Stripe).
+              </p>
+            )}
             {hasPortal && (
               <p className="text-[11px] text-gray-500 mt-2">
                 Para cancelar ou mudar cartão, use &quot;Fatura e método de pagamento&quot; (portal Stripe).

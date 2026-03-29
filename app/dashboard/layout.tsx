@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { normalizePlanId } from "@/lib/plans";
 import { DashboardShell } from "./DashboardShell";
 import type { UserInfo } from "@/lib/dashboard-context";
 
@@ -18,8 +19,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
     user_metadata: user.user_metadata ?? undefined,
   };
 
+  const businessNormalized = {
+    ...business,
+    plan: normalizePlanId(business.plan),
+  };
+  const profileNormalized = profile
+    ? {
+        ...profile,
+        recommended_plan: profile.recommended_plan
+          ? normalizePlanId(profile.recommended_plan)
+          : null,
+      }
+    : profile;
+
   return (
-    <DashboardShell user={userInfo} profile={profile} business={business}>
+    <DashboardShell user={userInfo} profile={profileNormalized} business={businessNormalized}>
       {children}
     </DashboardShell>
   );

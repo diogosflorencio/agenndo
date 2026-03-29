@@ -100,12 +100,12 @@ Depois disso, **Entrar com Google** no `/login` e em **Entrar como cliente** (`/
 
 ## 6. Stripe (assinaturas)
 
-No app, tudo que é **público** para o usuário chama só **Plano**. No código e no banco as variantes de assinatura paga são **`plano_1`**, **`plano_2`**, **`plano_3`** (mapeadas para três `price_...` no Stripe).
+No app o cliente vê **Plano**; no banco/código a assinatura paga usa **`paid_01` … `paid_20`** (20 valores mensais, do menor ao maior). Cada degrau precisa de um **Price** recorrente no Stripe e de uma variável de ambiente **`STRIPE_PRICE_PAID_XX`** com o `price_...` correspondente (`paid_01` = menor valor, `paid_20` = maior).
 
 ### 6.1 Projeto Stripe
 
-1. [Dashboard Stripe](https://dashboard.stripe.com) → **Products** → três preços recorrentes mensais (BRL). Nomes na fatura como quiser (ex.: “Agenndo”).
-2. Copie o **Price ID** de cada um (`price_...`).
+1. [Dashboard Stripe](https://dashboard.stripe.com) → **Products** → crie **20 preços** recorrentes mensais (BRL), ou um produto com 20 prices — como preferir organizar.
+2. Copie o **Price ID** de cada um (`price_...`) e associe na ordem da escada em `lib/plans.ts` (`LADDER_PRICES`: R$ 29,90 … R$ 569,90).
 
 ### 6.2 Variáveis de ambiente
 
@@ -115,13 +115,20 @@ No `.env.local` (e na Vercel):
 |----------|------------|
 | `STRIPE_SECRET_KEY` | Stripe → Developers → API keys (**Secret**) |
 | `STRIPE_WEBHOOK_SECRET` | Após criar o endpoint de webhook (signing secret) |
-| `STRIPE_PRICE_PLANO_1` | Price ID para variante interna `plano_1` |
-| `STRIPE_PRICE_PLANO_2` | Price ID para `plano_2` |
-| `STRIPE_PRICE_PLANO_3` | Price ID para `plano_3` |
-| `STRIPE_PRICE_PLANO_UNICO_INFRAESTRUTURA_*`, `PERFIL_*`, `STARTER`/`GROWTH`/`ENTERPRISE` | Legado: usados se `PLANO_1/2/3` estiverem vazios |
+| `STRIPE_PRICE_PAID_01` … `STRIPE_PRICE_PAID_20` | Cada variável = um `price_...` do Stripe para o degrau `paid_01` … `paid_20` (valores crescentes) |
 
-Após deploy com `plano_*` no código, rode no Supabase o SQL em `supabase/migrations/20250329_plano_n.sql` se ainda existir `starter`/`growth`/`enterprise` nas tabelas.
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Settings → API (**service_role**) — só servidor, nunca no client |
+Referência de ordem (valor mensal BRL → variável). Use o **Price ID** do Stripe que corresponde a cada valor:
+
+| Env | Valor |
+|-----|-------|
+| `STRIPE_PRICE_PAID_01` | R$ 29,90 |
+| `STRIPE_PRICE_PAID_02` | R$ 49,90 |
+| … | … |
+| `STRIPE_PRICE_PAID_20` | R$ 569,90 |
+
+Lista completa em `LADDER_PRICES` em `lib/plans.ts`.
+
+Se ainda existir `starter`/`growth`/`enterprise` ou `plano_*` antigo em metadados/BD, use as migrações em `supabase/migrations/` para alinhar a `paid_XX`. Registros antigos `paid_21` … `paid_28` são tratados como `paid_20` no código e na migration `20250338_paid_tiers_20_legacy.sql`.
 
 Opcional em dev se o redirect cair no domínio errado:
 

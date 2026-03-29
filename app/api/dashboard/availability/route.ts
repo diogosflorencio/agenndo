@@ -18,6 +18,7 @@ type BookingPayload = {
   bufferMinutes: number;
   minAdvanceHours: number;
   maxFutureDays: number;
+  publicBookingTimeUi: "slider" | "blocks";
 };
 
 function isDaySchedule(x: unknown): x is DaySchedule {
@@ -46,7 +47,11 @@ export async function GET() {
   const [avRes, ovRes, notifRes] = await Promise.all([
     supabase.from("availability").select("day_of_week, closed, open_time, close_time, breaks").eq("business_id", bid),
     supabase.from("availability_overrides").select("date, closed, open_time, close_time, breaks").eq("business_id", bid),
-    supabase.from("notification_settings").select("min_advance_hours, booking_buffer_minutes, booking_max_future_days").eq("business_id", bid).maybeSingle(),
+    supabase
+      .from("notification_settings")
+      .select("min_advance_hours, booking_buffer_minutes, booking_max_future_days, public_booking_time_ui")
+      .eq("business_id", bid)
+      .maybeSingle(),
   ]);
 
   if (avRes.error) return NextResponse.json({ error: avRes.error.message }, { status: 500 });
@@ -65,10 +70,13 @@ export async function GET() {
   }
 
   const n = notifRes.data;
+  const uiRaw = n?.public_booking_time_ui;
+  const publicBookingTimeUi: "slider" | "blocks" = uiRaw === "blocks" ? "blocks" : "slider";
   const booking: BookingPayload = {
-    bufferMinutes: typeof n?.booking_buffer_minutes === "number" ? n.booking_buffer_minutes : 15,
-    minAdvanceHours: typeof n?.min_advance_hours === "number" ? n.min_advance_hours : 2,
-    maxFutureDays: typeof n?.booking_max_future_days === "number" ? n.booking_max_future_days : 60,
+    bufferMinutes: typeof n?.booking_buffer_minutes === "number" ? n.booking_buffer_minutes : 0,
+    minAdvanceHours: typeof n?.min_advance_hours === "number" ? n.min_advance_hours : 0,
+    maxFutureDays: typeof n?.booking_max_future_days === "number" ? n.booking_max_future_days : 30,
+    publicBookingTimeUi,
   };
 
   return NextResponse.json({ weekly, overrides, booking });
@@ -112,6 +120,11 @@ export async function PUT(req: Request) {
   const bufferMinutes = Number(bk.bufferMinutes);
   const minAdvanceHours = Number(bk.minAdvanceHours);
   const maxFutureDays = Number(bk.maxFutureDays);
+  const uiRaw = bk.publicBookingTimeUi;
+  const publicBookingTimeUi: "slider" | "blocks" = uiRaw === "blocks" ? "blocks" : "slider";
+  if (uiRaw != null && uiRaw !== "slider" && uiRaw !== "blocks") {
+    return NextResponse.json({ error: "publicBookingTimeUi inválido" }, { status: 400 });
+  }
   if (!Number.isFinite(bufferMinutes) || bufferMinutes < 0 || bufferMinutes > 120) {
     return NextResponse.json({ error: "bufferMinutes inválido" }, { status: 400 });
   }
@@ -164,6 +177,7 @@ export async function PUT(req: Request) {
     min_advance_hours: Math.round(minAdvanceHours),
     booking_buffer_minutes: Math.round(bufferMinutes),
     booking_max_future_days: Math.round(maxFutureDays),
+    public_booking_time_ui: publicBookingTimeUi,
     updated_at: new Date().toISOString(),
   };
 

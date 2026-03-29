@@ -7,9 +7,17 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
 import { STATUS_CONFIG, formatCurrency, type AppointmentStatus } from "@/lib/utils";
 import { useTheme } from "@/lib/theme-context";
+import {
+  DashboardSetupGuide,
+  type SetupProgressSnapshot,
+} from "@/components/dashboard-setup-guide";
+import { hasFullServiceAccess } from "@/lib/billing-access";
+import { setAppointmentAttendance, centsToMoneyInput } from "@/lib/appointment-finance";
+import { AppointmentValueModal } from "@/components/appointment-value-modal";
 
 type AppointmentRow = {
   id: string;
+  client_id: string | null;
   date: string;
   time_start: string;
   time_end: string;
@@ -28,11 +36,97 @@ function formatTime(t: string) {
   return `${h}:${m ?? "00"}`;
 }
 
+/** Saudação conforme o horário local (0–23). */
+function greetingForHour(hour: number) {
+  if (hour >= 0 && hour < 6) return "Boa madrugada";
+  if (hour < 12) return "Bom dia";
+  if (hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+const defaultSetupSnapshot: SetupProgressSnapshot = {
+  hasSegment: false,
+  hasContact: false,
+  serviceCount: 0,
+  collaboratorCount: 0,
+  hasCollabServiceLink: false,
+  hasOpenAvailabilityDay: false,
+  hasPersonalizationExtras: false,
+};
+
 export default function DashboardHome() {
   const { theme } = useTheme();
   const { business, profile } = useDashboard();
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
+  const [setupSnapshot, setSetupSnapshot] = useState<SetupProgressSnapshot>(defaultSetupSnapshot);
   const [loading, setLoading] = useState(true);
+  const [moneyModal, setMoneyModal] = useState<AppointmentRow | null>(null);
+  const [attBusyId, setAttBusyId] = useState<string | null>(null);
+  const [actionErr, setActionErr] = useState<string | null>(null);
+
+  const patchTodayApt = (id: string, patch: Partial<AppointmentRow>) => {
+    setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+  };
+
+  const runHomeFaltou = async (apt: AppointmentRow) => {
+    if (!business?.id) return;
+    setActionErr(null);
+    setAttBusyId(apt.id);
+    const supabase = createClient();
+    const res = await setAppointmentAttendance({
+      supabase,
+      businessId: business.id,
+      appointment: {
+        id: apt.id,
+        client_id: apt.client_id,
+        date: apt.date,
+        price_cents: apt.price_cents,
+        status: apt.status,
+      },
+      clientName: apt.clients?.name ?? apt.client_name_snapshot,
+      serviceName: apt.services?.name ?? null,
+      collaboratorName: apt.collaborators?.name ?? null,
+      nextStatus: "faltou",
+    });
+    setAttBusyId(null);
+    if ("error" in res) {
+      setActionErr(res.error);
+      window.setTimeout(() => setActionErr(null), 5000);
+      return;
+    }
+    patchTodayApt(apt.id, { status: "faltou" });
+  };
+
+  const runHomeCompareceu = async (apt: AppointmentRow, paidCents: number) => {
+    if (!business?.id) return;
+    setActionErr(null);
+    setAttBusyId(apt.id);
+    const supabase = createClient();
+    const res = await setAppointmentAttendance({
+      supabase,
+      businessId: business.id,
+      appointment: {
+        id: apt.id,
+        client_id: apt.client_id,
+        date: apt.date,
+        price_cents: apt.price_cents,
+        status: apt.status,
+      },
+      clientName: apt.clients?.name ?? apt.client_name_snapshot,
+      serviceName: apt.services?.name ?? null,
+      collaboratorName: apt.collaborators?.name ?? null,
+      nextStatus: "compareceu",
+      paidCents,
+    });
+    setAttBusyId(null);
+    if ("error" in res) {
+      setActionErr(res.error);
+      window.setTimeout(() => setActionErr(null), 5000);
+      return;
+    }
+    patchTodayApt(apt.id, { status: "compareceu", price_cents: paidCents });
+    setMoneyModal(null);
+  };
 
   useEffect(() => {
     if (!business?.id) return;
@@ -44,26 +138,76 @@ export default function DashboardHome() {
     const fromStr = from.toISOString().slice(0, 10);
     const toStr = to.toISOString().slice(0, 10);
 
-    supabase
-      .from("appointments")
-      .select(
-        `
-        id, date, time_start, time_end, price_cents, status, client_name_snapshot,
+    Promise.all([
+      supabase
+        .from("appointments")
+        .select(
+          `
+        id, client_id, date, time_start, time_end, price_cents, status, client_name_snapshot,
         clients(name),
         services(name),
         collaborators(name)
       `
-      )
-      .eq("business_id", business.id)
-      .gte("date", fromStr)
-      .lte("date", toStr)
-      .order("date", { ascending: true })
-      .order("time_start", { ascending: true })
-      .then(({ data }) => {
-        setAppointments((data as unknown as AppointmentRow[]) ?? []);
+        )
+        .eq("business_id", business.id)
+        .gte("date", fromStr)
+        .lte("date", toStr)
+        .order("date", { ascending: true })
+        .order("time_start", { ascending: true }),
+      supabase
+        .from("services")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", business.id)
+        .eq("active", true),
+      supabase
+        .from("collaborators")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", business.id)
+        .eq("active", true),
+      supabase.from("availability").select("closed, open_time, close_time").eq("business_id", business.id),
+      supabase.from("collaborator_services").select("service_id").limit(1).maybeSingle(),
+      supabase
+        .from("personalization")
+        .select("tagline, banner_url, about, instagram_url, facebook_url, whatsapp_number")
+        .eq("business_id", business.id)
+        .maybeSingle(),
+    ]).then(
+      ([aptsRes, svcRes, colRes, avRes, csRes, perRes]) => {
+        setAppointments((aptsRes.data as unknown as AppointmentRow[]) ?? []);
+        const avRows = avRes.data ?? [];
+        const hasOpenAvailabilityDay = avRows.some(
+          (row: { closed: boolean; open_time: string | null; close_time: string | null }) =>
+            !row.closed && row.open_time != null && row.close_time != null
+        );
+        const per = perRes.data as {
+          tagline?: string | null;
+          banner_url?: string | null;
+          about?: string | null;
+          instagram_url?: string | null;
+          facebook_url?: string | null;
+          whatsapp_number?: string | null;
+        } | null;
+        const hasPersonalizationExtras = !!(
+          per?.tagline?.trim() ||
+          per?.banner_url?.trim() ||
+          per?.about?.trim() ||
+          per?.instagram_url?.trim() ||
+          per?.facebook_url?.trim() ||
+          per?.whatsapp_number?.trim()
+        );
+        setSetupSnapshot({
+          hasSegment: !!(business.segment && String(business.segment).trim()),
+          hasContact: !!(business.phone?.trim() || business.city?.trim()),
+          serviceCount: svcRes.count ?? 0,
+          collaboratorCount: colRes.count ?? 0,
+          hasCollabServiceLink: csRes.data != null,
+          hasOpenAvailabilityDay,
+          hasPersonalizationExtras,
+        });
         setLoading(false);
-      });
-  }, [business?.id]);
+      }
+    );
+  }, [business?.id, business?.segment, business?.phone, business?.city]);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayAppointments = appointments.filter((a) => a.date === todayStr);
@@ -84,7 +228,9 @@ export default function DashboardHome() {
       const dateStr = d.toISOString().slice(0, 10);
       const dayAppointments = appointments.filter((a) => a.date === dateStr);
       byDay[dayName].agendamentos = dayAppointments.length;
-      byDay[dayName].receita = dayAppointments.reduce((s, a) => s + (a.price_cents || 0), 0);
+      byDay[dayName].receita = dayAppointments
+        .filter((a) => a.status === "compareceu")
+        .reduce((s, a) => s + (a.price_cents || 0), 0);
     }
     return DAYS.map((day) => ({ day, ...byDay[day] }));
   })();
@@ -142,6 +288,8 @@ export default function DashboardHome() {
     : { background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" };
   const tooltipLabelStyle = { color: isDark ? "#e5e7eb" : "#111827" };
 
+  const canCreateAppointments = business ? hasFullServiceAccess(business) : true;
+
   const metrics = [
     { label: "Hoje", value: todayAppointments.length.toString(), sub: "agendamentos", subColor: "text-gray-400", icon: "calendar_today" },
     { label: "Esta semana", value: totalWeek.toString(), sub: "agendamentos", subColor: "text-gray-400", icon: "date_range" },
@@ -159,11 +307,33 @@ export default function DashboardHome() {
 
   return (
     <div className="w-full">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Bom dia, {firstName}! 👋</h1>
-        <p className="text-gray-600 text-sm mt-1">
-          {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
-        </p>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-gray-900">
+            {greetingForHour(new Date().getHours())}, {firstName}! 👋
+          </h1>
+          <p className="text-gray-600 text-sm mt-1">
+            {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center justify-end gap-1.5 sm:pt-0.5 shrink-0">
+          <Link
+            href={canCreateAppointments ? "/dashboard/agendamentos/novo" : "/dashboard/conta"}
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600 shadow-sm transition-colors hover:border-primary/35 hover:text-gray-900"
+          >
+            <span className="material-symbols-outlined text-primary text-[15px] leading-none">
+              {canCreateAppointments ? "add" : "gpp_maybe"}
+            </span>
+            {canCreateAppointments ? "Novo agendamento" : "Plano / assinatura"}
+          </Link>
+          <Link
+            href="/dashboard/disponibilidade"
+            className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-600 shadow-sm transition-colors hover:border-primary/35 hover:text-gray-900"
+          >
+            <span className="material-symbols-outlined text-primary text-[15px] leading-none">block</span>
+            Bloquear horário
+          </Link>
+        </div>
       </div>
 
       {pendingStatusCount > 0 && (
@@ -190,6 +360,14 @@ export default function DashboardHome() {
           </div>
         ))}
       </div>
+
+      <DashboardSetupGuide snapshot={setupSnapshot} />
+
+      {actionErr && (
+        <div className="mb-4 px-4 py-3 rounded-xl text-sm border border-red-200 bg-red-50 text-red-900" role="alert">
+          {actionErr}
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
@@ -242,11 +420,21 @@ export default function DashboardHome() {
                     </div>
                     {(apt.status === "agendado" || (apt.status as AppointmentStatus) === "confirmado") && (
                       <div className="grid grid-cols-2 gap-px bg-gray-100 border-t border-gray-200">
-                        <button className="bg-white hover:bg-gray-50 text-xs font-semibold text-gray-600 py-3 transition-colors flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          disabled={attBusyId === apt.id}
+                          onClick={() => void runHomeFaltou(apt)}
+                          className="bg-white hover:bg-gray-50 disabled:opacity-50 text-xs font-semibold text-gray-600 py-3 transition-colors flex items-center justify-center gap-1"
+                        >
                           <span className="material-symbols-outlined text-sm">person_off</span>
                           Faltou
                         </button>
-                        <button className="bg-primary/10 hover:bg-primary/20 text-xs font-bold text-primary py-3 transition-colors flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          disabled={attBusyId === apt.id}
+                          onClick={() => setMoneyModal(apt)}
+                          className="bg-primary/10 hover:bg-primary/20 disabled:opacity-50 text-xs font-bold text-primary py-3 transition-colors flex items-center justify-center gap-1"
+                        >
                           <span className="material-symbols-outlined text-sm">check_circle</span>
                           Compareceu
                         </button>
@@ -256,23 +444,6 @@ export default function DashboardHome() {
                 );
               })
             )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 mt-4">
-            <Link
-              href="/dashboard/agendamentos"
-              className="flex items-center justify-center gap-2 p-3 bg-white border border-gray-200 hover:border-primary/40 rounded-xl text-sm font-semibold text-gray-700 hover:text-gray-900 transition-all shadow-sm"
-            >
-              <span className="material-symbols-outlined text-primary text-base">add_circle</span>
-              Novo agendamento
-            </Link>
-            <Link
-              href="/dashboard/disponibilidade"
-              className="flex items-center justify-center gap-2 p-3 bg-white border border-gray-200 hover:border-primary/40 rounded-xl text-sm font-semibold text-gray-700 hover:text-gray-900 transition-all shadow-sm"
-            >
-              <span className="material-symbols-outlined text-primary text-base">block</span>
-              Bloquear horário
-            </Link>
           </div>
         </div>
 
@@ -323,6 +494,23 @@ export default function DashboardHome() {
           </div>
         </div>
       </div>
+
+      <AppointmentValueModal
+        open={moneyModal != null}
+        title="Cliente compareceu"
+        subtitle={
+          moneyModal
+            ? `${moneyModal.clients?.name ?? moneyModal.client_name_snapshot ?? "Cliente"} · ${moneyModal.services?.name ?? "Serviço"}`
+            : undefined
+        }
+        initialValueReais={moneyModal ? centsToMoneyInput(moneyModal.price_cents) : "0,00"}
+        confirmLabel="Confirmar"
+        loading={moneyModal != null && attBusyId === moneyModal.id}
+        onClose={() => attBusyId !== moneyModal?.id && setMoneyModal(null)}
+        onConfirm={(cents) => {
+          if (moneyModal) void runHomeCompareceu(moneyModal, cents);
+        }}
+      />
     </div>
   );
 }

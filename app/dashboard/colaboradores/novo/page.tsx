@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
+import { maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
 
 const COLORS = [
   "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B",
@@ -34,7 +35,7 @@ export default function NovoColaboradorPage() {
         business_id: business.id,
         name: form.name.trim(),
         role: form.role.trim() || null,
-        phone: form.phone.trim() || null,
+        phone: phoneDigitsOnly(form.phone) || null,
         color: form.color,
         active: true,
       })
@@ -120,8 +121,10 @@ export default function NovoColaboradorPage() {
             <label className="text-sm font-medium text-gray-700 block mb-1.5">Telefone (opcional)</label>
             <input
               type="tel"
+              inputMode="tel"
+              autoComplete="tel"
               value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              onChange={(e) => setForm({ ...form, phone: maskPhoneInputRaw(e.target.value) })}
               placeholder="(11) 99999-9999"
               className="w-full h-11 bg-gray-50 border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm"
             />
