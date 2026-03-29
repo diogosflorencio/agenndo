@@ -14,38 +14,53 @@ interface RecommendationInput {
   averageTicket: number;
 }
 
+/**
+ * Referência do paid_01 (R$ 29,90): ~1 trabalhador, ~5 atendimentos/dia, ticket médio ~R$ 30.
+ * Volume diário de referência = 5 × 30. Os outros degraus sobem conforme esse múltiplo e o tamanho da equipe.
+ */
+const REF_DAILY_APPOINTMENTS = 5;
+const REF_AVERAGE_TICKET = 30;
+const REF_DAILY_VOLUME = REF_DAILY_APPOINTMENTS * REF_AVERAGE_TICKET;
+
+/** Índice 0…7 dentro do “bloco” de volume (múltiplos da referência 5×30). */
+function volumeStepsFromBaseline(dailyAppointments: number, averageTicket: number): number {
+  const daily = Math.max(0, Number(dailyAppointments) || 0);
+  const ticket = Math.max(0, Number(averageTicket) || 0);
+  const volume = daily * ticket;
+  const v = volume <= 0 ? 0 : volume / REF_DAILY_VOLUME;
+
+  if (v <= 1.12) return 0;
+  if (v <= 1.45) return 1;
+  if (v <= 1.95) return 2;
+  if (v <= 2.65) return 3;
+  if (v <= 3.6) return 4;
+  if (v <= 5) return 5;
+  if (v <= 7.5) return 6;
+  return 7;
+}
+
+/** Piso do degrau conforme tamanho da equipe (progressão além do solo “5×30”). */
+function teamTierBase(teamSize: TeamSize): number {
+  switch (teamSize) {
+    case "1":
+      return 0;
+    case "2-5":
+      return 3;
+    case "6-15":
+      return 7;
+    case "16+":
+      return 12;
+    default:
+      return 0;
+  }
+}
+
 /** Qual dos 20 degraus (paid_01…paid_20) melhor reflete o perfil — produto idêntico em todos. */
 function recommendedTierIndex(input: RecommendationInput): number {
   const { teamSize, dailyAppointments, averageTicket } = input;
-
-  if (teamSize === "1") {
-    if (averageTicket > 85 || dailyAppointments > 25) return 3;
-    if (averageTicket > 55 || dailyAppointments > 12) return 2;
-    if (averageTicket > 35 || dailyAppointments > 5) return 1;
-    return 0;
-  }
-
-  if (teamSize === "2-5") {
-    const load = dailyAppointments * 3;
-    if (load > 80 || averageTicket > 190) return 9;
-    if (load > 50 || averageTicket > 140) return 7;
-    if (load > 25 || averageTicket > 90) return 5;
-    return 4;
-  }
-
-  if (teamSize === "6-15") {
-    const load = dailyAppointments * 7;
-    if (load > 120 || averageTicket > 220) return 16;
-    if (load > 70 || averageTicket > 160) return 13;
-    if (load > 35) return 10;
-    return 8;
-  }
-
-  const load = dailyAppointments * 12;
-  if (load > 150 || averageTicket > 280) return 19;
-  if (load > 90 || averageTicket > 200) return 17;
-  if (load > 45) return 15;
-  return 12;
+  const steps = volumeStepsFromBaseline(dailyAppointments, averageTicket);
+  const base = teamTierBase(teamSize);
+  return base + steps;
 }
 
 export function calculateRecommendedPlan(input: RecommendationInput): PlanId {

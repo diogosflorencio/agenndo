@@ -9,6 +9,7 @@ import { hasFullServiceAccess } from "@/lib/billing-access";
 import type { UserInfo } from "@/lib/dashboard-context";
 import type { BusinessRow } from "@/lib/dashboard-context";
 import type { ProfileRow } from "@/lib/dashboard-context";
+import { WhatsAppSupportWidget } from "@/components/whatsapp-support-widget";
 
 const MENU_AGENDA = [
   { href: "/dashboard/agendamentos", icon: "calendar_month", label: "Agendamentos" },
@@ -208,7 +209,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex flex-col flex-1 min-w-0 min-h-screen lg:pl-64">
-        <header className={`lg:hidden sticky top-0 z-40 border-b shadow-sm ${headerBg}`}>
+        <header className={`lg:hidden sticky top-0 z-28 border-b shadow-sm ${headerBg}`}>
           <div className="px-4 sm:px-6">
             <div className="flex items-center justify-between h-14">
               <Link href="/" className={`transition-opacity hover:opacity-90 ${isLight ? "text-gray-900" : "text-white"}`}>
@@ -270,7 +271,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             type="button"
             aria-label="Fechar submenu"
             className="lg:hidden fixed inset-x-0 top-0 z-[28] bg-black/45 backdrop-blur-[2px]"
-            style={{ bottom: "calc(56px + env(safe-area-inset-bottom, 0px))" }}
+            style={{ bottom: "calc(0px + env(safe-area-inset-bottom, 0px))" }}
             onClick={() => setMobileExpandedGroup(null)}
           />
           <div
@@ -357,7 +358,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
         </>
       )}
-      <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t flex items-center justify-around px-1 pt-1.5 pb-safe ${navBottomBg}`}>
+      <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t flex items-center justify-around px-1 pt-1.5 pb-1.5 pb-safe ${navBottomBg}`}>
         {MOBILE_NAV_ITEMS.map((item) => {
           if (item.type === "link") {
             const active = isActive(item.href, item.exact);
@@ -383,6 +384,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           );
         })}
       </nav>
+
+      <WhatsAppSupportWidget context="dashboard" />
     </div>
   );
 }

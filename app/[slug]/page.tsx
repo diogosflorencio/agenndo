@@ -17,6 +17,7 @@ import {
   type PublicSlotCell,
 } from "@/lib/public-booking";
 import { PublicBookingDayTimeline, type PublicDayTimelinePayload } from "@/components/public-booking-day-timeline";
+import { PublicPwaInstallPrompt } from "@/components/public-pwa-install-prompt";
 import { minutesToTime, timeToMinutes, type DaySchedule } from "@/lib/disponibilidade";
 
 function initialSliderStartMin(payload: PublicDayTimelinePayload): number {
@@ -847,6 +848,8 @@ function PublicPageInner() {
             <span className="material-symbols-outlined text-white text-2xl">chat</span>
           </a>
         )}
+
+        <PublicPwaInstallPrompt slug={slug} businessName={business.name} accentColor={accent} isDark={isDark} />
       </div>
     );
   }
@@ -1699,6 +1702,8 @@ function PublicPageInner() {
           <span className="material-symbols-outlined text-white text-xl">chat</span>
         </a>
       )}
+
+      <PublicPwaInstallPrompt slug={slug} businessName={business.name} accentColor={accent} isDark={isDark} />
     </div>
   );
 }
@@ -1811,6 +1816,8 @@ function SuccessScreen({
           </div>
         </div>
       </div>
+
+      <PublicPwaInstallPrompt slug={slug} businessName={businessName} accentColor={accentColor} isDark={true} />
     </div>
   );
 }

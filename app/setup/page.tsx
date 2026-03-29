@@ -664,7 +664,7 @@ function Step5({
         onClick={() => onFinish(dynamicPlan.tier)}
         className="w-full py-4 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)] flex items-center justify-center gap-2"
       >
-        Começar agora — 7 dias grátis
+        Começar agora com  uma assinatura
         <span className="material-symbols-outlined text-base">arrow_forward</span>
       </button>
       <button
@@ -672,7 +672,7 @@ function Step5({
         onClick={onFree}
         className="w-full mt-3 py-3 text-sm text-gray-400 hover:text-gray-300 transition-colors"
       >
-        Continuar sem assinar (grátis)
+        Continuar sem assinar — 7 dias grátis
       </button>
       <p className="text-xs text-gray-500 text-center mt-4">
         7 dias de trial com acesso completo. Depois, cobrança em cartão (Stripe) no valor contratado. Outros meios podem ser

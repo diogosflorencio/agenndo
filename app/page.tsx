@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { WhatsAppSupportWidget } from "@/components/whatsapp-support-widget";
 
 const FEATURES = [
   {
@@ -462,6 +463,11 @@ export default function HomePage() {
               <h4 className="text-white font-bold mb-4 text-sm">Produto</h4>
               <ul className="space-y-3 text-sm text-gray-400">
                 <li><Link href="/sobre" className="hover:text-primary transition-colors">Sobre nós</Link></li>
+                <li>
+                  <Link href="/agendamento-online" className="hover:text-primary transition-colors">
+                    Software de agendamento
+                  </Link>
+                </li>
                 <li><Link href="/termos" className="hover:text-primary transition-colors">Termos</Link></li>
                 <li><Link href="/politicas" className="hover:text-primary transition-colors">Políticas</Link></li>
               </ul>
@@ -483,6 +489,8 @@ export default function HomePage() {
           </div>
         </div>
       </footer>
+
+      <WhatsAppSupportWidget context="landing" />
     </>
   );
 }
