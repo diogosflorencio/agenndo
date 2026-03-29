@@ -64,7 +64,7 @@ export default function ClientesPage() {
   }
 
   return (
-    <div className="w-full p-4 md:p-6 max-w-5xl mx-auto">
+    <div className="w-full p-4 md:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
         <p className="text-gray-600 text-sm mt-1">{clients.length} clientes cadastrados</p>

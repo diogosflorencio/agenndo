@@ -1,34 +1,100 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, Suspense, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  buildOAuthStartUrl,
+  buildSupabaseOAuthRedirectUrl,
+  getOAuthRedirectOrigin,
+  isLocalhostOAuthPopup,
+  OAUTH_POPUP_MESSAGE,
+} from "@/lib/auth/oauth-popup";
 
-/**
- * Login para CLIENTES (quem agenda na página pública).
- * No banco, o usuário tem tipo "cliente" para esse contexto;
- * a mesma conta pode ser "usuário" (prestador) e aí o login é feito pela página /login.
- */
 function EntrarClienteContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const slug = searchParams.get("slug") ?? "";
-  const returnTo = slug ? `/${slug}` : "/";
+  const nextRaw = searchParams.get("next")?.trim() ?? "";
+  const nextSafe =
+    nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
+  const returnTo = nextSafe || (slug ? `/${slug}` : "/");
+  const postAuthPath = nextSafe || (slug ? "/conta" : "/");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const popupHandledRef = useRef(false);
+  const popupPollRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isLocalhostOAuthPopup()) return;
+
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
+      const payload = e.data as { type?: string; ok?: boolean; next?: string; error?: string };
+      if (payload?.type !== OAUTH_POPUP_MESSAGE) return;
+      popupHandledRef.current = true;
+      if (popupPollRef.current) {
+        clearInterval(popupPollRef.current);
+        popupPollRef.current = null;
+      }
+      setLoading(false);
+      if (payload.ok && payload.next) {
+        router.push(payload.next);
+        router.refresh();
+      } else {
+        setError(payload.error ?? "Não foi possível entrar.");
+      }
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("message", onMessage);
+      if (popupPollRef.current) {
+        clearInterval(popupPollRef.current);
+        popupPollRef.current = null;
+      }
+    };
+  }, [router]);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
+    popupHandledRef.current = false;
+    const origin = getOAuthRedirectOrigin() || window.location.origin;
+    if (isLocalhostOAuthPopup()) {
+      const startUrl = buildOAuthStartUrl(origin, { next: postAuthPath, context: "cliente" });
+      const popup = window.open(startUrl, "agenndo-oauth", "width=520,height=720,scrollbars=yes");
+      if (!popup) {
+        setError("Permita popups para este site.");
+        setLoading(false);
+        return;
+      }
+      popup.focus();
+      if (popupPollRef.current) clearInterval(popupPollRef.current);
+      popupPollRef.current = window.setInterval(() => {
+        if (popup.closed && !popupHandledRef.current) {
+          if (popupPollRef.current) {
+            clearInterval(popupPollRef.current);
+            popupPollRef.current = null;
+          }
+          setLoading(false);
+        }
+      }, 400);
+      return;
+    }
+
     const supabase = createClient();
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const nextPath = slug ? `/${slug}?cliente=1` : "/";
-    const redirectTo = `${origin}/auth/callback?context=cliente&next=${encodeURIComponent(nextPath)}`;
+    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/callback", {
+      context: "cliente",
+      next: postAuthPath,
+    });
 
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo,
+        skipBrowserRedirect: false,
         queryParams: {
           access_type: "offline",
           prompt: "consent",
@@ -39,7 +105,6 @@ function EntrarClienteContent() {
     if (err) {
       setError(err.message);
       setLoading(false);
-      return;
     }
   };
 
@@ -69,7 +134,11 @@ function EntrarClienteContent() {
               </div>
               <h1 className="text-xl font-bold text-white mb-1">Sua conta de cliente</h1>
               <p className="text-gray-400 text-sm">
-                Use a mesma conta para ver agendamentos, cancelar ou remarcar. Quem presta serviço entra em agenndo.com/login.
+                Use a mesma conta para ver agendamentos e cancelar na{" "}
+                <Link href="/conta" className="text-primary font-semibold hover:underline">
+                  sua página de conta
+                </Link>
+                . Prestadores entram em <span className="text-gray-300">/login</span>.
               </p>
             </div>
 
@@ -89,7 +158,9 @@ function EntrarClienteContent() {
               ) : (
                 <GoogleIcon />
               )}
-              <span>{loading ? "Redirecionando..." : "Continuar com Google"}</span>
+              <span>
+                {loading && isLocalhostOAuthPopup() ? "Aguarde o popup…" : loading ? "Redirecionando..." : "Continuar com Google"}
+              </span>
             </button>
 
             <p className="text-xs text-gray-500 text-center">

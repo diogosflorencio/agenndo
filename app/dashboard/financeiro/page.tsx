@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
@@ -19,6 +19,14 @@ type RecordRow = {
 
 const PIE_COLORS = ["#13EC5B", "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B"];
 
+function parseReaisToCents(value: string): number | null {
+  const t = value.trim().replace(/\s/g, "").replace(",", ".");
+  if (!t) return null;
+  const n = Number(t);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n * 100);
+}
+
 export default function FinanceiroPage() {
   const { theme } = useTheme();
   const { business } = useDashboard();
@@ -26,27 +34,42 @@ export default function FinanceiroPage() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"day" | "week" | "month">("month");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [manualSaving, setManualSaving] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
+  const [manualForm, setManualForm] = useState({
+    date: new Date().toISOString().slice(0, 10),
+    client_name: "",
+    service_name: "",
+    collaborator_name: "",
+    amount: "",
+    paid: true,
+  });
   const isDark = theme === "dark";
   const tooltipStyle = isDark
     ? { background: "#0f1c15", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }
     : { background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" };
 
-  useEffect(() => {
+  const loadRecords = useCallback(() => {
     if (!business?.id) return;
+    setLoading(true);
     const supabase = createClient();
     const start = new Date();
     start.setMonth(start.getMonth() - 3);
-    supabase
+    void supabase
       .from("financial_records")
       .select("id, date, client_name, service_name, collaborator_name, amount_cents, paid")
       .eq("business_id", business.id)
       .gte("date", start.toISOString().slice(0, 10))
       .order("date", { ascending: false })
-      .then(({ data }) => {
-        setRecords((data as RecordRow[]) ?? []);
+      .then(({ data, error }) => {
+        if (!error) setRecords((data as RecordRow[]) ?? []);
         setLoading(false);
       });
   }, [business?.id]);
+
+  useEffect(() => {
+    loadRecords();
+  }, [loadRecords]);
 
   const totalMonth = records.reduce((s, r) => s + Number(r.amount_cents), 0);
   const paidMonth = records.filter((r) => r.paid).reduce((s, r) => s + Number(r.amount_cents), 0);
@@ -251,9 +274,13 @@ export default function FinanceiroPage() {
 
       {/* Transactions table */}
       <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-[#213428]">
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <h2 className="text-sm font-bold text-gray-900">Entradas</h2>
-          <button className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-900 transition-colors">
+          <button
+            type="button"
+            onClick={exportCsv}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900 transition-colors"
+          >
             <span className="material-symbols-outlined text-sm">download</span>
             Exportar CSV
           </button>
@@ -285,6 +312,143 @@ export default function FinanceiroPage() {
           )}
         </div>
       </div>
+
+      {showAddModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="manual-entry-title"
+          onClick={() => !manualSaving && setShowAddModal(false)}
+        >
+          <div
+            className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-xl p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="manual-entry-title" className="text-lg font-bold text-gray-900 mb-1">
+              Entrada manual
+            </h2>
+            <p className="text-xs text-gray-500 mb-4">Registre um valor sem vínculo com agendamento.</p>
+            <form
+              className="space-y-3"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!business?.id) return;
+                const cents = parseReaisToCents(manualForm.amount);
+                if (cents == null || cents <= 0) {
+                  setManualError("Informe um valor válido (ex.: 120 ou 120,50).");
+                  return;
+                }
+                setManualError(null);
+                setManualSaving(true);
+                const supabase = createClient();
+                const { error } = await supabase.from("financial_records").insert({
+                  business_id: business.id,
+                  appointment_id: null,
+                  date: manualForm.date,
+                  client_name: manualForm.client_name.trim() || null,
+                  service_name: manualForm.service_name.trim() || null,
+                  collaborator_name: manualForm.collaborator_name.trim() || null,
+                  amount_cents: cents,
+                  paid: manualForm.paid,
+                });
+                setManualSaving(false);
+                if (error) {
+                  setManualError(error.message);
+                  return;
+                }
+                setShowAddModal(false);
+                setManualForm({
+                  date: new Date().toISOString().slice(0, 10),
+                  client_name: "",
+                  service_name: "",
+                  collaborator_name: "",
+                  amount: "",
+                  paid: true,
+                });
+                loadRecords();
+              }}
+            >
+              <label className="block text-xs font-medium text-gray-600">
+                Data
+                <input
+                  type="date"
+                  required
+                  value={manualForm.date}
+                  onChange={(e) => setManualForm((f) => ({ ...f, date: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </label>
+              <label className="block text-xs font-medium text-gray-600">
+                Valor (R$)
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  required
+                  placeholder="ex.: 150 ou 150,50"
+                  value={manualForm.amount}
+                  onChange={(e) => setManualForm((f) => ({ ...f, amount: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </label>
+              <label className="block text-xs font-medium text-gray-600">
+                Cliente (opcional)
+                <input
+                  type="text"
+                  value={manualForm.client_name}
+                  onChange={(e) => setManualForm((f) => ({ ...f, client_name: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </label>
+              <label className="block text-xs font-medium text-gray-600">
+                Serviço (opcional)
+                <input
+                  type="text"
+                  value={manualForm.service_name}
+                  onChange={(e) => setManualForm((f) => ({ ...f, service_name: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </label>
+              <label className="block text-xs font-medium text-gray-600">
+                Colaborador (opcional)
+                <input
+                  type="text"
+                  value={manualForm.collaborator_name}
+                  onChange={(e) => setManualForm((f) => ({ ...f, collaborator_name: e.target.value }))}
+                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={manualForm.paid}
+                  onChange={(e) => setManualForm((f) => ({ ...f, paid: e.target.checked }))}
+                  className="rounded border-gray-300"
+                />
+                Já pago
+              </label>
+              {manualError && <p className="text-sm text-red-600">{manualError}</p>}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  disabled={manualSaving}
+                  onClick={() => setShowAddModal(false)}
+                  className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={manualSaving}
+                  className="flex-1 py-2.5 rounded-lg bg-primary text-black text-sm font-bold hover:opacity-90 disabled:opacity-50"
+                >
+                  {manualSaving ? "Salvando…" : "Salvar"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

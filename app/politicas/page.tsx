@@ -10,7 +10,6 @@ export default function PoliticasPage() {
       <nav className="relative z-10 border-b border-white/5 bg-[#020403]/80 backdrop-blur-lg">
         <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-            <span className="material-symbols-outlined text-primary text-2xl">calendar_month</span>
             <span className="text-lg font-bold tracking-tight text-white">Agenndo</span>
           </Link>
           <Link href="/" className="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1">

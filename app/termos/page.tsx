@@ -10,7 +10,6 @@ export default function TermosPage() {
       <nav className="relative z-10 border-b border-white/5 bg-[#020403]/80 backdrop-blur-lg">
         <div className="max-w-4xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-            <span className="material-symbols-outlined text-primary text-2xl">calendar_month</span>
             <span className="text-lg font-bold tracking-tight text-white">Agenndo</span>
           </Link>
           <Link href="/" className="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1">
@@ -22,7 +21,7 @@ export default function TermosPage() {
 
       <main className="relative z-10 max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Termos de Uso</h1>
-        <p className="text-gray-500 text-sm mb-10">Última atualização: 2024</p>
+        <p className="text-gray-500 text-sm mb-10">Última atualização: março de 2026</p>
 
         <div className="space-y-8 text-gray-400 leading-relaxed">
           <section>
@@ -50,13 +49,32 @@ export default function TermosPage() {
             </p>
           </section>
           <section>
-            <h2 className="text-lg font-bold text-white mb-3">5. Cancelamento</h2>
+            <h2 className="text-lg font-bold text-white mb-3">5. Preços, informações e continuidade</h2>
+            <p className="mb-3">
+              Os valores de assinatura são os indicados no cadastro ou na área de Conta no momento da contratação. O serviço pode
+              ser ofertado em mais de um valor comercial; a documentação voltada ao usuário utiliza a denominação genérica{" "}
+              <strong className="text-gray-300">Plano</strong> quando aplicável.
+            </p>
+            <p className="mb-3">
+              Você declara que as informações fornecidas sobre seu negócio são verdadeiras. Dados falsos, omissões relevantes ou
+              uso do serviço incompatível com o declarado podem ensejar{" "}
+              <strong className="text-gray-300">suspensão, encerramento da conta ou alteração das condições comerciais</strong>, a
+              critério do Agenndo, sem prejuízo de medidas legais cabíveis.
+            </p>
+            <p>
+              O Agenndo pode <strong className="text-gray-300">revisar preços ou condições para contas específicas</strong> quando
+              necessário à continuidade da operação. Quando possível, alterações relevantes serão comunicadas pelo painel ou
+              e-mail cadastrado.
+            </p>
+          </section>
+          <section>
+            <h2 className="text-lg font-bold text-white mb-3">6. Cancelamento</h2>
             <p>
               Você pode cancelar sua assinatura a qualquer momento pela área de Conta. O cancelamento não gera reembolso de valores já pagos, e o acesso permanece até o fim do período pago.
             </p>
           </section>
           <section>
-            <h2 className="text-lg font-bold text-white mb-3">6. Alterações</h2>
+            <h2 className="text-lg font-bold text-white mb-3">7. Alterações</h2>
             <p>
               Podemos alterar estes Termos de Uso. Alterações relevantes serão comunicadas por e-mail ou no painel. O uso continuado do serviço após as alterações constitui aceitação.
             </p>

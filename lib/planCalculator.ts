@@ -1,4 +1,4 @@
-import type { PlanId } from "./plans";
+import { type PlanId, type PaidPlanId, isPaidPlanId } from "./plans";
 
 type TeamSize = "1" | "2-5" | "6-15" | "16+";
 
@@ -8,9 +8,7 @@ interface RecommendationInput {
   averageTicket: number;
 }
 
-export function calculateRecommendedPlan(
-  input: RecommendationInput
-): PlanId {
+export function calculateRecommendedPlan(input: RecommendationInput): PlanId {
   const { teamSize, dailyAppointments, averageTicket } = input;
 
   const isLargeTeam = teamSize === "16+" || teamSize === "6-15";
@@ -22,23 +20,34 @@ export function calculateRecommendedPlan(
   const isMediumTicket = averageTicket >= 50 && averageTicket <= 150;
 
   if (isLargeTeam || isHighVolume || isHighTicket) {
-    return "enterprise";
+    return "plano_3";
   }
 
   if (isMediumTeam || isMediumVolume || isMediumTicket) {
-    return "growth";
+    return "plano_2";
   }
 
-  return "starter";
+  return "plano_1";
 }
 
-// ─── Plano dinâmico: usuário só vê a opção destinada ao perfil (preço + infra) ───
 export interface DynamicPlanResult {
   tier: PlanId;
   monthlyPrice: number;
   infrastructure: string;
   highlight: string;
   features: { title: string; sub: string }[];
+}
+
+function planOfferCopy(): Pick<DynamicPlanResult, "infrastructure" | "highlight" | "features"> {
+  return {
+    infrastructure: "",
+    highlight: "Valor mensal após o período de teste.",
+    features: [
+      { title: "Plano completo", sub: "Tudo que você precisa para receber agendamentos online." },
+      { title: "Cobrança recorrente", sub: "Cartão via Stripe quando você assinar." },
+      { title: "Teste grátis", sub: "Experimente antes de pagar." },
+    ],
+  };
 }
 
 export function calculateDynamicPlan(
@@ -50,53 +59,19 @@ export function calculateDynamicPlan(
   const load = collaborators * dailyVolume;
 
   if (load <= 10 && avgTicket < 80) {
-    return {
-      tier: "starter",
-      monthlyPrice: 49.9,
-      infrastructure: "Infraestrutura compartilhada otimizada",
-      highlight: "Ideal para quem está começando a digitalizar o negócio",
-      features: [
-        { title: "Agendamentos ilimitados", sub: "Sem limite de marcações por mês" },
-        { title: "Página pública personalizada", sub: "Seu link profissional para clientes" },
-        { title: "Notificações automáticas", sub: "Push e alertas em tempo real" },
-      ],
-    };
+    return { tier: "plano_1", monthlyPrice: 49.9, ...planOfferCopy() };
   }
   if (load <= 30 && avgTicket < 200) {
-    return {
-      tier: "growth",
-      monthlyPrice: 89.9,
-      infrastructure: "Infraestrutura dedicada com alta disponibilidade",
-      highlight: "Para negócios em crescimento que não podem parar",
-      features: [
-        { title: "Todos os recursos da plataforma", sub: "Preço definido conforme seu uso" },
-        { title: "Analytics completo 90 dias", sub: "Histórico detalhado por cliente e serviço" },
-        { title: "Relatórios exportáveis", sub: "CSV e PDF com dados financeiros" },
-      ],
-    };
+    return { tier: "plano_2", monthlyPrice: 89.9, ...planOfferCopy() };
   }
   if (load <= 70) {
-    return {
-      tier: "growth",
-      monthlyPrice: 149.9,
-      infrastructure: "Infraestrutura dedicada de alta performance",
-      highlight: "Para equipes consolidadas com volume expressivo",
-      features: [
-        { title: "Todos os recursos da plataforma", sub: "Preço conforme o volume do seu negócio" },
-        { title: "Colaboradores ilimitados", sub: "Cadastre toda a equipe sem restrições" },
-        { title: "Suporte prioritário", sub: "Atendimento em até 2h via WhatsApp" },
-      ],
-    };
+    return { tier: "plano_2", monthlyPrice: 149.9, ...planOfferCopy() };
   }
-  return {
-    tier: "enterprise",
-    monthlyPrice: 229.9,
-    infrastructure: "Infraestrutura enterprise com SLA garantido",
-    highlight: "Para operações de alto volume com exigência máxima",
-    features: [
-      { title: "Todos os recursos da plataforma", sub: "Preço sob medida para alto volume" },
-      { title: "SLA 99.9% de uptime", sub: "Garantia contratual de disponibilidade" },
-      { title: "Gerente de conta dedicado", sub: "Acompanhamento personalizado do negócio" },
-    ],
-  };
+  return { tier: "plano_3", monthlyPrice: 229.9, ...planOfferCopy() };
+}
+
+export function getDynamicPlanPresentationForTier(tier: PaidPlanId): DynamicPlanResult {
+  const monthlyPrice =
+    tier === "plano_1" ? 49.9 : tier === "plano_2" ? 89.9 : 229.9;
+  return { tier, monthlyPrice, ...planOfferCopy() };
 }

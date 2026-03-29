@@ -19,6 +19,11 @@ export type BusinessRow = {
   primary_color: string | null;
   logo_url: string | null;
   plan: string;
+  stripe_customer_id?: string | null;
+  stripe_subscription_id?: string | null;
+  subscription_status?: string | null;
+  stripe_price_id?: string | null;
+  subscription_current_period_end?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -29,6 +34,9 @@ export type ProfileRow = {
   full_name: string | null;
   avatar_url: string | null;
   role: string;
+  recommended_plan?: string | null;
+  recommended_price_display?: number | null;
+  onboarding_inputs?: Record<string, unknown> | null;
   created_at: string;
   updated_at: string;
 };

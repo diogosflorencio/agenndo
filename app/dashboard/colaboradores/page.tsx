@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
@@ -19,8 +19,10 @@ export default function ColaboradoresPage() {
   const [countsToday, setCountsToday] = useState<Record<string, number>>({});
   const [countsMonth, setCountsMonth] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     if (!business?.id) return;
     const supabase = createClient();
     const todayStr = new Date().toISOString().slice(0, 10);
@@ -33,7 +35,13 @@ export default function ColaboradoresPage() {
       .select("id, name, role, color, active")
       .eq("business_id", business.id)
       .order("name")
-      .then(({ data: collabs }) => {
+      .then(({ data: collabs, error }) => {
+        if (error) {
+          setListError(error.message);
+          setLoading(false);
+          return;
+        }
+        setListError(null);
         setCollaborators((collabs as CollabRow[]) ?? []);
         const ids = (collabs ?? []).map((c: { id: string }) => c.id);
         if (ids.length === 0) {
@@ -63,6 +71,23 @@ export default function ColaboradoresPage() {
       });
   }, [business?.id]);
 
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const toggleActive = async (c: CollabRow) => {
+    setBusyId(c.id);
+    setListError(null);
+    const supabase = createClient();
+    const { error } = await supabase.from("collaborators").update({ active: !c.active }).eq("id", c.id);
+    setBusyId(null);
+    if (error) {
+      setListError(error.message);
+      return;
+    }
+    load();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -73,6 +98,12 @@ export default function ColaboradoresPage() {
 
   return (
     <div className="w-full">
+      {listError && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+          {listError}
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Equipe</h1>
@@ -108,7 +139,7 @@ export default function ColaboradoresPage() {
                     <div className="flex items-center gap-1 mt-1.5">
                       <span className={`size-1.5 rounded-full ${collab.active ? "bg-primary" : "bg-gray-500"}`} />
                       <span className={`text-xs font-medium ${collab.active ? "text-primary" : "text-gray-500"}`}>
-                        {collab.active ? "Disponível hoje" : "Indisponível"}
+                        {collab.active ? "Ativo na equipe" : "Inativo"}
                       </span>
                     </div>
                   </div>
@@ -137,8 +168,16 @@ export default function ColaboradoresPage() {
                 <Link href={`/dashboard/colaboradores/${collab.id}/servicos`} className="bg-white hover:bg-gray-50 text-xs font-semibold text-gray-600 py-3 transition-colors flex items-center justify-center gap-1">
                   <span className="material-symbols-outlined text-xs">content_cut</span> Serviços
                 </Link>
-                <button type="button" className="bg-white hover:bg-gray-50 text-xs font-semibold text-gray-600 py-3 transition-colors flex items-center justify-center gap-1 text-red-500">
-                  Desativar
+                <button
+                  type="button"
+                  disabled={busyId === collab.id}
+                  onClick={() => void toggleActive(collab)}
+                  className={`bg-white hover:bg-gray-50 disabled:opacity-50 text-xs font-semibold py-3 transition-colors flex items-center justify-center gap-1 ${
+                    collab.active ? "text-red-600" : "text-primary"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-xs">{collab.active ? "person_off" : "person_add"}</span>
+                  {collab.active ? "Desativar" : "Ativar"}
                 </button>
               </div>
             </div>

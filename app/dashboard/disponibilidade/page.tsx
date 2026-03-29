@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   format,
   startOfMonth,
@@ -8,567 +8,1167 @@ import {
   startOfWeek,
   endOfWeek,
   addMonths,
-  subMonths,
-  isSameMonth,
-  isSameDay,
   addDays,
-  getDay,
+  eachDayOfInterval,
+  parseISO,
+  isSameDay,
+  isSameMonth,
   isBefore,
-  getDaysInMonth,
+  isToday,
+  getISOWeek,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { motion, AnimatePresence } from "framer-motion";
+import { useTheme } from "@/lib/theme-context";
+import {
+  DEFAULT_WEEKLY_SCHEDULE,
+  UI_DAY_ORDER,
+  dateToWeekdayKey,
+  emptySchedule,
+  sanitizeDaySchedule,
+  type DaySchedule,
+  type WeekdayKey,
+} from "@/lib/disponibilidade";
 
-const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
-const DAYS = [
-  { key: "mon", label: "Segunda-feira" },
-  { key: "tue", label: "Terça-feira" },
-  { key: "wed", label: "Quarta-feira" },
-  { key: "thu", label: "Quinta-feira" },
-  { key: "fri", label: "Sexta-feira" },
-  { key: "sat", label: "Sábado" },
-  { key: "sun", label: "Domingo" },
-];
+type WeekKey = WeekdayKey;
+type Scope = "padrao" | "dia" | "semana" | "mes";
 
-type DaySchedule = {
-  active: boolean;
-  start: string;
-  end: string;
-  breaks: { start: string; end: string }[];
-};
+const dk = (d: Date) => format(d, "yyyy-MM-dd");
+const wk = (d: Date): WeekKey => dateToWeekdayKey(d);
 
-const DEFAULT_SCHEDULE: Record<string, DaySchedule> = {
-  mon: { active: true, start: "09:00", end: "18:00", breaks: [{ start: "12:00", end: "13:00" }] },
-  tue: { active: true, start: "09:00", end: "18:00", breaks: [] },
-  wed: { active: true, start: "09:00", end: "20:00", breaks: [{ start: "12:00", end: "13:00" }] },
-  thu: { active: true, start: "09:00", end: "18:00", breaks: [] },
-  fri: { active: true, start: "09:00", end: "20:00", breaks: [] },
-  sat: { active: true, start: "08:00", end: "16:00", breaks: [] },
-  sun: { active: false, start: "09:00", end: "18:00", breaks: [] },
-};
+// ─── Interactive Timeline (0–24h, 1-min snap) ────────────────────────────────
 
-const emptySchedule = (): DaySchedule => ({
-  active: true,
-  start: "09:00",
-  end: "18:00",
-  breaks: [],
-});
+const TL_LO = 0;    // 00:00
+const TL_HI = 1440; // 24:00
 
-function SingleDayForm({
+function toM(t: string) {
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
+function fromM(m: number) {
+  const hh = Math.floor(m / 60).toString().padStart(2, "0");
+  const mm = (m % 60).toString().padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+function tlPct(m: number) {
+  return Math.max(0, Math.min(100, ((m - TL_LO) / (TL_HI - TL_LO)) * 100));
+}
+function clamp(v: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+type DragKind =
+  | "start" | "end"
+  | { brk: "start"; i: number } | { brk: "end"; i: number }
+  | "move" | { brk: "move"; i: number };
+
+function InteractiveTimeline({
   schedule,
   onChange,
-  compact = false,
+  isDark,
 }: {
   schedule: DaySchedule;
   onChange: (s: DaySchedule) => void;
-  compact?: boolean;
+  isDark: boolean;
 }) {
-  const update = (field: keyof DaySchedule, value: unknown) => {
-    onChange({ ...schedule, [field]: value });
+  const barRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<{
+    kind: DragKind;
+    startX: number;
+    origStart: number; origEnd: number;
+    origBrkStart?: number; origBrkEnd?: number;
+  } | null>(null);
+
+  const pxToMin = (px: number, width: number) =>
+    clamp(Math.round((px / width) * TL_HI), TL_LO, TL_HI);
+
+  const deltaPxToMin = (dpx: number, width: number) =>
+    Math.round((dpx / width) * TL_HI);
+
+  const clientX = (e: MouseEvent | TouchEvent) =>
+    "touches" in e ? (e.touches[0]?.clientX ?? 0) : e.clientX;
+
+  const startDrag = (e: React.MouseEvent | React.TouchEvent, kind: DragKind) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!barRef.current) return;
+    const cx = "touches" in e ? (e.touches[0]?.clientX ?? 0) : e.clientX;
+    const brkIdx = typeof kind === "object" && "brk" in kind && "i" in kind ? kind.i : 0;
+    dragRef.current = {
+      kind,
+      startX: cx,
+      origStart: toM(schedule.start),
+      origEnd: toM(schedule.end),
+      origBrkStart: typeof kind === "object" && "brk" in kind
+        ? toM(schedule.breaks[brkIdx]?.start ?? "12:00") : undefined,
+      origBrkEnd: typeof kind === "object" && "brk" in kind
+        ? toM(schedule.breaks[brkIdx]?.end ?? "13:00") : undefined,
+    };
+
+    const onMove = (ev: MouseEvent | TouchEvent) => {
+      if (!dragRef.current || !barRef.current) return;
+      const rect = barRef.current.getBoundingClientRect();
+      const cx2 = clientX(ev);
+      const absMin = pxToMin(cx2 - rect.left, rect.width);
+      const dMin = deltaPxToMin(cx2 - dragRef.current.startX, rect.width);
+      const { kind: k, origStart, origEnd, origBrkStart, origBrkEnd } = dragRef.current;
+      const s: DaySchedule = { ...schedule, breaks: schedule.breaks.map((b) => ({ ...b })) };
+
+      if (k === "start") {
+        s.start = fromM(clamp(absMin, TL_LO, toM(s.end) - 1));
+      } else if (k === "end") {
+        s.end = fromM(clamp(absMin, toM(s.start) + 1, TL_HI));
+      } else if (k === "move") {
+        const dur = origEnd - origStart;
+        const ns = clamp(origStart + dMin, TL_LO, TL_HI - dur);
+        s.start = fromM(ns); s.end = fromM(ns + dur);
+      } else if (typeof k === "object" && "brk" in k) {
+        const i = k.i;
+        if (k.brk === "start") {
+          s.breaks[i].start = fromM(clamp(absMin, toM(s.start), toM(s.breaks[i].end) - 1));
+        } else if (k.brk === "end") {
+          s.breaks[i].end = fromM(clamp(absMin, toM(s.breaks[i].start) + 1, toM(s.end)));
+        } else if (k.brk === "move") {
+          const dur = (origBrkEnd ?? 0) - (origBrkStart ?? 0);
+          const ns = clamp((origBrkStart ?? 0) + dMin, toM(s.start), toM(s.end) - dur);
+          s.breaks[i].start = fromM(ns); s.breaks[i].end = fromM(ns + dur);
+        }
+      }
+      onChange(sanitizeDaySchedule({ ...s, active: true }));
+    };
+
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("touchend", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", onMove, { passive: false });
+    window.addEventListener("touchend", onUp);
   };
+
+  // Hour marks every 4h for readability
+  const hourMarks = [0, 4, 8, 12, 16, 20, 24];
+  const lo = tlPct(toM(schedule.start));
+  const hi = tlPct(toM(schedule.end));
+
   return (
-    <div className={compact ? "space-y-1.5" : "space-y-2"}>
-      <div className="flex items-center gap-2 flex-wrap">
-        <button
-          type="button"
-          onClick={() => update("active", !schedule.active)}
-          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${
-            schedule.active ? "bg-primary" : "bg-gray-200"
-          }`}
-        >
+    <div className="space-y-2 mb-3">
+      {/* Hour labels */}
+      <div className="relative h-3 select-none mx-0">
+        {hourMarks.map((h) => (
           <span
-            className="inline-block size-3.5 rounded-full bg-white transition-transform"
-            style={{ transform: schedule.active ? "translateX(18px)" : "translateX(2px)" }}
-          />
-        </button>
-        <span className="text-xs text-gray-600">{schedule.active ? "Aberto" : "Fechado"}</span>
+            key={h}
+            className={`absolute text-[9px] font-mono -translate-x-1/2 ${isDark ? "text-white/30" : "text-gray-400"}`}
+            style={{ left: `${tlPct(h * 60)}%` }}
+          >
+            {h === 24 ? "24h" : `${h}h`}
+          </span>
+        ))}
       </div>
-      {schedule.active && (
-        <>
-          <div className="flex items-center gap-2 flex-wrap">
-            <input
-              type="time"
-              value={schedule.start}
-              onChange={(e) => update("start", e.target.value)}
-              className="h-8 bg-white border border-gray-200 focus:border-primary rounded-lg px-2 text-gray-900 text-xs outline-none w-20"
-            />
-            <span className="text-gray-400">–</span>
-            <input
-              type="time"
-              value={schedule.end}
-              onChange={(e) => update("end", e.target.value)}
-              className="h-8 bg-white border border-gray-200 focus:border-primary rounded-lg px-2 text-gray-900 text-xs outline-none w-20"
-            />
-          </div>
-          {schedule.breaks.map((br, i) => (
-            <div key={i} className="flex items-center gap-1.5 flex-wrap">
-              <span className="material-symbols-outlined text-yellow-500 text-sm">coffee</span>
-              <input
-                type="time"
-                value={br.start}
-                onChange={(e) => {
-                  const next = [...schedule.breaks];
-                  next[i] = { ...next[i], start: e.target.value };
-                  update("breaks", next);
-                }}
-                className="h-7 w-20 rounded border border-gray-200 px-1.5 text-xs"
+
+      {/* Bar */}
+      <div
+        ref={barRef}
+        className={`relative h-7 rounded-lg select-none touch-none ${isDark ? "bg-white/8" : "bg-gray-200/70"}`}
+      >
+        {/* Grid lines */}
+        {hourMarks.map((h) => (
+          <div
+            key={h}
+            className={`absolute top-0 bottom-0 w-px ${isDark ? "bg-white/8" : "bg-gray-300/60"}`}
+            style={{ left: `${tlPct(h * 60)}%` }}
+          />
+        ))}
+
+        {/* Active range */}
+        <div
+          className="absolute top-1 bottom-1 rounded cursor-grab active:cursor-grabbing bg-primary/75"
+          style={{ left: `${lo}%`, width: `${hi - lo}%` }}
+          onMouseDown={(e) => startDrag(e, "move")}
+          onTouchStart={(e) => startDrag(e, "move")}
+        />
+
+        {/* Breaks */}
+        {schedule.breaks.map((br, i) => {
+          const blo = tlPct(toM(br.start));
+          const bhi = tlPct(toM(br.end));
+          return (
+            <div
+              key={i}
+              className={`absolute top-1 bottom-1 rounded cursor-grab active:cursor-grabbing border ${
+                isDark ? "bg-[#020403] border-white/15" : "bg-gray-100 border-gray-300"
+              }`}
+              style={{ left: `${blo}%`, width: `${bhi - blo}%` }}
+              onMouseDown={(e) => startDrag(e, { brk: "move", i })}
+              onTouchStart={(e) => startDrag(e, { brk: "move", i })}
+            >
+              <div
+                className={`absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 size-3 rounded-full border-2 cursor-ew-resize z-10 ${
+                  isDark ? "bg-[#020403] border-amber-400" : "bg-white border-amber-500"
+                }`}
+                onMouseDown={(e) => { e.stopPropagation(); startDrag(e, { brk: "start", i }); }}
+                onTouchStart={(e) => { e.stopPropagation(); startDrag(e, { brk: "start", i }); }}
               />
-              <span className="text-gray-400">–</span>
-              <input
-                type="time"
-                value={br.end}
-                onChange={(e) => {
-                  const next = [...schedule.breaks];
-                  next[i] = { ...next[i], end: e.target.value };
-                  update("breaks", next);
-                }}
-                className="h-7 w-20 rounded border border-gray-200 px-1.5 text-xs"
+              <div
+                className={`absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 size-3 rounded-full border-2 cursor-ew-resize z-10 ${
+                  isDark ? "bg-[#020403] border-amber-400" : "bg-white border-amber-500"
+                }`}
+                onMouseDown={(e) => { e.stopPropagation(); startDrag(e, { brk: "end", i }); }}
+                onTouchStart={(e) => { e.stopPropagation(); startDrag(e, { brk: "end", i }); }}
               />
-              <button
-                type="button"
-                onClick={() => update("breaks", schedule.breaks.filter((_, j) => j !== i))}
-                className="text-gray-400 hover:text-red-500"
-              >
-                <span className="material-symbols-outlined text-sm">close</span>
-              </button>
             </div>
-          ))}
+          );
+        })}
+
+        {/* Start handle */}
+        <div
+          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 size-4 rounded-full border-2 border-primary cursor-ew-resize z-20 shadow ${
+            isDark ? "bg-[#020403]" : "bg-white"
+          }`}
+          style={{ left: `${lo}%` }}
+          onMouseDown={(e) => startDrag(e, "start")}
+          onTouchStart={(e) => startDrag(e, "start")}
+        />
+        {/* End handle */}
+        <div
+          className={`absolute top-1/2 -translate-y-1/2 translate-x-1/2 size-4 rounded-full border-2 border-primary cursor-ew-resize z-20 shadow ${
+            isDark ? "bg-[#020403]" : "bg-white"
+          }`}
+          style={{ right: `${100 - hi}%` }}
+          onMouseDown={(e) => startDrag(e, "end")}
+          onTouchStart={(e) => startDrag(e, "end")}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Mini Calendar for date/week/month selection ───────────────────────────────
+
+function MiniCalendar({
+  scope,
+  selDay,
+  selWeekMonday,
+  selMonth,
+  onSelectDay,
+  onSelectWeek,
+  onSelectMonth,
+  isDark,
+}: {
+  scope: Scope;
+  selDay: string;
+  selWeekMonday: string;
+  selMonth: string;
+  onSelectDay: (d: string) => void;
+  onSelectWeek: (mon: string) => void;
+  onSelectMonth: (m: string) => void;
+  isDark: boolean;
+}) {
+  const today = new Date();
+  const monthFloor = startOfMonth(today);
+
+  const [viewMonth, setViewMonth] = useState(() => {
+    if (scope === "dia") return startOfMonth(parseISO(selDay));
+    if (scope === "semana") return startOfMonth(parseISO(selWeekMonday));
+    if (scope === "mes") {
+      const [y, m] = selMonth.split("-").map(Number);
+      return startOfMonth(new Date(y, m - 1, 1));
+    }
+    return startOfMonth(today);
+  });
+
+  const [mesNavMonth, setMesNavMonth] = useState(() => {
+    const [y, m] = selMonth.split("-").map(Number);
+    return startOfMonth(new Date(y, m - 1, 1));
+  });
+
+  useEffect(() => {
+    if (scope !== "mes") return;
+    const [y, m] = selMonth.split("-").map(Number);
+    setMesNavMonth(startOfMonth(new Date(y, m - 1, 1)));
+  }, [scope, selMonth]);
+
+  if (scope === "mes") {
+    const goMes = (delta: number) => {
+      const next = addMonths(mesNavMonth, delta);
+      if (delta < 0 && isBefore(next, monthFloor)) return;
+      setMesNavMonth(next);
+      onSelectMonth(format(next, "yyyy-MM"));
+    };
+
+    return (
+      <div className="space-y-3">
+        <p className={`text-[10px] ${isDark ? "text-white/35" : "text-gray-500"}`}>
+          Avance quantos meses quiser à frente; volte até o mês atual.
+        </p>
+        <div className="flex items-center justify-between gap-2">
           <button
             type="button"
-            onClick={() => update("breaks", [...schedule.breaks, { start: "12:00", end: "13:00" }])}
-            className="text-xs text-primary hover:underline flex items-center gap-0.5"
+            onClick={() => goMes(-1)}
+            disabled={isSameMonth(mesNavMonth, monthFloor)}
+            className={`size-9 rounded-lg flex items-center justify-center text-sm transition-colors disabled:opacity-25 disabled:pointer-events-none ${
+              isDark ? "hover:bg-white/8 text-white/60" : "hover:bg-gray-100 text-gray-600"
+            }`}
           >
-            <span className="material-symbols-outlined text-xs">add</span>
-            Intervalo
+            ‹
           </button>
-        </>
-      )}
-    </div>
-  );
-}
+          <span className={`text-sm font-bold capitalize text-center flex-1 ${isDark ? "text-white" : "text-gray-900"}`}>
+            {format(mesNavMonth, "MMMM yyyy", { locale: ptBR })}
+          </span>
+          <button
+            type="button"
+            onClick={() => goMes(1)}
+            className={`size-9 rounded-lg flex items-center justify-center text-sm transition-colors ${
+              isDark ? "hover:bg-white/8 text-white/60" : "hover:bg-gray-100 text-gray-600"
+            }`}
+          >
+            ›
+          </button>
+        </div>
+      </div>
+    );
+  }
 
-function MonthScheduleForm({
-  calendarMonth,
-  onApplyToMonth,
-}: {
-  calendarMonth: Date;
-  onApplyToMonth: (s: DaySchedule) => void;
-}) {
-  const [tempSchedule, setTempSchedule] = useState<DaySchedule>(emptySchedule());
+  // Calendar grid for dia/semana — semanas começam na segunda (ISO), com coluna de número da semana
+  const monthStart = startOfMonth(viewMonth);
+  const monthEnd = endOfMonth(viewMonth);
+  const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
+  const calEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
+  const flatDays = eachDayOfInterval({ start: calStart, end: calEnd });
+  const weekRows: Date[][] = [];
+  for (let i = 0; i < flatDays.length; i += 7) {
+    weekRows.push(flatDays.slice(i, i + 7));
+  }
+
+  const selDayDate = scope === "dia" ? parseISO(selDay) : null;
+  const selWeekMondayDate = scope === "semana" ? parseISO(selWeekMonday) : null;
+
+  const isInSelWeek = (d: Date) => {
+    if (!selWeekMondayDate) return false;
+    const sun = addDays(selWeekMondayDate, 6);
+    return d >= selWeekMondayDate && d <= sun;
+  };
+
+  const isWeekStart = (d: Date) => !!(selWeekMondayDate && isSameDay(d, selWeekMondayDate));
+  const isWeekEnd = (d: Date) => !!(selWeekMondayDate && isSameDay(d, addDays(selWeekMondayDate, 6)));
+
+  const weekDayLabels = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+
   return (
-    <div className="space-y-3">
-      <SingleDayForm schedule={tempSchedule} onChange={setTempSchedule} />
-      <button
-        type="button"
-        onClick={() => onApplyToMonth(tempSchedule)}
-        className="w-full py-2.5 bg-primary hover:bg-primary/90 text-black font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+    <div className="space-y-2">
+      {/* Month nav */}
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={() => setViewMonth((v) => addMonths(v, -1))}
+          disabled={isSameMonth(viewMonth, today)}
+          className={`size-7 rounded-lg flex items-center justify-center text-sm transition-colors disabled:opacity-25 ${
+            isDark ? "hover:bg-white/8 text-white/60" : "hover:bg-gray-100 text-gray-600"
+          }`}
+        >
+          ‹
+        </button>
+        <span className={`text-xs font-bold uppercase tracking-wider ${isDark ? "text-white/60" : "text-gray-700"}`}>
+          {format(viewMonth, "MMMM yyyy", { locale: ptBR })}
+        </span>
+        <button
+          type="button"
+          onClick={() => setViewMonth((v) => addMonths(v, 1))}
+          className={`size-7 rounded-lg flex items-center justify-center text-sm transition-colors ${
+            isDark ? "hover:bg-white/8 text-white/60" : "hover:bg-gray-100 text-gray-600"
+          }`}
+        >
+          ›
+        </button>
+      </div>
+
+      <p className={`text-[10px] ${isDark ? "text-white/35" : "text-gray-500"}`}>Semanas com início na segunda · número da semana ISO</p>
+
+      <div
+        className="grid gap-0.5 w-full"
+        style={{ gridTemplateColumns: "minmax(2rem,auto) repeat(7, minmax(0, 1fr))" }}
       >
-        <span className="material-symbols-outlined text-lg">event_available</span>
-        Aplicar a todo o mês de {format(calendarMonth, "MMMM", { locale: ptBR })}
-      </button>
+        <div />
+        {weekDayLabels.map((l) => (
+          <div key={l} className={`text-center text-[9px] font-bold py-0.5 ${isDark ? "text-white/35" : "text-gray-400"}`}>
+            {l}
+          </div>
+        ))}
+        {weekRows.map((week) => {
+          const wn = getISOWeek(week[0]!);
+          return (
+            <div key={dk(week[0]!)} className="contents">
+              <div
+                className={`flex items-center justify-center text-[9px] font-bold font-mono tabular-nums leading-none py-1 ${
+                  isDark ? "text-white/45" : "text-gray-500"
+                }`}
+                title={`Semana ISO ${wn}`}
+              >
+                {wn}
+              </div>
+              {week.map((d) => {
+                const inMonth = isSameMonth(d, viewMonth);
+                const isPast = d < today && !isToday(d);
+                const isSel = selDayDate ? isSameDay(d, selDayDate) : false;
+                const inWeek = isInSelWeek(d);
+                const isWS = isWeekStart(d);
+                const isWE = isWeekEnd(d);
+                const itIsToday = isToday(d);
+
+                return (
+                  <button
+                    key={dk(d)}
+                    type="button"
+                    disabled={isPast && !isToday(d)}
+                    onClick={() => {
+                      if (scope === "dia") onSelectDay(dk(d));
+                      else if (scope === "semana") onSelectWeek(dk(startOfWeek(d, { weekStartsOn: 1 })));
+                    }}
+                    className={`
+                relative h-7 w-full flex items-center justify-center text-[11px] font-medium transition-all
+                ${!inMonth ? "opacity-20" : ""}
+                ${isPast ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}
+                ${isSel ? "bg-primary text-black rounded-lg font-bold" : ""}
+                ${inWeek && !isSel ? (isDark ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary") : ""}
+                ${isWS && !isSel ? "rounded-l-lg" : ""}
+                ${isWE && !isSel ? "rounded-r-lg" : ""}
+                ${!isSel && !inWeek && inMonth ? (isDark ? "hover:bg-white/8 text-white/70" : "hover:bg-gray-100 text-gray-700") : ""}
+                ${itIsToday && !isSel ? "ring-1 ring-primary/50 rounded-lg" : ""}
+              `}
+                  >
+                    {format(d, "d")}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
-function dateToKey(d: Date): string {
-  return format(d, "yyyy-MM-dd");
+function Card({ children, className = "", isDark }: { children: React.ReactNode; className?: string; isDark: boolean }) {
+  return (
+    <div
+      className={`rounded-xl border shadow-sm overflow-hidden ${isDark ? "bg-[#080c0a] border-white/10" : "bg-white border-gray-200"} ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
 
-function getWeekdayKey(d: Date): string {
-  return DAY_KEYS[getDay(d)];
+function CardHeader({
+  title,
+  subtitle,
+  action,
+  isDark,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+  isDark: boolean;
+}) {
+  return (
+    <div className={`flex items-center justify-between px-5 py-4 border-b ${isDark ? "border-white/10" : "border-gray-200"}`}>
+      <div>
+        <p className={`text-sm font-bold ${isDark ? "text-white" : "text-gray-900"}`}>{title}</p>
+        {subtitle && <p className={`text-[11px] mt-0.5 ${isDark ? "text-white/45" : "text-gray-500"}`}>{subtitle}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function SliderRow({
+  label,
+  sublabel,
+  value,
+  onChange,
+  min,
+  max,
+  step,
+  marks,
+  unit,
+  isDark,
+}: {
+  label: string;
+  sublabel: string;
+  value: number;
+  onChange: (v: number) => void;
+  min: number;
+  max: number;
+  step: number;
+  marks: string[];
+  unit: string;
+  isDark: boolean;
+}) {
+  const p = ((value - min) / (max - min)) * 100;
+  return (
+    <div className={`py-4 border-b last:border-0 ${isDark ? "border-white/10" : "border-gray-100"}`}>
+      <div className="flex items-start justify-between mb-3">
+        <div>
+          <p className={`text-sm font-medium ${isDark ? "text-white" : "text-gray-900"}`}>{label}</p>
+          <p className={`text-[11px] mt-0.5 ${isDark ? "text-white/45" : "text-gray-500"}`}>{sublabel}</p>
+        </div>
+        <span className="text-sm font-bold font-mono text-primary ml-4 shrink-0">
+          {value}
+          {unit}
+        </span>
+      </div>
+      <div className="relative h-4 flex items-center">
+        <div className={`absolute w-full h-1 rounded-full ${isDark ? "bg-white/10" : "bg-gray-200"}`} />
+        <div className="absolute h-1 rounded-full bg-primary" style={{ width: `${p}%` }} />
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="absolute w-full opacity-0 cursor-pointer h-4 z-[2]"
+        />
+        <div
+          className={`absolute size-4 rounded-full pointer-events-none border-2 border-primary bg-white shadow z-[1] transition-transform`}
+          style={{ left: `calc(${p}% - 8px)` }}
+        />
+      </div>
+      <div className="flex justify-between mt-2">
+        {marks.map((m) => (
+          <span key={m} className={`text-[9px] font-mono ${isDark ? "text-white/35" : "text-gray-400"}`}>
+            {m}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function selectClass(isDark: boolean) {
+  return `w-full max-w-md mt-2 rounded-lg border px-3 py-2 text-sm outline-none transition-colors ${
+    isDark ? "bg-white/5 border-white/10 text-white focus:border-primary" : "bg-gray-50 border-gray-200 text-gray-900 focus:border-primary"
+  }`;
 }
 
 export default function DisponibilidadePage() {
-  const [schedule, setSchedule] = useState(DEFAULT_SCHEDULE);
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+
+  const [hydrated, setHydrated] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [schedule, setSchedule] = useState<Record<WeekKey, DaySchedule>>(() => ({ ...DEFAULT_WEEKLY_SCHEDULE }));
   const [buffer, setBuffer] = useState(15);
   const [minAdvance, setMinAdvance] = useState(2);
   const [maxFutureDays, setMaxFutureDays] = useState(60);
-  const [activeTab, setActiveTab] = useState<"padrao" | "excecoes" | "bloqueios">("padrao");
+  const [scope, setScope] = useState<Scope>("padrao");
+  const [selDay, setSelDay] = useState(() => dk(new Date()));
+  const [selWeekMonday, setSelWeekMonday] = useState(() => dk(startOfWeek(new Date(), { weekStartsOn: 1 })));
+  const [selMonth, setSelMonth] = useState(() => format(startOfMonth(new Date()), "yyyy-MM"));
+  const [overrides, setOverrides] = useState<Record<string, DaySchedule>>({});
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(() => new Set(UI_DAY_ORDER.map((o) => o.key)));
+  const [saveState, setSaveState] = useState<"idle" | "loading" | "ok" | "err">("idle");
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Calendário: escopo (padrão = só semanal, dia/semana/mês = período específico)
-  const [scope, setScope] = useState<"padrao" | "dia" | "semana" | "mes">("padrao");
-  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [specificSchedules, setSpecificSchedules] = useState<Record<string, DaySchedule>>({});
+  useEffect(() => {
+    if (scope === "padrao") setExpandedRows(new Set(UI_DAY_ORDER.map((o) => o.key)));
+    else setExpandedRows(new Set());
+  }, [scope]);
 
-  const updateDay = (key: string, field: keyof DaySchedule, value: unknown) => {
-    setSchedule((prev) => ({
-      ...prev,
-      [key]: { ...prev[key], [field]: value },
-    }));
-  };
-
-  const getScheduleForDate = (d: Date): DaySchedule => {
-    const key = dateToKey(d);
-    if (specificSchedules[key]) return specificSchedules[key];
-    const weekdayKey = getWeekdayKey(d);
-    return schedule[weekdayKey] ?? emptySchedule();
-  };
-
-  const setScheduleForDate = (d: Date, s: DaySchedule) => {
-    setSpecificSchedules((prev) => ({ ...prev, [dateToKey(d)]: s }));
-  };
-
-  const calendarWeeks = useMemo(() => {
-    const start = startOfWeek(startOfMonth(calendarMonth), { weekStartsOn: 1 });
-    const end = endOfWeek(endOfMonth(calendarMonth), { weekStartsOn: 1 });
-    const weeks: Date[][] = [];
-    let d = start;
-    while (isBefore(d, end) || isSameDay(d, end)) {
-      const week: Date[] = [];
-      for (let i = 0; i < 7; i++) {
-        week.push(d);
-        d = addDays(d, 1);
+  useEffect(() => {
+    let ok = true;
+    (async () => {
+      try {
+        const r = await fetch("/api/dashboard/availability");
+        const data = await r.json();
+        if (!ok) return;
+        if (!r.ok) {
+          setLoadError(data.error ?? "Erro ao carregar");
+          setHydrated(true);
+          return;
+        }
+        const wkSch = { ...DEFAULT_WEEKLY_SCHEDULE, ...data.weekly } as Record<WeekKey, DaySchedule>;
+        (Object.keys(wkSch) as WeekKey[]).forEach((k) => {
+          wkSch[k] = sanitizeDaySchedule({ ...wkSch[k] });
+        });
+        setSchedule(wkSch);
+        const ov = (data.overrides ?? {}) as Record<string, DaySchedule>;
+        setOverrides(Object.fromEntries(Object.entries(ov).map(([k, v]) => [k, sanitizeDaySchedule({ ...v })])));
+        setBuffer(data.booking?.bufferMinutes ?? 15);
+        setMinAdvance(data.booking?.minAdvanceHours ?? 2);
+        setMaxFutureDays(data.booking?.maxFutureDays ?? 60);
+        setLoadError(null);
+      } catch {
+        if (ok) setLoadError("Falha de rede");
+      } finally {
+        if (ok) setHydrated(true);
       }
-      weeks.push(week);
-    }
-    return weeks;
-  }, [calendarMonth]);
+    })();
+    return () => {
+      ok = false;
+    };
+  }, []);
 
-  const selectedWeekDates = useMemo(() => {
-    if (!selectedDate || scope !== "semana") return [];
-    const start = startOfWeek(selectedDate, { weekStartsOn: 1 });
-    return Array.from({ length: 7 }, (_, i) => addDays(start, i));
-  }, [selectedDate, scope]);
+  const monthStartDate = useMemo(() => {
+    const [y, m] = selMonth.split("-").map(Number);
+    return new Date(y, m - 1, 1);
+  }, [selMonth]);
+
+  const toggleExpand = (id: string) =>
+    setExpandedRows((p) => {
+      const n = new Set(p);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+
+  const updateDay = (key: WeekKey, s: DaySchedule) =>
+    setSchedule((p) => ({ ...p, [key]: sanitizeDaySchedule(s) }));
+
+  const getForDate = (d: Date): DaySchedule => {
+    const raw = overrides[dk(d)] ?? schedule[wk(d)] ?? emptySchedule();
+    return sanitizeDaySchedule({ ...raw });
+  };
+
+  const setForDate = (d: Date, s: DaySchedule) =>
+    setOverrides((p) => ({ ...p, [dk(d)]: sanitizeDaySchedule(s) }));
+
+  // Apply a schedule to every date in a week (Mon–Sun)
+  const updateWeekDates = (mondayStr: string, s: DaySchedule) => {
+    const clean = sanitizeDaySchedule(s);
+    const mon = parseISO(mondayStr);
+    setOverrides((p) => {
+      const next = { ...p };
+      for (let i = 0; i < 7; i++) next[dk(addDays(mon, i))] = { ...clean };
+      return next;
+    });
+  };
+
+  // Apply a schedule to every date in a month
+  const updateAllDatesInMonth = (monthStart: Date, s: DaySchedule) => {
+    const clean = sanitizeDaySchedule(s);
+    const dates = eachDayOfInterval({ start: startOfMonth(monthStart), end: endOfMonth(monthStart) });
+    setOverrides((p) => {
+      const next = { ...p };
+      for (const d of dates) next[dk(d)] = { ...clean };
+      return next;
+    });
+  };
+
+  type ScheduleRow =
+    | { id: string; label: string; kind: "weekly"; key: WeekKey }
+    | { id: string; label: string; kind: "day"; date: Date }
+    | { id: string; label: string; kind: "week"; mondayStr: string }
+    | { id: string; label: string; kind: "month"; monthStart: Date };
+
+  const scheduleRows: ScheduleRow[] = useMemo(() => {
+    if (scope === "padrao") {
+      return UI_DAY_ORDER.map((o) => ({ id: o.key, label: o.label, kind: "weekly" as const, key: o.key }));
+    }
+    if (scope === "dia") {
+      const d = parseISO(selDay);
+      return [{ id: selDay, label: format(d, "EEEE, d 'de' MMMM yyyy", { locale: ptBR }), kind: "day" as const, date: d }];
+    }
+    if (scope === "semana") {
+      const mon = parseISO(selWeekMonday);
+      const sun = addDays(mon, 6);
+      const label = `${format(mon, "d 'de' MMM", { locale: ptBR })} – ${format(sun, "d 'de' MMM yyyy", { locale: ptBR })}`;
+      return [{ id: selWeekMonday, label, kind: "week" as const, mondayStr: selWeekMonday }];
+    }
+    if (scope === "mes") {
+      const label = format(monthStartDate, "MMMM yyyy", { locale: ptBR });
+      return [{ id: selMonth, label, kind: "month" as const, monthStart: monthStartDate }];
+    }
+    return [];
+  }, [scope, selDay, selWeekMonday, monthStartDate, selMonth]);
+
+  // Get a representative schedule for display (first date of the period, or the weekly default)
+  const resolveRowSchedule = (row: ScheduleRow): DaySchedule => {
+    if (row.kind === "weekly") return sanitizeDaySchedule({ ...schedule[row.key] });
+    if (row.kind === "day") return getForDate(row.date);
+    if (row.kind === "week") {
+      // Use Monday as representative
+      return getForDate(parseISO(row.mondayStr));
+    }
+    if (row.kind === "month") {
+      return getForDate(row.monthStart);
+    }
+    return emptySchedule();
+  };
+
+  const applyRowChange = (row: ScheduleRow, s: DaySchedule) => {
+    if (row.kind === "weekly") updateDay(row.key, s);
+    else if (row.kind === "day") setForDate(row.date, s);
+    else if (row.kind === "week") updateWeekDates(row.mondayStr, s);
+    else if (row.kind === "month") updateAllDatesInMonth(row.monthStart, s);
+  };
+
+  const clearOverridesForCurrentPeriod = useCallback(() => {
+    setOverrides((prev) => {
+      const next = { ...prev };
+      if (scope === "dia") {
+        delete next[selDay];
+      } else if (scope === "semana") {
+        const mon = parseISO(selWeekMonday);
+        for (let i = 0; i < 7; i++) delete next[dk(addDays(mon, i))];
+      } else if (scope === "mes") {
+        for (const d of eachDayOfInterval({ start: startOfMonth(monthStartDate), end: endOfMonth(monthStartDate) })) {
+          delete next[dk(d)];
+        }
+      } else if (scope === "padrao") {
+        return {};
+      }
+      return next;
+    });
+  }, [scope, selDay, selWeekMonday, monthStartDate]);
+
+  const save = useCallback(async () => {
+    setSaveState("loading");
+    setSaveError(null);
+    try {
+      const r = await fetch("/api/dashboard/availability", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weekly: schedule,
+          overrides,
+          booking: { bufferMinutes: buffer, minAdvanceHours: minAdvance, maxFutureDays: maxFutureDays },
+        }),
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error ?? "Erro ao salvar");
+      setSaveState("ok");
+      setTimeout(() => setSaveState("idle"), 2200);
+    } catch (e) {
+      setSaveState("err");
+      setSaveError(e instanceof Error ? e.message : "Erro");
+    }
+  }, [schedule, overrides, buffer, minAdvance, maxFutureDays]);
+
+  const personalizedCount = Object.keys(overrides).length;
+
+  const pageBg = isDark ? "bg-[#020403]" : "bg-gray-50";
+  const textMuted = isDark ? "text-white/50" : "text-gray-600";
+
+  const horariosCardTitle = useMemo(() => {
+    switch (scope) {
+      case "padrao":
+        return "Horários de todos os dias não personalizados";
+      case "dia":
+        return `Horário do dia — ${format(parseISO(selDay), "d 'de' MMMM yyyy", { locale: ptBR })}`;
+      case "semana":
+        return "Horários da semana selecionada";
+      case "mes":
+        return `Horários do mês — ${format(monthStartDate, "MMMM yyyy", { locale: ptBR })}`;
+      default:
+        return "Horários";
+    }
+  }, [scope, selDay, monthStartDate]);
+
+  const horariosSubtitle = useMemo(() => {
+    switch (scope) {
+      case "padrao":
+        return "Modelo semanal: vale para qualquer data em que não haja personalização por dia, semana ou mês";
+      case "dia":
+        return "Altera só este dia; use o botão acima para voltar ao padrão semanal nesta data";
+      case "semana":
+        return "Um único conjunto de horários para os 7 dias desta semana";
+      case "mes":
+        return "Um único conjunto de horários para todos os dias deste mês";
+      default:
+        return "";
+    }
+  }, [scope]);
+
+  const hasCurrentPeriodOverrides = useMemo(() => {
+    if (scope === "padrao") return Object.keys(overrides).length > 0;
+    if (scope === "dia") return Object.prototype.hasOwnProperty.call(overrides, selDay);
+    if (scope === "semana") {
+      const mon = parseISO(selWeekMonday);
+      return Array.from({ length: 7 }, (_, i) => dk(addDays(mon, i))).some((key) => Object.prototype.hasOwnProperty.call(overrides, key));
+    }
+    if (scope === "mes") {
+      return eachDayOfInterval({ start: startOfMonth(monthStartDate), end: endOfMonth(monthStartDate) }).some((d) =>
+        Object.prototype.hasOwnProperty.call(overrides, dk(d))
+      );
+    }
+    return false;
+  }, [scope, selDay, selWeekMonday, monthStartDate, overrides]);
+
+  // Determine selected display label for period card — must be before any conditional return
+  const periodLabel = useMemo(() => {
+    if (scope === "padrao") return "Todas as semanas";
+    if (scope === "dia") return format(parseISO(selDay), "d 'de' MMMM yyyy", { locale: ptBR });
+    if (scope === "semana") {
+      const mon = parseISO(selWeekMonday);
+      return `${format(mon, "d MMM", { locale: ptBR })} – ${format(addDays(mon, 6), "d MMM yyyy", { locale: ptBR })}`;
+    }
+    if (scope === "mes") {
+      const [y, m] = selMonth.split("-").map(Number);
+      return format(new Date(y, m - 1, 1), "MMMM yyyy", { locale: ptBR });
+    }
+    return "";
+  }, [scope, selDay, selWeekMonday, selMonth]);
+
+  if (!hydrated) {
+    return (
+      <div className={`w-full min-h-[40vh] flex items-center justify-center text-sm ${pageBg} ${textMuted}`}>
+        Carregando disponibilidade…
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className={`w-full p-6 rounded-xl border ${isDark ? "bg-[#080c0a] border-red-500/30 text-red-300" : "bg-white border-red-200 text-red-700"}`}>
+        <p>{loadError}</p>
+        <p className={`text-xs mt-2 ${isDark ? "text-white/40" : "text-gray-500"}`}>
+          Se o erro citar colunas em notification_settings, aplique a migração <code className="text-xs">20250331_notification_booking_fields.sql</code>.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Disponibilidade</h1>
-        <p className="text-gray-600 text-sm mt-1">Configure seus horários de atendimento</p>
-      </div>
+    <div className={`w-full ${pageBg} min-h-full pb-8`}>
+      <style>{`
+        input[type="time"]::-webkit-calendar-picker-indicator { opacity: 0.6; }
+      `}</style>
 
-      {/* Calendário + escopo (dia / semana / mês) */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm mb-6">
-        <div className="p-4 border-b border-gray-200">
-          <h2 className="text-sm font-bold text-gray-900 mb-3">Período a configurar</h2>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: "padrao" as const, label: "Padrão semanal" },
-              { key: "dia" as const, label: "Um dia" },
-              { key: "semana" as const, label: "Uma semana" },
-              { key: "mes" as const, label: "Um mês" },
-            ].map((s) => (
-              <button
-                key={s.key}
-                onClick={() => {
-                  setScope(s.key);
-                  if (s.key === "padrao") setSelectedDate(null);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  scope === s.key ? "bg-primary text-black" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {s.label}
-              </button>
-            ))}
+      <div className="w-full px-1 sm:px-0 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <h1 className={`text-2xl font-bold tracking-tight ${isDark ? "text-white" : "text-gray-900"}`}>Disponibilidade</h1>
+            <p className={`text-sm mt-1 ${textMuted}`}>
+              Horários salvos no servidor
+              {personalizedCount > 0 && (
+                <span className={`ml-2 text-xs ${isDark ? "text-white/40" : "text-gray-500"}`}>
+                  · {personalizedCount} data{personalizedCount !== 1 ? "s" : ""} com horário próprio (o padrão semanal não se aplica a elas até você remover)
+                </span>
+              )}
+            </p>
           </div>
         </div>
 
-        {scope !== "padrao" && (
-          <>
-            <div className="p-4 border-b border-gray-100">
-              <div className="flex items-center justify-between mb-3">
-                <button
-                  type="button"
-                  onClick={() => setCalendarMonth((m) => subMonths(m, 1))}
-                  className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600"
-                >
-                  <span className="material-symbols-outlined text-xl">chevron_left</span>
-                </button>
-                <span className="text-sm font-bold text-gray-900 capitalize">
-                  {format(calendarMonth, "MMMM yyyy", { locale: ptBR })}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setCalendarMonth((m) => addMonths(m, 1))}
-                  className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-600"
-                >
-                  <span className="material-symbols-outlined text-xl">chevron_right</span>
-                </button>
-              </div>
-              <div className="grid grid-cols-7 gap-0.5 text-center">
-                {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map((w) => (
-                  <div key={w} className="text-[10px] font-semibold text-gray-500 py-1">
-                    {w}
-                  </div>
+        <div className="w-full space-y-6">
+          {/* ── Card 1: Período a configurar ── */}
+          <Card isDark={isDark}>
+            <CardHeader
+              title="Período a configurar"
+              subtitle="Escolha o tipo e o recorte (a partir de hoje e próximos períodos)"
+              isDark={isDark}
+            />
+            <div className="px-5 py-4 space-y-4">
+              {/* Scope tabs */}
+              <div className={`inline-flex rounded-xl border p-1 gap-0.5 ${isDark ? "bg-white/5 border-white/8" : "bg-gray-100 border-gray-200"}`}>
+                {(
+                  [
+                    { value: "padrao", label: "Padrão" },
+                    { value: "dia", label: "Dia" },
+                    { value: "semana", label: "Semana" },
+                    { value: "mes", label: "Mês" },
+                  ] as { value: Scope; label: string }[]
+                ).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setScope(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      scope === opt.value
+                        ? "bg-primary text-black shadow-sm"
+                        : isDark
+                        ? "text-white/50 hover:text-white"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
                 ))}
-                {calendarWeeks.flat().map((d) => {
-                  const key = dateToKey(d);
-                  const isCurrentMonth = isSameMonth(d, calendarMonth);
-                  const isSelected =
-                    selectedDate &&
-                    (scope === "dia" ? isSameDay(d, selectedDate) : scope === "semana" ? selectedWeekDates.some((x) => isSameDay(x, d)) : scope === "mes" && isSameDay(d, selectedDate));
-                  const hasOverride = !!specificSchedules[key];
-                  return (
+              </div>
+
+              {/* Selected period pill */}
+              {scope !== "padrao" && (
+                <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                  isDark ? "border-primary/30 bg-primary/10 text-primary" : "border-primary/20 bg-primary/5 text-primary"
+                }`}>
+                  <span className="size-1.5 rounded-full bg-primary" />
+                  {periodLabel}
+                </div>
+              )}
+
+              {/* Calendar / picker */}
+              <AnimatePresence mode="wait">
+                {scope !== "padrao" && (
+                  <motion.div
+                    key={scope}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.15 }}
+                    className={`p-4 rounded-xl border ${isDark ? "bg-white/[0.03] border-white/8" : "bg-gray-50 border-gray-200"}`}
+                  >
+                    <MiniCalendar
+                      scope={scope}
+                      selDay={selDay}
+                      selWeekMonday={selWeekMonday}
+                      selMonth={selMonth}
+                      onSelectDay={setSelDay}
+                      onSelectWeek={setSelWeekMonday}
+                      onSelectMonth={setSelMonth}
+                      isDark={isDark}
+                    />
+                  </motion.div>
+                )}
+                {scope === "padrao" && (
+                  <motion.p
+                    key="padrao-hint"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className={`text-xs ${isDark ? "text-white/45" : "text-gray-500"}`}
+                  >
+                    O padrão vale para qualquer semana, exceto nas datas em que você personalizar por dia, semana ou mês.
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
+          </Card>
+
+          {/* ── Card 2: Horários (título conforme o período) ── */}
+          <Card isDark={isDark}>
+            <CardHeader
+              title={horariosCardTitle}
+              subtitle={horariosSubtitle}
+              isDark={isDark}
+              action={
+                hasCurrentPeriodOverrides ? (
+                  <button
+                    type="button"
+                    onClick={() => clearOverridesForCurrentPeriod()}
+                    className={`shrink-0 text-[11px] font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+                      isDark
+                        ? "border-white/15 text-white/70 hover:bg-white/10 hover:text-white"
+                        : "border-gray-200 text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    }`}
+                  >
+                    {scope === "padrao" ? "Limpar todas as datas personalizadas" : "Voltar ao padrão neste período"}
+                  </button>
+                ) : undefined
+              }
+            />
+            <div className={`divide-y ${isDark ? "divide-white/10" : "divide-gray-100"}`}>
+              {scheduleRows.map((row, idx) => {
+                const day = resolveRowSchedule(row);
+                const expanded = expandedRows.has(row.id);
+                return (
+                  <motion.div
+                    key={row.id}
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.02 }}
+                  >
                     <button
-                      key={key}
                       type="button"
-                      onClick={() => {
-                        if (!isCurrentMonth) return;
-                        setSelectedDate(d);
-                      }}
-                      className={`min-h-9 rounded-lg text-xs font-medium transition-colors ${
-                        !isCurrentMonth ? "text-gray-300" : "text-gray-900 hover:bg-gray-100"
-                      } ${isSelected ? "bg-primary text-black" : ""} ${hasOverride ? "ring-1 ring-primary/50" : ""}`}
+                      onClick={() => toggleExpand(row.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors ${isDark ? "hover:bg-white/5" : "hover:bg-gray-50"}`}
                     >
-                      {format(d, "d")}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                {scope === "dia" && "Clique em um dia para definir o horário só daquele dia (ex.: feriado, folga)."}
-                {scope === "semana" && "Clique em um dia para configurar a semana inteira (seg a dom)."}
-                {scope === "mes" && "Use o botão abaixo para aplicar um horário a todo o mês, ou clique em um dia para alterar só aquele dia."}
-              </p>
-            </div>
-
-            {/* Mensal: horário único para todo o mês */}
-            {scope === "mes" && (
-              <div className="p-4 border-b border-gray-100 bg-amber-50/50">
-                <h3 className="text-sm font-bold text-gray-900 mb-1">Horário único para todo o mês</h3>
-                <p className="text-xs text-gray-600 mb-3">
-                  Defina um mesmo horário para todos os dias de {format(calendarMonth, "MMMM 'de' yyyy", { locale: ptBR })} (ex.: horário de férias ou mês especial).
-                </p>
-                <MonthScheduleForm
-                  calendarMonth={calendarMonth}
-                  onApplyToMonth={(s) => {
-                    const start = startOfMonth(calendarMonth);
-                    const n = getDaysInMonth(calendarMonth);
-                    setSpecificSchedules((prev) => {
-                      const next = { ...prev };
-                      for (let i = 0; i < n; i++) {
-                        next[dateToKey(addDays(start, i))] = { ...s };
-                      }
-                      return next;
-                    });
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Formulário: um dia */}
-            {scope === "dia" && selectedDate && (
-              <div className="p-4 bg-gray-50 border-t border-gray-200">
-                <h3 className="text-sm font-bold text-gray-900 mb-3">
-                  Horário para {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
-                </h3>
-                <SingleDayForm
-                  schedule={getScheduleForDate(selectedDate)}
-                  onChange={(s) => setScheduleForDate(selectedDate, s)}
-                />
-              </div>
-            )}
-
-            {/* Formulário: semana */}
-            {scope === "semana" && selectedWeekDates.length === 7 && (
-              <div className="p-4 bg-gray-50 border-t border-gray-200 space-y-4">
-                <h3 className="text-sm font-bold text-gray-900">
-                  Semana de {format(selectedWeekDates[0], "d/M")} a {format(selectedWeekDates[6], "d/M/yyyy")}
-                </h3>
-                {selectedWeekDates.map((d) => (
-                  <div key={dateToKey(d)} className="flex items-center gap-3">
-                    <span className="text-xs font-medium text-gray-600 w-24 shrink-0">
-                      {format(d, "EEE d/M", { locale: ptBR })}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <SingleDayForm
-                        schedule={getScheduleForDate(d)}
-                        onChange={(s) => setScheduleForDate(d, s)}
-                        compact
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Mês: editar um dia específico (exceção dentro do mês) */}
-            {scope === "mes" && selectedDate && (
-              <div className="p-4 bg-gray-50 border-t border-gray-200">
-                <h3 className="text-sm font-bold text-gray-900 mb-1">Exceção para um dia</h3>
-                <p className="text-xs text-gray-600 mb-3">
-                  Horário só para {format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })} (o restante do mês mantém o que você definiu acima ou o padrão semanal).
-                </p>
-                <SingleDayForm
-                  schedule={getScheduleForDate(selectedDate)}
-                  onChange={(s) => setScheduleForDate(selectedDate, s)}
-                />
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      <div className="space-y-4">
-        {/* Hours by day */}
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between p-4 border-b border-gray-200">
-            <h2 className="text-sm font-bold text-gray-900">Horários por dia da semana</h2>
-            <span className="text-xs text-gray-500">Padrão para toda semana</span>
-          </div>
-
-          <div className="divide-y divide-gray-200">
-            {DAYS.map(({ key, label }) => {
-              const day = schedule[key];
-              return (
-                <div key={key} className="p-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <button
-                      onClick={() => updateDay(key, "active", !day.active)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors flex-shrink-0 ${
-                        day.active ? "bg-primary" : "bg-gray-200"
-                      }`}
-                    >
+                      <span className={`text-sm font-semibold min-w-0 flex-1 truncate ${isDark ? "text-white" : "text-gray-900"}`}>{row.label}</span>
                       <span
-                        className={`inline-block size-3.5 rounded-full bg-white transition-transform ${
-                          day.active ? "translate-x-4.5" : "translate-x-0.5"
+                        className={`text-[10px] font-mono shrink-0 ${
+                          day.active ? (isDark ? "text-white/45" : "text-gray-500") : isDark ? "text-white/35 italic" : "text-gray-400 italic"
                         }`}
-                        style={{ transform: day.active ? "translateX(18px)" : "translateX(2px)" }}
-                      />
-                    </button>
-                    <span className={`text-sm font-semibold ${day.active ? "text-gray-900" : "text-gray-500"}`}>
-                      {label}
-                    </span>
-                    {!day.active && (
-                      <span className="text-xs text-gray-600">Fechado</span>
-                    )}
-                  </div>
-
-                  {day.active && (
-                    <div className="ml-12 space-y-2">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs text-gray-500">Início</label>
-                          <input
-                            type="time"
-                            value={day.start}
-                            onChange={(e) => updateDay(key, "start", e.target.value)}
-                            className="h-8 bg-gray-50 border border-gray-200 focus:border-primary rounded-lg px-2 text-gray-900 text-xs outline-none transition-colors"
-                          />
-                        </div>
-                        <span className="text-gray-500">—</span>
-                        <div className="flex items-center gap-2">
-                          <label className="text-xs text-gray-400">Fim</label>
-                          <input
-                            type="time"
-                            value={day.end}
-                            onChange={(e) => updateDay(key, "end", e.target.value)}
-                            className="h-8 bg-gray-50 border border-gray-200 focus:border-primary rounded-lg px-2 text-gray-900 text-xs outline-none transition-colors"
-                          />
-                        </div>
-                      </div>
-
-                      {day.breaks.map((br, i) => (
-                        <div key={i} className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-yellow-400 text-sm">coffee</span>
-                          <span className="text-xs text-gray-400">Intervalo:</span>
-                          <input
-                            type="time"
-                            value={br.start}
-                            className="h-7 bg-gray-50 rounded-lg px-2 text-gray-900 text-xs outline-none border border-gray-200 focus:border-primary"
-                          />
-                          <span className="text-gray-500 text-xs">–</span>
-                          <input
-                            type="time"
-                            value={br.end}
-                            className="h-7 bg-gray-50 rounded-lg px-2 text-gray-900 text-xs outline-none border border-gray-200 focus:border-primary"
-                          />
-                          <button className="text-gray-500 hover:text-red-400 transition-colors">
-                            <span className="material-symbols-outlined text-sm">delete</span>
-                          </button>
-                        </div>
-                      ))}
-
-                      <button
-                        onClick={() =>
-                          updateDay(key, "breaks", [
-                            ...day.breaks,
-                            { start: "12:00", end: "13:00" },
-                          ])
-                        }
-                        className="text-xs text-primary hover:underline flex items-center gap-1"
                       >
-                        <span className="material-symbols-outlined text-xs">add</span>
-                        Adicionar intervalo
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Settings */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-6 shadow-sm">
-          <h2 className="text-sm font-bold text-gray-900">Configurações avançadas</h2>
-
-          {[
-            {
-              label: "Buffer entre atendimentos",
-              sublabel: `${buffer}min de folga após cada serviço`,
-              value: buffer,
-              onChange: setBuffer,
-              min: 0,
-              max: 60,
-              step: 5,
-              marks: ["0", "15", "30", "45", "60"],
-              unit: "min",
-            },
-            {
-              label: "Antecedência mínima para agendar",
-              sublabel: `Clientes só podem agendar com ${minAdvance}h de antecedência`,
-              value: minAdvance,
-              onChange: setMinAdvance,
-              min: 0,
-              max: 48,
-              step: 1,
-              marks: ["0h", "12h", "24h", "48h"],
-              unit: "h",
-            },
-            {
-              label: "Máximo de dias futuros",
-              sublabel: `Agenda disponível para os próximos ${maxFutureDays} dias`,
-              value: maxFutureDays,
-              onChange: setMaxFutureDays,
-              min: 7,
-              max: 365,
-              step: 7,
-              marks: ["7", "30", "90", "180", "365"],
-              unit: " dias",
-            },
-          ].map((setting) => (
-            <div key={setting.label}>
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <p className="text-sm font-medium text-gray-700">{setting.label}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{setting.sublabel}</p>
-                </div>
-                <span className="text-primary font-bold text-sm">
-                  {setting.value}{setting.unit}
-                </span>
-              </div>
-              <input
-                type="range"
-                min={setting.min}
-                max={setting.max}
-                step={setting.step}
-                value={setting.value}
-                onChange={(e) => setting.onChange(Number(e.target.value))}
-              />
-              <div className="flex justify-between text-xs text-gray-600 mt-1">
-                {setting.marks.map((m) => <span key={m}>{m}</span>)}
-              </div>
+                        {day.active ? `${day.start}–${day.end}` : "Não trabalho"}
+                      </span>
+                      <span className={`text-[10px] shrink-0 ${isDark ? "text-white/35" : "text-gray-400"}`} aria-hidden>
+                        {expanded ? "▲" : "▼"}
+                      </span>
+                    </button>
+                    <AnimatePresence>
+                      {expanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className={`px-4 pb-5 pt-2 ${isDark ? "bg-white/[0.02]" : "bg-gray-50/50"}`}>
+                            <div className="space-y-3">
+                              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={!day.active}
+                                  onChange={(e) => {
+                                    const noWork = e.target.checked;
+                                    applyRowChange(row, sanitizeDaySchedule({ ...day, active: !noWork }));
+                                  }}
+                                  className={`size-3.5 rounded border shrink-0 ${isDark ? "border-white/20 bg-white/5" : "border-gray-300"}`}
+                                />
+                                <span className={`text-xs font-medium ${isDark ? "text-white/75" : "text-gray-800"}`}>
+                                  Não trabalho — sem atendimento neste período
+                                </span>
+                              </label>
+                              {day.active ? (
+                                <>
+                                  <InteractiveTimeline
+                                    schedule={day}
+                                    onChange={(s) => applyRowChange(row, s)}
+                                    isDark={isDark}
+                                  />
+                                  <div className="flex items-center gap-2 flex-wrap pl-1">
+                                    <div className="size-1.5 rounded-full bg-primary shrink-0" />
+                                    <span className={`text-[10px] font-medium uppercase tracking-wide ${isDark ? "text-white/45" : "text-gray-500"}`}>Horário</span>
+                                    <input
+                                      type="time"
+                                      step={60}
+                                      value={day.start}
+                                      onChange={(e) => applyRowChange(row, sanitizeDaySchedule({ ...day, start: e.target.value }))}
+                                      className={`h-8 w-[84px] rounded-lg px-2 text-xs font-mono outline-none border transition-colors ${isDark ? "bg-white/5 border-white/10 text-white focus:border-primary" : "bg-gray-50 border-gray-200 text-gray-900 focus:border-primary"}`}
+                                    />
+                                    <span className={`text-xs ${isDark ? "text-white/40" : "text-gray-500"}`}>até</span>
+                                    <input
+                                      type="time"
+                                      step={60}
+                                      value={day.end}
+                                      onChange={(e) => applyRowChange(row, sanitizeDaySchedule({ ...day, end: e.target.value }))}
+                                      className={`h-8 w-[84px] rounded-lg px-2 text-xs font-mono outline-none border transition-colors ${isDark ? "bg-white/5 border-white/10 text-white focus:border-primary" : "bg-gray-50 border-gray-200 text-gray-900 focus:border-primary"}`}
+                                    />
+                                  </div>
+                                  {day.breaks.map((br, i) => (
+                                    <div key={i} className="flex items-center gap-2 flex-wrap pl-1">
+                                      <div className="size-1.5 rounded-full bg-amber-500 shrink-0" />
+                                      <span className={`text-[10px] font-medium uppercase tracking-wide ${isDark ? "text-white/45" : "text-gray-500"}`}>Intervalo</span>
+                                      <input
+                                        type="time"
+                                        step={60}
+                                        value={br.start}
+                                        onChange={(e) => {
+                                          const n = [...day.breaks];
+                                          n[i] = { ...n[i], start: e.target.value };
+                                          applyRowChange(row, sanitizeDaySchedule({ ...day, breaks: n }));
+                                        }}
+                                        className={`h-8 w-[84px] rounded-lg px-2 text-xs font-mono outline-none border ${isDark ? "bg-white/5 border-white/10 text-white focus:border-primary" : "bg-gray-50 border-gray-200 text-gray-900 focus:border-primary"}`}
+                                      />
+                                      <span className={`text-xs ${isDark ? "text-white/40" : "text-gray-500"}`}>–</span>
+                                      <input
+                                        type="time"
+                                        step={60}
+                                        value={br.end}
+                                        onChange={(e) => {
+                                          const n = [...day.breaks];
+                                          n[i] = { ...n[i], end: e.target.value };
+                                          applyRowChange(row, sanitizeDaySchedule({ ...day, breaks: n }));
+                                        }}
+                                        className={`h-8 w-[84px] rounded-lg px-2 text-xs font-mono outline-none border ${isDark ? "bg-white/5 border-white/10 text-white focus:border-primary" : "bg-gray-50 border-gray-200 text-gray-900 focus:border-primary"}`}
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          applyRowChange(row, sanitizeDaySchedule({ ...day, breaks: day.breaks.filter((_, j) => j !== i) }))
+                                        }
+                                        className={`size-5 rounded flex items-center justify-center ${isDark ? "text-white/40 hover:text-red-400" : "text-gray-400 hover:text-red-600"}`}
+                                      >
+                                        ×
+                                      </button>
+                                    </div>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      applyRowChange(row, sanitizeDaySchedule({ ...day, breaks: [...day.breaks, { start: "12:00", end: "13:00" }] }))
+                                    }
+                                    className={`flex items-center gap-1.5 text-xs pl-1 ${isDark ? "text-white/50 hover:text-primary" : "text-gray-500 hover:text-primary"}`}
+                                  >
+                                    + intervalo
+                                  </button>
+                                </>
+                              ) : (
+                                <p className={`text-xs pl-0.5 ${isDark ? "text-white/40" : "text-gray-500"}`}>
+                                  Nenhum horário disponível para agendamento neste recorte. Desmarque a opção acima para definir expediente.
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </Card>
 
-        {/* Save button */}
-        <button className="w-full py-4 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)] flex items-center justify-center gap-2">
-          <span className="material-symbols-outlined text-base">save</span>
-          Salvar alterações
-        </button>
+          {/* ── Card 3: Regras de agendamento (LAST, as requested) ── */}
+          <Card isDark={isDark}>
+            <CardHeader
+              title="Regras de agendamento"
+              subtitle="Controle como os clientes podem reservar horários com você. É importante ser bem criterioso nessa parte, ao limitar os intervalos e horarios minimos vc pode perder agendamentos. por outro lado, se permitir um agendamento apos o outro, pode fazer seu cliente esperar"
+              isDark={isDark}
+            />
+            <div className="px-5">
+              <SliderRow
+                label="Intervalo entre atendimentos"
+                sublabel={
+                  buffer === 0
+                    ? "Sem intervalo — próximo cliente entra imediatamente"
+                    : `${buffer} min de folga entre o fim de um serviço e o início do próximo`
+                }
+                value={buffer}
+                onChange={setBuffer}
+                min={0}
+                max={120}
+                step={1}
+                marks={["0", "30", "60", "90", "120"]}
+                unit=" min"
+                isDark={isDark}
+              />
+              <SliderRow
+                label="Aviso prévio mínimo"
+                sublabel={
+                  minAdvance === 0
+                    ? "Agendamento imediato permitido — sem aviso mínimo"
+                    : `Cliente precisa agendar com pelo menos ${minAdvance}h de antecedência`
+                }
+                value={minAdvance}
+                onChange={setMinAdvance}
+                min={0}
+                max={48}
+                step={1}
+                marks={["0h", "12h", "24h", "36h", "48h"]}
+                unit="h"
+                isDark={isDark}
+              />
+              <SliderRow
+                label="Horizonte de agendamento"
+                sublabel={`Clientes podem reservar horários com até ${maxFutureDays} dias de antecedência`}
+                value={maxFutureDays}
+                onChange={setMaxFutureDays}
+                min={7}
+                max={365}
+                step={1}
+                marks={["7", "90", "180", "270", "365"]}
+                unit=" dias"
+                isDark={isDark}
+              />
+            </div>
+          </Card>
+
+          {saveError && <p className={`text-sm ${isDark ? "text-red-400" : "text-red-600"}`}>{saveError}</p>}
+          <button
+            type="button"
+            disabled={saveState === "loading"}
+            onClick={() => void save()}
+            className={`w-full py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
+              saveState === "ok"
+                ? "bg-primary/15 text-primary border border-primary/30"
+                : "bg-primary text-black hover:opacity-90"
+            } disabled:opacity-50`}
+          >
+            {saveState === "loading" ? "Salvando…" : saveState === "ok" ? "Salvo no servidor" : "Salvar no servidor"}
+          </button>
+        </div>
       </div>
     </div>
   );
