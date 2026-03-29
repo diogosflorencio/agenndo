@@ -5,8 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   buildSupabaseOAuthRedirectUrl,
-  getOAuthRedirectOrigin,
   OAUTH_POPUP_MESSAGE,
+  writeOAuthBridgeRedirectState,
 } from "@/lib/auth/oauth-popup";
 
 function OAuthStartInner() {
@@ -23,11 +23,10 @@ function OAuthStartInner() {
     const nextPath = nextRaw.startsWith("/") ? nextRaw : `/${nextRaw}`;
     const context = searchParams.get("context") === "cliente" ? "cliente" : undefined;
 
-    const origin = getOAuthRedirectOrigin() || window.location.origin;
-    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/oauth-bridge", {
-      next: nextPath,
-      ...(context ? { context } : {}),
-    });
+    writeOAuthBridgeRedirectState({ next: nextPath, ...(context ? { context } : {}) });
+
+    // Sem query string: bate com a allowlist do Supabase e evita perder `next`/`context` no redirect do IdP.
+    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/oauth-bridge", {});
 
     void (async () => {
       const supabase = createClient();

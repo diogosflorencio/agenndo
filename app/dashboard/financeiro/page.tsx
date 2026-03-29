@@ -57,7 +57,7 @@ async function recalcClientIds(supabase: ReturnType<typeof createClient>, ids: s
 }
 
 export default function FinanceiroPage() {
-  const { showAlert } = useAppAlert();
+  const { showAlert, showConfirm } = useAppAlert();
   const { theme } = useTheme();
   const { business } = useDashboard();
   const [records, setRecords] = useState<RecordRow[]>([]);
@@ -233,7 +233,14 @@ export default function FinanceiroPage() {
     const extra = r.appointment_id
       ? "\n\nObs.: este valor veio de um agendamento (compareceu). O agendamento continua marcado; só o lançamento financeiro some."
       : "";
-    if (!window.confirm(`Excluir este lançamento?${extra}`)) return;
+    const ok = await showConfirm({
+      title: "Excluir lançamento",
+      message: `Excluir este lançamento?${extra}`,
+      confirmLabel: "Excluir",
+      cancelLabel: "Cancelar",
+      variant: "danger",
+    });
+    if (!ok) return;
     setDeletingId(r.id);
     const supabase = createClient();
     const { error } = await supabase.from("financial_records").delete().eq("id", r.id);

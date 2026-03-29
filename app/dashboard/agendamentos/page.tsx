@@ -12,6 +12,7 @@ import {
   centsToMoneyInput,
 } from "@/lib/appointment-finance";
 import { AppointmentValueModal } from "@/components/appointment-value-modal";
+import { useAppAlert } from "@/components/app-alert-provider";
 
 const STATUSES: AppointmentStatus[] = ["agendado", "confirmado", "compareceu", "faltou", "cancelado"];
 
@@ -38,6 +39,7 @@ function formatTime(t: string) {
 
 export default function AgendamentosPage() {
   const { business } = useDashboard();
+  const { showConfirm } = useAppAlert();
   const [appointments, setAppointments] = useState<AptRow[]>([]);
   const [collaborators, setCollaborators] = useState<CollabRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -239,7 +241,14 @@ export default function AgendamentosPage() {
 
   const bulkCancel = async () => {
     if (!business?.id || selected.length === 0) return;
-    if (!window.confirm(`Cancelar ${selected.length} agendamento(s)?`)) return;
+    const ok = await showConfirm({
+      title: "Cancelar agendamentos",
+      message: `Cancelar ${selected.length} agendamento(s)?`,
+      confirmLabel: "Cancelar agendamentos",
+      cancelLabel: "Voltar",
+      variant: "danger",
+    });
+    if (!ok) return;
     setBusyId("__bulk__");
     const supabase = createClient();
     const { error } = await supabase

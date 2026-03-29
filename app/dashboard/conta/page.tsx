@@ -21,6 +21,7 @@ import {
   primaryBillingDeadlineMs,
 } from "@/lib/billing-access";
 import { useAppAlert } from "@/components/app-alert-provider";
+import { BillingDocumentForm, hasBillingDocument } from "@/components/billing-fiscal-form";
 
 type Tab = "plano" | "seguranca";
 
@@ -38,7 +39,7 @@ function StripeQuerySync() {
 }
 
 export default function ContaPage() {
-  const { showAlert } = useAppAlert();
+  const { showAlert, showConfirm, showPhraseConfirm } = useAppAlert();
   const { business, profile } = useDashboard();
   const [tab, setTab] = useState<Tab>("plano");
   const [portalLoading, setPortalLoading] = useState(false);
@@ -124,7 +125,7 @@ export default function ContaPage() {
 
   const deadlineHint = (() => {
     if (st === "trialing") {
-      return "Você está no trial da assinatura (Stripe). Quando acabar, a cobrança mensal será feita no cartão cadastrado.";
+      return "Assinatura em período de teste no Stripe (assinaturas antigas). Ao encerrar, a cobrança mensal segue no cartão cadastrado.";
     }
     if (st === "active") {
       return "Assinatura ativa. A renovação ocorre automaticamente na data ao lado.";
@@ -195,18 +196,24 @@ export default function ContaPage() {
 
   async function handleDeleteAccount() {
     if (deleteLoading) return;
-    if (
-      !window.confirm(
-        "Isso apaga sua conta e todos os dados do negócio (agenda, clientes, etc.). Esta ação não pode ser desfeita. Deseja continuar?"
-      )
-    ) {
-      return;
-    }
-    const typed = window.prompt('Digite EXCLUIR em letras maiúsculas para confirmar:');
-    if (typed !== "EXCLUIR") {
-      if (typed !== null) showAlert("Confirmação incorreta. Nada foi alterado.", { title: "Excluir conta" });
-      return;
-    }
+    const step1 = await showConfirm({
+      title: "Excluir conta",
+      message:
+        "Isso apaga sua conta e todos os dados do negócio (agenda, clientes, etc.). Esta ação não pode ser desfeita. Deseja continuar?",
+      confirmLabel: "Continuar",
+      cancelLabel: "Cancelar",
+      variant: "danger",
+    });
+    if (!step1) return;
+    const step2 = await showPhraseConfirm({
+      title: "Confirmação final",
+      message: "Para apagar permanentemente, digite a palavra indicada abaixo.",
+      phrase: "EXCLUIR",
+      confirmLabel: "Excluir definitivamente",
+      cancelLabel: "Cancelar",
+      inputPlaceholder: "Digite EXCLUIR em letras maiúsculas",
+    });
+    if (!step2) return;
     setDeleteLoading(true);
     try {
       const res = await fetch("/api/account/delete", {
@@ -324,9 +331,8 @@ export default function ContaPage() {
                 <span className="text-gray-900 font-semibold text-right">{periodEnd ?? "—"}</span>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Cobrança via Stripe. O valor exibido acima é o do seu plano no app; no checkout você verá o mesmo preço
-                mensal (BRL). Novas assinaturas incluem trial de 7 dias no cartão quando o Stripe estiver configurado
-                assim.
+                Cobrança via Stripe. O valor no checkout é o mesmo mensal (BRL) do plano acima. O teste de 7 dias é só o
+                do app; não há trial adicional na assinatura Stripe.
               </p>
             </div>
 
@@ -383,6 +389,17 @@ export default function ContaPage() {
               </p>
             )}
           </div>
+
+          {paidActive && business?.id && !hasBillingDocument(business) && (
+            <p className="text-[11px] text-amber-800 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              Para fins de nota fiscal e declaração de imposto, informe seu <strong>CPF ou CNPJ</strong> no bloco abaixo
+              (nome e endereço ficam no cadastro do Stripe).
+            </p>
+          )}
+
+          {paidActive && business?.id ? (
+            <BillingDocumentForm businessId={business.id} business={business} />
+          ) : null}
 
           <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
             <h3 className="text-sm font-bold text-gray-900 mb-3">O que está incluído</h3>

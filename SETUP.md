@@ -170,6 +170,6 @@ Ou os blocos equivalentes no final de `schema.sql`.
 
 ### 6.5 Fluxo no app
 
-- **Setup**: ao escolher plano pago, após criar o negócio o usuário é enviado ao **Stripe Checkout** (trial 7 dias, `payment_method_collection: if_required`).
+- **Setup**: ao escolher plano pago, após criar o negócio o usuário é enviado ao **Stripe Checkout** (sem trial extra no Stripe — o teste de 7 dias é só o do app; `payment_method_collection: if_required`).
 - **Conta → Meu plano**: botões para assinar cada tier; **Fatura e método de pagamento** abre o **Customer Portal**.
 - O **webhook** atualiza `stripe_*` e `subscription_*` na tabela `businesses`.

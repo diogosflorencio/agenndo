@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: user.email ?? undefined,
-        name: business.name ?? undefined,
+        name: (business.name as string) ?? undefined,
         metadata: {
           business_id: businessId,
           profile_id: user.id,
@@ -78,8 +78,10 @@ export async function POST(req: Request) {
         business_id: businessId,
         plan_id: planId,
       },
+      /** Nome e endereço de cobrança coletados pelo Stripe no checkout. */
+      billing_address_collection: "required",
+      /** Sem trial no Stripe: o app já aplica 7 dias grátis via `trial_ends_at` / criação do negócio. */
       subscription_data: {
-        trial_period_days: 7,
         metadata: {
           business_id: businessId,
           plan_id: planId,

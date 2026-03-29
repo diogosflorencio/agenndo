@@ -1,18 +1,33 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { OAUTH_POPUP_MESSAGE } from "@/lib/auth/oauth-popup";
+import { consumeOAuthBridgeRedirectState, OAUTH_POPUP_MESSAGE } from "@/lib/auth/oauth-popup";
+
+function postMessageTargetOrigin(): string {
+  try {
+    const op = window.opener as Window | null;
+    if (op && op !== window && op.location?.href) {
+      return new URL(op.location.href).origin;
+    }
+  } catch {
+    /* opener pode ser outra origem em fluxos incorretos */
+  }
+  return window.location.origin;
+}
+
+/** Evita processar o mesmo retorno OAuth 2x (React 18 Strict Mode em dev). */
+const oauthBridgeDedupe = new Set<string>();
 
 function notifyOpener(ok: boolean, payload: string) {
   const op = window.opener;
-  const origin = window.location.origin;
+  const targetOrigin = postMessageTargetOrigin();
   if (op && typeof op.postMessage === "function" && !op.closed) {
     if (ok) {
-      op.postMessage({ type: OAUTH_POPUP_MESSAGE, ok: true, next: payload }, origin);
+      op.postMessage({ type: OAUTH_POPUP_MESSAGE, ok: true, next: payload }, targetOrigin);
     } else {
-      op.postMessage({ type: OAUTH_POPUP_MESSAGE, ok: false, error: payload }, origin);
+      op.postMessage({ type: OAUTH_POPUP_MESSAGE, ok: false, error: payload }, targetOrigin);
     }
     window.setTimeout(() => window.close(), 120);
   }
@@ -22,18 +37,29 @@ function OAuthBridgeInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState("Conectando…");
-  const ran = useRef(false);
 
   useEffect(() => {
-    if (ran.current) return;
-    ran.current = true;
-
     const code = searchParams.get("code");
     const oauthError =
       searchParams.get("error_description") ?? searchParams.get("error") ?? null;
-    const nextParam = searchParams.get("next") ?? "/dashboard";
-    const nextPath = nextParam.startsWith("/") ? nextParam : `/${nextParam}`;
-    const context = searchParams.get("context");
+
+    const dedupeKey = code ?? `nocode-${searchParams.toString()}`;
+    if (oauthBridgeDedupe.has(dedupeKey)) {
+      return;
+    }
+    oauthBridgeDedupe.add(dedupeKey);
+
+    const stored = consumeOAuthBridgeRedirectState();
+    const nextFromUrl = searchParams.get("next");
+    const nextPath = stored?.next
+      ? stored.next
+      : nextFromUrl
+        ? nextFromUrl.startsWith("/")
+          ? nextFromUrl
+          : `/${nextFromUrl}`
+        : "/dashboard";
+    const context =
+      stored?.context === "cliente" || searchParams.get("context") === "cliente" ? "cliente" : null;
     const hasOpener = typeof window !== "undefined" && window.opener && !window.opener.closed;
 
     async function finish() {
