@@ -20,7 +20,7 @@ try {
 const titleDefault =
   "Agenndo — Sistema de agendamento online para prestadores de serviço";
 const description =
-  "Plataforma completa de agendamento online: seus clientes marcam horário 24h por dia por link ou QR Code; você gerencia agenda, equipe e lembretes. Ideal para barbearias, salões, clínicas, estética e qualquer negócio por hora marcada.";
+  "Software completo de agendamento online (YWP / YourWebPlace): clientes marcam horário 24h por link ou QR Code; você gerencia agenda, equipe, financeiro e lembretes. Serve barbearias, salões, clínicas, estética, tatuadores, personal trainers, pet shops, consultórios e qualquer negócio por hora marcada — basta configurar serviços e disponibilidade.";
 
 export const viewport: Viewport = {
   themeColor: "#13EC5B",
@@ -36,18 +36,25 @@ export const metadata: Metadata = {
   description,
   keywords: [
     "agendamento online",
+    "software agendamento online",
     "sistema de agendamento",
-    "software de agenda",
+    "site para agendar horário",
     "marcar horário online",
+    "plataforma de agendamento",
     "agenda para barbearia",
     "agenda para salão",
-    "agendamento clínica",
+    "agendamento clínica estética",
+    "software para prestador",
     "gestão de horários",
+    "link de agendamento",
+    "QR code agendamento",
     "Agenndo",
+    "YWP",
+    "YourWebPlace",
   ],
-  authors: [{ name: "Agenndo", url: siteUrl }],
-  creator: "Agenndo",
-  publisher: "Agenndo",
+  authors: [{ name: "YWP (YourWebPlace)", url: siteUrl }],
+  creator: "YWP (YourWebPlace)",
+  publisher: "YWP (YourWebPlace)",
   formatDetection: { email: false, address: false, telephone: false },
   robots: {
     index: true,
@@ -80,16 +87,51 @@ export const metadata: Metadata = {
   category: "business",
 };
 
+const knowsAbout = [
+  "Agendamento online",
+  "Gestão de agenda para prestadores",
+  "Barbearia",
+  "Salão de beleza",
+  "Clínica de estética",
+  "Consultório",
+  "Personal trainer",
+  "Pet shop",
+  "Estúdio de tatuagem",
+  "Serviços por hora marcada",
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
-  "@type": "WebApplication",
-  name: "Agenndo",
-  description,
-  applicationCategory: "BusinessApplication",
-  operatingSystem: "Any",
-  browserRequirements: "Requires JavaScript",
-  inLanguage: "pt-BR",
-  url: siteUrl,
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${siteUrl}/#organization`,
+      name: "YWP (YourWebPlace)",
+      alternateName: ["YWP", "YourWebPlace"],
+      url: siteUrl,
+      description:
+        "Empresa por trás do Agenndo — software de agendamento online e gestão para prestadores de serviço.",
+      brand: {
+        "@type": "Brand",
+        name: "Agenndo",
+        description: "Plataforma de agendamento online para negócios por hora marcada.",
+      },
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": `${siteUrl}/#software`,
+      name: "Agenndo",
+      description,
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Any",
+      browserRequirements: "Requires JavaScript. Requires HTML5.",
+      inLanguage: "pt-BR",
+      url: siteUrl,
+      isAccessibleForFree: true,
+      publisher: { "@id": `${siteUrl}/#organization` },
+      knowsAbout,
+    },
+  ],
 };
 
 export default function RootLayout({

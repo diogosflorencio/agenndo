@@ -48,9 +48,9 @@ function sameResolved(a, b) {
 
 function createLink(targetAbs) {
   if (process.platform === "win32") {
-    fs.symlink(targetAbs, linkPath, "junction");
+    fs.symlinkSync(targetAbs, linkPath, "junction");
   } else {
-    fs.symlink(targetAbs, linkPath, "dir");
+    fs.symlinkSync(targetAbs, linkPath, "dir");
   }
 }
 

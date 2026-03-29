@@ -1,0 +1,47 @@
+# Agenndo — agendamento online (YWP / YourWebPlace)
+
+> O Agenndo é um sistema completo de agendamento online para prestadores de serviço. Quem usa a plataforma configura horários, serviços, equipe e uma página pública; clientes marcam horário 24h por dia por link ou QR Code.
+
+## Produto
+- Nome: Agenndo
+- Empresa: YWP (YourWebPlace)
+- Idioma: português (Brasil)
+- Site: https://agenndo.com.br (ajuste se o domínio for outro)
+
+## O que o sistema faz
+- Página pública de agendamento por negócio (URL única por estabelecimento)
+- Painel para o prestador: agenda, disponibilidade, serviços, colaboradores, clientes, financeiro, notificações
+- Lembretes e fluxo de confirmação (conforme configuração do negócio)
+- Planos por perfil de uso; teste gratuito para novos prestadores
+
+## Segmentos e tipos de serviço (exemplos)
+O mesmo software serve a qualquer negócio com hora marcada, desde que o usuário configure serviços e agenda. Exemplos comuns:
+- Barbearia e barba
+- Salão de beleza, cabeleireiro, manicure, pedicure
+- Clínica de estética, depilação, massagem
+- Consultório (fisioterapia, nutrição, psicologia, etc.)
+- Estúdio de tatuagem ou piercing
+- Personal trainer e aulas avulsas
+- Pet shop e banho/tosa
+- Fotógrafo, videomaker por sessão
+- Oficina mecânica (agendamento de vaga)
+- Coworking, sala de reunião
+- Qualquer outro serviço por agendamento — a lógica é a mesma
+
+## Páginas úteis para indexação
+- / — página inicial do produto
+- /sobre — sobre o Agenndo e a YWP
+- /agendamento-online — descrição ampliada para SEO (software de agendamento)
+- /termos — termos de uso
+- /politicas — política de privacidade
+
+## Páginas de clientes (dinâmicas)
+- /{slug} — página pública de um estabelecimento (agendar horário). Cada slug é um negócio diferente.
+
+## Não indexar (área logada)
+- /dashboard/* — painel do prestador
+- /setup — onboarding
+- /auth/* — autenticação
+
+## Contato / marca
+- Agenndo é um serviço da YWP (YourWebPlace).
