@@ -590,7 +590,7 @@ function PublicPageInner() {
               </div>
 
               <div className="absolute bottom-0 left-0 right-0 z-[100] pointer-events-none">
-                <div className="max-w-3xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative h-0 w-full">
+                <div className="max-w-3xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative h-0 w-full">
                   <div
                     className={cn(
                       "absolute bottom-0 left-0.2 z-[100] translate-y-1/2 pointer-events-auto",
@@ -622,7 +622,7 @@ function PublicPageInner() {
         </div>
 
         {/* pt compensa metade do avatar (translate-y-1/2) para o texto começar abaixo da foto, sem coluna ao lado */}
-        <main className="relative z-[5] max-w-3xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-28 pt-[3.25rem] sm:pt-[4.25rem]">
+        <main className="relative z-[5] max-w-3xl lg:max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-28 pt-[3.25rem] sm:pt-[4.25rem]">
           {bookingBlocked && (
             <div
               className={cn(

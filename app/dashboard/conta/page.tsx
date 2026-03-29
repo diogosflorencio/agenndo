@@ -25,6 +25,9 @@ import { BillingDocumentForm, hasBillingDocument } from "@/components/billing-fi
 
 type Tab = "plano" | "seguranca";
 
+/** Paid plan checkout: server must expose price env for the tier. */
+type StripePlanPricing = "loading" | "ok" | "missing" | "error";
+
 const INVOICES: { id: string; date: string; amount: number; status: string }[] = [];
 
 function StripeQuerySync() {
@@ -47,8 +50,7 @@ export default function ContaPage() {
   const [signOutLoading, setSignOutLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [countdownTick, setCountdownTick] = useState(0);
-  /** null = ainda carregando (só o servidor vê STRIPE_PRICE_PAID_*). */
-  const [stripeConfigured, setStripeConfigured] = useState<boolean | null>(null);
+  const [stripePlanPricing, setStripePlanPricing] = useState<StripePlanPricing>("loading");
 
   const safePlan = normalizePlanId(business?.plan ?? null);
   const planInfo = getPlan(safePlan);
@@ -78,17 +80,21 @@ export default function ContaPage() {
   useEffect(() => {
     let cancelled = false;
     if (!isPaidPlanId(planForCheckout)) {
-      setStripeConfigured(true);
+      setStripePlanPricing("ok");
       return;
     }
-    setStripeConfigured(null);
+    setStripePlanPricing("loading");
     void fetch(`/api/stripe/pricing-config?planId=${encodeURIComponent(planForCheckout)}`, { credentials: "include" })
-      .then((r) => r.json() as Promise<{ configured?: boolean }>)
-      .then((j) => {
-        if (!cancelled) setStripeConfigured(j.configured === true);
+      .then(async (r) => {
+        if (!r.ok) {
+          if (!cancelled) setStripePlanPricing("error");
+          return;
+        }
+        const j = (await r.json()) as { configured?: boolean };
+        if (!cancelled) setStripePlanPricing(j.configured === true ? "ok" : "missing");
       })
       .catch(() => {
-        if (!cancelled) setStripeConfigured(false);
+        if (!cancelled) setStripePlanPricing("error");
       });
     return () => {
       cancelled = true;
@@ -110,7 +116,7 @@ export default function ContaPage() {
 
   const showSubscribeCta =
     !isEnterprisePlan &&
-    stripeConfigured === true &&
+    stripePlanPricing === "ok" &&
     !paidActive &&
     !inPaymentGrace &&
     !(st === "past_due" || st === "unpaid");
@@ -377,10 +383,17 @@ export default function ContaPage() {
                 Suporte
               </a>
             </div>
-            {stripeConfigured === false && !paidActive && !isEnterprisePlan && (
+            {stripePlanPricing === "missing" && !paidActive && !isEnterprisePlan && (
               <p className="text-[11px] text-amber-800 mt-2">
                 Checkout indisponível: defina STRIPE_PRICE_PAID_01 … STRIPE_PRICE_PAID_20 (uma env por degrau com o ID{" "}
                 <code className="font-mono">price_…</code> do Stripe).
+              </p>
+            )}
+            {stripePlanPricing === "error" && !paidActive && !isEnterprisePlan && (
+              <p className="text-[11px] text-amber-800 mt-2">
+                Não foi possível verificar o Stripe no servidor (resposta inesperada). Recarregue a página; se persistir,
+                confira se o dev server está íntegro (<code className="font-mono">.next</code> no mesmo volume que{" "}
+                <code className="font-mono">node_modules</code>).
               </p>
             )}
             {hasPortal && (
