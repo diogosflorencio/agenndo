@@ -20,7 +20,6 @@ import {
   isPaidSubscriptionActive,
   primaryBillingDeadlineMs,
 } from "@/lib/billing-access";
-import { isStripeConfiguredForPlan } from "@/lib/stripe/prices";
 import { useAppAlert } from "@/components/app-alert-provider";
 
 type Tab = "plano" | "seguranca";
@@ -47,6 +46,8 @@ export default function ContaPage() {
   const [signOutLoading, setSignOutLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [countdownTick, setCountdownTick] = useState(0);
+  /** null = ainda carregando (só o servidor vê STRIPE_PRICE_PAID_*). */
+  const [stripeConfigured, setStripeConfigured] = useState<boolean | null>(null);
 
   const safePlan = normalizePlanId(business?.plan ?? null);
   const planInfo = getPlan(safePlan);
@@ -62,7 +63,6 @@ export default function ContaPage() {
       ? recommendedPlan
       : DEFAULT_CHECKOUT_PLAN;
   const checkoutPlanInfo = getPlan(planForCheckout);
-  const stripeOk = isStripeConfiguredForPlan(planForCheckout);
 
   const fullAccess = business ? hasFullServiceAccess(business) : true;
   const paidActive = business ? isPaidSubscriptionActive(business) : false;
@@ -73,6 +73,26 @@ export default function ContaPage() {
     const id = window.setInterval(() => setCountdownTick((n) => n + 1), 1000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!isPaidPlanId(planForCheckout)) {
+      setStripeConfigured(true);
+      return;
+    }
+    setStripeConfigured(null);
+    void fetch(`/api/stripe/pricing-config?planId=${encodeURIComponent(planForCheckout)}`, { credentials: "include" })
+      .then((r) => r.json() as Promise<{ configured?: boolean }>)
+      .then((j) => {
+        if (!cancelled) setStripeConfigured(j.configured === true);
+      })
+      .catch(() => {
+        if (!cancelled) setStripeConfigured(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [planForCheckout]);
 
   void countdownTick;
 
@@ -89,7 +109,7 @@ export default function ContaPage() {
 
   const showSubscribeCta =
     !isEnterprisePlan &&
-    stripeOk &&
+    stripeConfigured === true &&
     !paidActive &&
     !inPaymentGrace &&
     !(st === "past_due" || st === "unpaid");
@@ -351,7 +371,7 @@ export default function ContaPage() {
                 Suporte
               </a>
             </div>
-            {!stripeOk && !paidActive && !isEnterprisePlan && (
+            {stripeConfigured === false && !paidActive && !isEnterprisePlan && (
               <p className="text-[11px] text-amber-800 mt-2">
                 Checkout indisponível: defina STRIPE_PRICE_PAID_01 … STRIPE_PRICE_PAID_20 (uma env por degrau com o ID{" "}
                 <code className="font-mono">price_…</code> do Stripe).
