@@ -7,6 +7,9 @@ function env(name: string): string | undefined {
 /**
  * 20 preços Stripe (`price_…`), um por degrau `paid_01` … `paid_20` (menor → maior valor).
  * Env: `STRIPE_PRICE_PAID_01` … `STRIPE_PRICE_PAID_20`.
+ *
+ * **Só use isto no servidor** (rotas API, RSC, `getServerSideProps`). Em Client Components o
+ * `process.env` não inclui estas chaves — use `GET /api/stripe/pricing-config?planId=…`.
  */
 export function getStripePriceIdForPlan(planId: PlanId): string | null {
   if (planId === "free" || planId === "plan_enterprise") return null;
