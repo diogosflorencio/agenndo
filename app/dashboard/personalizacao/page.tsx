@@ -277,6 +277,52 @@ export default function PersonalizacaoPage() {
     }));
   };
 
+  const removeLogo = async () => {
+    if (!business?.id || !form.logoUrl) return;
+    setUploading("logo");
+    try {
+      const supabase = createClient();
+      const rel = tryRelativePathFromPublicUrl(form.logoUrl, business.id);
+      if (rel) {
+        try {
+          await removeBusinessObject(supabase, business.id, rel);
+        } catch {
+          /* segue limpando URL no banco */
+        }
+      }
+      const { error } = await supabase.from("businesses").update({ logo_url: null }).eq("id", business.id);
+      if (error) throw new Error(error.message);
+      setForm((f) => ({ ...f, logoUrl: null }));
+      router.refresh();
+    } catch (err) {
+      showAlert(err instanceof Error ? err.message : "Não foi possível remover a foto", { title: "Logo" });
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const removeBanner = async () => {
+    if (!business?.id || !form.bannerUrl) return;
+    const url = form.bannerUrl;
+    setUploading("banner");
+    try {
+      const supabase = createClient();
+      const rel = tryRelativePathFromPublicUrl(url, business.id);
+      if (rel) {
+        try {
+          await removeBusinessObject(supabase, business.id, rel);
+        } catch {
+          /* remove só do formulário */
+        }
+      }
+      setForm((f) => ({ ...f, bannerUrl: null }));
+    } catch (err) {
+      showAlert(err instanceof Error ? err.message : "Não foi possível remover a capa", { title: "Capa" });
+    } finally {
+      setUploading(null);
+    }
+  };
+
   const saveAll = async () => {
     if (!business?.id) return;
     setSaving(true);
@@ -416,7 +462,7 @@ export default function PersonalizacaoPage() {
 
               <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
                 <h3 className="text-sm font-bold text-gray-900 mb-4">Logo / Foto de perfil</h3>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-start gap-4">
                   <div className="size-16 rounded-xl overflow-hidden border-2 shrink-0 bg-gray-50 flex items-center justify-center">
                     {form.logoUrl ? (
                       <Image src={form.logoUrl} alt="" width={64} height={64} className="size-16 object-cover" unoptimized />
@@ -429,40 +475,81 @@ export default function PersonalizacaoPage() {
                       </span>
                     )}
                   </div>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <input ref={logoInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={onPickLogo} />
-                    <button
-                      type="button"
-                      disabled={uploading === "logo"}
-                      onClick={() => logoInputRef.current?.click()}
-                      className="px-4 py-2 bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
-                    >
-                      <span className="material-symbols-outlined text-sm">upload</span>
-                      {uploading === "logo" ? "Enviando…" : "Upload logo"}
-                    </button>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={uploading === "logo"}
+                        onClick={() => logoInputRef.current?.click()}
+                        className="px-4 py-2 bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-sm">upload</span>
+                        {uploading === "logo" ? "Enviando…" : form.logoUrl ? "Substituir foto" : "Enviar foto"}
+                      </button>
+                      {form.logoUrl ? (
+                        <button
+                          type="button"
+                          disabled={uploading === "logo"}
+                          onClick={() => void removeLogo()}
+                          className="px-4 py-2 bg-white border border-gray-200 hover:bg-red-50 hover:border-red-200 text-red-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                          Remover
+                        </button>
+                      ) : null}
+                    </div>
                     <p className="text-xs text-gray-500 mt-1.5">PNG, JPG ou WebP até 5 MB.</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-4">Foto de capa</h3>
+                <h3 className="text-sm font-bold text-gray-900 mb-1">Foto de capa</h3>
+                <p className="text-xs text-gray-500 mb-4">
+                  Recomendado: imagem larga, por exemplo <strong className="font-medium text-gray-600">1920 × 640 px</strong> (ou
+                  proporção parecida); JPG ou WebP até 5 MB.
+                </p>
                 <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={onPickBanner} />
-                <button
-                  type="button"
-                  disabled={uploading === "banner"}
-                  onClick={() => bannerInputRef.current?.click()}
-                  className="relative w-full h-28 rounded-xl border-2 border-dashed border-gray-200 hover:border-primary/40 overflow-hidden group"
-                >
-                  {form.bannerUrl ? (
-                    <Image src={form.bannerUrl} alt="" fill className="object-cover" unoptimized />
-                  ) : (
+                {form.bannerUrl ? (
+                  <div className="space-y-3">
+                    <div className="relative w-full h-28 rounded-xl border border-gray-200 overflow-hidden bg-gray-100">
+                      <Image src={form.bannerUrl} alt="" fill className="object-cover" unoptimized />
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        disabled={uploading === "banner"}
+                        onClick={() => bannerInputRef.current?.click()}
+                        className="px-4 py-2 bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-sm">upload</span>
+                        {uploading === "banner" ? "Enviando…" : "Substituir capa"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={uploading === "banner"}
+                        onClick={() => void removeBanner()}
+                        className="px-4 py-2 bg-white border border-gray-200 hover:bg-red-50 hover:border-red-200 text-red-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
+                      >
+                        <span className="material-symbols-outlined text-sm">delete</span>
+                        Remover capa
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={uploading === "banner"}
+                    onClick={() => bannerInputRef.current?.click()}
+                    className="relative w-full h-28 rounded-xl border-2 border-dashed border-gray-200 hover:border-primary/40 overflow-hidden group"
+                  >
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50">
                       <span className="material-symbols-outlined text-gray-500 group-hover:text-primary text-3xl">add_photo_alternate</span>
                       <p className="text-xs text-gray-500 mt-1">Clique para enviar capa</p>
                     </div>
-                  )}
-                </button>
+                  </button>
+                )}
               </div>
 
               <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
