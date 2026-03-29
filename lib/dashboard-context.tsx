@@ -24,6 +24,8 @@ export type BusinessRow = {
   subscription_status?: string | null;
   stripe_price_id?: string | null;
   subscription_current_period_end?: string | null;
+  trial_ends_at?: string | null;
+  billing_issue_deadline?: string | null;
   created_at: string;
   updated_at: string;
 };

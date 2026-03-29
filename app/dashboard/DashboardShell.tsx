@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { ThemeProvider, useTheme } from "@/lib/theme-context";
 import { DashboardProvider, useDashboard } from "@/lib/dashboard-context";
+import { hasFullServiceAccess } from "@/lib/billing-access";
 import type { UserInfo } from "@/lib/dashboard-context";
 import type { BusinessRow } from "@/lib/dashboard-context";
 import type { ProfileRow } from "@/lib/dashboard-context";
@@ -29,6 +30,8 @@ const MENU_CONFIG = [
 ];
 const DIRECT_LINKS = [{ href: "/dashboard/conta", icon: "manage_accounts", label: "Conta" }];
 
+type GroupKey = "agenda" | "cadastros" | "dados" | "config";
+
 type MobileNavItem =
   | { type: "link"; href: string; icon: string; label: string; exact?: boolean }
   | { type: "group"; key: "agenda" | "cadastros" | "dados" | "config"; icon: string; label: string; items: { href: string; icon: string; label: string }[] };
@@ -41,7 +44,12 @@ const MOBILE_NAV_ITEMS: MobileNavItem[] = [
   { type: "link", href: "/dashboard/conta", icon: "manage_accounts", label: "Conta" },
 ];
 
-type GroupKey = "agenda" | "cadastros" | "dados" | "config";
+const MOBILE_GROUP_TITLE: Record<GroupKey, string> = {
+  agenda: "Agenda",
+  cadastros: "Cadastros",
+  dados: "Dados",
+  config: "Configurações",
+};
 
 function NavItem({
   href,
@@ -224,18 +232,130 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main className={`flex-1 w-full lg:pb-8 ${mobileExpandedGroup ? "pb-36" : "pb-20"}`}>
-          <div className="px-4 sm:px-6 lg:px-8 py-6 w-full max-w-none">{children}</div>
+          <div className="px-4 sm:px-6 lg:px-8 py-6 w-full max-w-none">
+            {business &&
+              !hasFullServiceAccess({
+                plan: business.plan,
+                stripe_subscription_id: business.stripe_subscription_id,
+                subscription_status: business.subscription_status,
+                subscription_current_period_end: business.subscription_current_period_end,
+                trial_ends_at: business.trial_ends_at,
+                billing_issue_deadline: business.billing_issue_deadline,
+                created_at: business.created_at,
+              }) && (
+                <div className="mb-4 rounded-xl border border-amber-400/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm">
+                  <p className="font-bold flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg">gpp_maybe</span>
+                    Agendamentos públicos e novos cadastros estão bloqueados
+                  </p>
+                  <p className="mt-1 text-amber-900/90 leading-relaxed">
+                    Ative ou regularize sua assinatura para liberar a página de agendamento e o uso completo do painel.
+                  </p>
+                  <Link
+                    href="/dashboard/conta"
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-amber-950 underline underline-offset-2 hover:no-underline"
+                  >
+                    Ir para Meu plano
+                    <span className="material-symbols-outlined text-base">chevron_right</span>
+                  </Link>
+                </div>
+              )}
+            {children}
+          </div>
         </main>
       </div>
       {mobileExpandedGroup && (
-        <div className={`lg:hidden fixed left-0 right-0 z-30 border-t px-2 py-2 flex flex-wrap gap-1.5 justify-center ${navBottomBg}`} style={{ bottom: "calc(56px + env(safe-area-inset-bottom, 0px))" }}>
-          {(mobileExpandedGroup === "agenda" ? MENU_AGENDA : mobileExpandedGroup === "cadastros" ? MENU_CADASTROS : mobileExpandedGroup === "dados" ? MENU_DADOS : MENU_CONFIG).map((item) => (
-            <Link key={item.href} href={item.href} onClick={() => setMobileExpandedGroup(null)} className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap ${isActive(item.href) ? "bg-primary/20 text-primary" : isLight ? "bg-gray-100 text-gray-700" : "bg-white/10 text-gray-300"}`}>
-              <span className="material-symbols-outlined text-base">{item.icon}</span>
-              {item.label}
-            </Link>
-          ))}
-        </div>
+        <>
+          <button
+            type="button"
+            aria-label="Fechar submenu"
+            className="lg:hidden fixed inset-x-0 top-0 z-[28] bg-black/45 backdrop-blur-[2px]"
+            style={{ bottom: "calc(56px + env(safe-area-inset-bottom, 0px))" }}
+            onClick={() => setMobileExpandedGroup(null)}
+          />
+          <div
+            className={`lg:hidden fixed left-2 right-2 z-[32] rounded-2xl border shadow-[0_-8px_40px_rgba(0,0,0,0.18)] overflow-hidden ${
+              isLight ? "bg-white border-gray-200/90" : "bg-[#0c1210] border-white/10"
+            }`}
+            style={{ bottom: "calc(56px + env(safe-area-inset-bottom, 0px) + 10px)" }}
+            role="dialog"
+            aria-label={MOBILE_GROUP_TITLE[mobileExpandedGroup]}
+          >
+            <div className="flex justify-center pt-2 pb-1">
+              <span className={`h-1 w-10 rounded-full ${isLight ? "bg-gray-200" : "bg-white/20"}`} aria-hidden />
+            </div>
+            <div
+              className={`flex items-center justify-between gap-3 px-4 pb-3 border-b ${isLight ? "border-gray-100" : "border-white/[0.08]"}`}
+            >
+              <div className="min-w-0">
+                <p className={`text-[10px] font-semibold uppercase tracking-wider ${isLight ? "text-gray-400" : "text-white/45"}`}>
+                  Menu
+                </p>
+                <p className={`text-base font-bold truncate ${isLight ? "text-gray-900" : "text-white"}`}>
+                  {MOBILE_GROUP_TITLE[mobileExpandedGroup]}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileExpandedGroup(null)}
+                className={`shrink-0 size-10 rounded-xl flex items-center justify-center transition-colors ${
+                  isLight ? "text-gray-500 hover:bg-gray-100" : "text-white/60 hover:bg-white/10"
+                }`}
+                aria-label="Fechar"
+              >
+                <span className="material-symbols-outlined text-2xl">close</span>
+              </button>
+            </div>
+            <nav className="max-h-[min(52vh,340px)] overflow-y-auto overscroll-contain px-2 pb-3 pt-1 flex flex-col gap-1">
+              {(mobileExpandedGroup === "agenda"
+                ? MENU_AGENDA
+                : mobileExpandedGroup === "cadastros"
+                  ? MENU_CADASTROS
+                  : mobileExpandedGroup === "dados"
+                    ? MENU_DADOS
+                    : MENU_CONFIG
+              ).map((item) => {
+                const subActive = isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileExpandedGroup(null)}
+                    className={`flex items-center gap-3 min-h-[52px] px-3 py-3 rounded-xl transition-colors ${
+                      subActive
+                        ? isLight
+                          ? "bg-primary/12 text-primary"
+                          : "bg-primary/15 text-primary"
+                        : isLight
+                          ? "text-gray-800 active:bg-gray-50"
+                          : "text-white/90 active:bg-white/[0.06]"
+                    }`}
+                  >
+                    <span
+                      className={`size-11 rounded-xl flex items-center justify-center shrink-0 material-symbols-outlined text-[22px] ${
+                        subActive
+                          ? "bg-primary/20 text-primary"
+                          : isLight
+                            ? "bg-gray-100 text-gray-600"
+                            : "bg-white/[0.08] text-white/70"
+                      }`}
+                    >
+                      {item.icon}
+                    </span>
+                    <span className="flex-1 text-left text-[15px] font-semibold leading-tight">{item.label}</span>
+                    <span
+                      className={`material-symbols-outlined text-xl shrink-0 ${
+                        subActive ? "text-primary" : isLight ? "text-gray-300" : "text-white/25"
+                      }`}
+                    >
+                      chevron_right
+                    </span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </>
       )}
       <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t flex items-center justify-around px-1 pt-1.5 pb-safe ${navBottomBg}`}>
         {MOBILE_NAV_ITEMS.map((item) => {

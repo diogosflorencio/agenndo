@@ -169,6 +169,7 @@ CREATE TABLE IF NOT EXISTS public.financial_records (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
   appointment_id UUID REFERENCES public.appointments(id) ON DELETE SET NULL,
+  client_id UUID REFERENCES public.clients(id) ON DELETE SET NULL,
   client_name TEXT,
   service_name TEXT,
   collaborator_name TEXT,
@@ -179,6 +180,10 @@ CREATE TABLE IF NOT EXISTS public.financial_records (
 );
 
 CREATE INDEX IF NOT EXISTS financial_records_business_id ON public.financial_records(business_id);
+CREATE INDEX IF NOT EXISTS financial_records_client_id ON public.financial_records(client_id);
+CREATE UNIQUE INDEX IF NOT EXISTS financial_records_appointment_id_unique
+  ON public.financial_records(appointment_id)
+  WHERE appointment_id IS NOT NULL;
 
 -- ========== NOTIFICAÇÕES / CONFIG ==========
 CREATE TABLE IF NOT EXISTS public.notification_settings (
@@ -186,9 +191,10 @@ CREATE TABLE IF NOT EXISTS public.notification_settings (
   business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE UNIQUE,
   reminder_email BOOLEAN NOT NULL DEFAULT true,
   reminder_whatsapp BOOLEAN NOT NULL DEFAULT false,
-  min_advance_hours INT NOT NULL DEFAULT 2,
-  booking_buffer_minutes INT NOT NULL DEFAULT 15,
-  booking_max_future_days INT NOT NULL DEFAULT 60,
+  min_advance_hours INT NOT NULL DEFAULT 0,
+  booking_buffer_minutes INT NOT NULL DEFAULT 0,
+  booking_max_future_days INT NOT NULL DEFAULT 30,
+  public_booking_time_ui TEXT NOT NULL DEFAULT 'slider' CHECK (public_booking_time_ui IN ('slider', 'blocks')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -335,7 +341,9 @@ ALTER TABLE public.businesses
   ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT,
   ADD COLUMN IF NOT EXISTS subscription_status TEXT,
   ADD COLUMN IF NOT EXISTS stripe_price_id TEXT,
-  ADD COLUMN IF NOT EXISTS subscription_current_period_end TIMESTAMPTZ;
+  ADD COLUMN IF NOT EXISTS subscription_current_period_end TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS billing_issue_deadline TIMESTAMPTZ;
 
 -- ========== PERFIL DE PRECIFICAÇÃO (onboarding) — ou migrations/20250328_profiles_pricing_lock.sql ==========
 ALTER TABLE public.profiles

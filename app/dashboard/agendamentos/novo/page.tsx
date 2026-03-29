@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { MOCK_SERVICES, MOCK_COLLABORATORS, MOCK_CLIENTS } from "@/lib/mock-data";
+import { useDashboard } from "@/lib/dashboard-context";
+import { createClient } from "@/lib/supabase/client";
+import { MOCK_CLIENTS } from "@/lib/mock-data";
 import { formatCurrency } from "@/lib/utils";
 
 const AVAILABLE_TIMES = [
@@ -10,21 +12,99 @@ const AVAILABLE_TIMES = [
   "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00",
 ];
 
+type ServiceRow = {
+  id: string;
+  name: string;
+  duration_minutes: number;
+  price_cents: number;
+  emoji: string | null;
+  active: boolean;
+  collaborator_services: {
+    collaborator_id: string;
+    collaborators: { id: string; name: string; color: string | null } | null;
+  }[];
+};
+
+type CollabRow = { id: string; name: string; color: string | null };
+
+function collaboratorsForService(service: ServiceRow | null, allActive: CollabRow[]): CollabRow[] {
+  if (!service) return [];
+  const linked = (service.collaborator_services ?? [])
+    .map((cs) => cs.collaborators)
+    .filter(Boolean) as CollabRow[];
+  if (linked.length > 0) return linked;
+  return allActive;
+}
+
 export default function NovoAgendamentoPage() {
+  const { business } = useDashboard();
+  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [collaborators, setCollaborators] = useState<CollabRow[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  const [listError, setListError] = useState<string | null>(null);
+
   const [clientSearch, setClientSearch] = useState("");
   const [selectedClient, setSelectedClient] = useState<typeof MOCK_CLIENTS[0] | null>(null);
   const [clientNameManual, setClientNameManual] = useState("");
-  const [selectedService, setSelectedService] = useState<typeof MOCK_SERVICES[0] | null>(null);
-  const [selectedCollab, setSelectedCollab] = useState<typeof MOCK_COLLABORATORS[0] | null>(null);
+  const [selectedService, setSelectedService] = useState<ServiceRow | null>(null);
+  const [selectedCollab, setSelectedCollab] = useState<CollabRow | null>(null);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
 
+  const load = useCallback(() => {
+    if (!business?.id) return;
+    setDataLoading(true);
+    setListError(null);
+    const supabase = createClient();
+    Promise.all([
+      supabase
+        .from("services")
+        .select(
+          "id, name, duration_minutes, price_cents, emoji, active, collaborator_services(collaborator_id, collaborators(id, name, color))"
+        )
+        .eq("business_id", business.id)
+        .order("name"),
+      supabase
+        .from("collaborators")
+        .select("id, name, color")
+        .eq("business_id", business.id)
+        .eq("active", true)
+        .order("name"),
+    ]).then(([svcRes, colRes]) => {
+      if (svcRes.error) {
+        setListError(svcRes.error.message);
+        setServices([]);
+      } else {
+        setServices((svcRes.data as unknown as ServiceRow[]) ?? []);
+      }
+      if (colRes.error) {
+        setListError((e) => e ?? colRes.error!.message);
+        setCollaborators([]);
+      } else {
+        setCollaborators((colRes.data as CollabRow[]) ?? []);
+      }
+      setDataLoading(false);
+    });
+  }, [business?.id]);
+
+  useEffect(() => {
+    if (!business?.id) return;
+    load();
+  }, [business?.id, load]);
+
+  useEffect(() => {
+    if (!selectedService) {
+      setSelectedCollab(null);
+      return;
+    }
+    const list = collaboratorsForService(selectedService, collaborators);
+    setSelectedCollab((prev) => (prev && list.some((c) => c.id === prev.id) ? prev : null));
+  }, [selectedService, collaborators]);
+
   const today = new Date().toISOString().slice(0, 10);
-  const collabsForService = selectedService
-    ? MOCK_COLLABORATORS.filter((c) => selectedService.collaborators.includes(c.id))
-    : MOCK_COLLABORATORS;
+  const collabsForService = collaboratorsForService(selectedService, collaborators);
 
   const filteredClients = MOCK_CLIENTS.filter((c) =>
     c.name.toLowerCase().includes(clientSearch.toLowerCase())
@@ -35,6 +115,8 @@ export default function NovoAgendamentoPage() {
   const handleSave = () => {
     setSaved(true);
   };
+
+  const activeServices = services.filter((s) => s.active);
 
   if (saved) {
     return (
@@ -64,6 +146,14 @@ export default function NovoAgendamentoPage() {
     );
   }
 
+  if (dataLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
       <div className="mb-6 flex items-center gap-3">
@@ -78,6 +168,12 @@ export default function NovoAgendamentoPage() {
           <p className="text-gray-600 text-sm mt-0.5">Preencha os dados abaixo</p>
         </div>
       </div>
+
+      {listError && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+          {listError}
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Cliente */}
@@ -135,56 +231,81 @@ export default function NovoAgendamentoPage() {
         {/* Serviço */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
           <h2 className="text-sm font-bold text-gray-900 mb-3">Serviço</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {MOCK_SERVICES.filter((s) => s.active).map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSelectedService(s)}
-                className={`p-3 rounded-xl border text-left transition-all ${
-                  selectedService?.id === s.id
-                    ? "border-primary bg-primary/10 text-gray-900"
-                    : "border-gray-200 hover:border-gray-300 text-gray-700"
-                }`}
-              >
-                <span className="text-xl block mb-1 min-h-[1.25rem] flex items-center justify-start">
-                  {s.emoji ?? (
-                    <span className="material-symbols-outlined text-gray-400 text-xl">category</span>
-                  )}
-                </span>
-                <span className="text-sm font-semibold block truncate">{s.name}</span>
-                <span className="text-xs text-primary font-bold">{formatCurrency(s.price)}</span>
-              </button>
-            ))}
-          </div>
+          {activeServices.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Nenhum serviço ativo.{" "}
+              <Link href="/dashboard/servicos" className="text-primary font-semibold hover:underline">
+                Cadastre serviços
+              </Link>{" "}
+              para agendar.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {activeServices.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSelectedService(s)}
+                  className={`p-3 rounded-xl border text-left transition-all ${
+                    selectedService?.id === s.id
+                      ? "border-primary bg-primary/10 text-gray-900"
+                      : "border-gray-200 hover:border-gray-300 text-gray-700"
+                  }`}
+                >
+                  <span className="text-xl mb-1 min-h-[1.25rem] flex items-center justify-start">
+                    {s.emoji ? (
+                      <span className="leading-none select-none" aria-hidden>
+                        {s.emoji}
+                      </span>
+                    ) : (
+                      <span className="material-symbols-outlined text-gray-400 text-xl">category</span>
+                    )}
+                  </span>
+                  <span className="text-sm font-semibold block truncate">{s.name}</span>
+                  <span className="text-[11px] text-gray-500 block">{s.duration_minutes} min</span>
+                  <span className="text-xs text-primary font-bold">{formatCurrency(s.price_cents / 100)}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Profissional */}
         {selectedService && (
           <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
             <h2 className="text-sm font-bold text-gray-900 mb-3">Profissional</h2>
-            <div className="flex flex-wrap gap-2">
-              {collabsForService.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setSelectedCollab(c)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${
-                    selectedCollab?.id === c.id
-                      ? "border-primary bg-primary/10"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <div
-                    className="size-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
-                    style={{ backgroundColor: c.color }}
+            {collabsForService.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Nenhum profissional disponível. Ative um colaborador ou vincule-o ao serviço em{" "}
+                <Link href="/dashboard/servicos" className="text-primary font-semibold hover:underline">
+                  Serviços
+                </Link>
+                .
+              </p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {collabsForService.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setSelectedCollab(c)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border transition-all ${
+                      selectedCollab?.id === c.id
+                        ? "border-primary bg-primary/10"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
                   >
-                    {c.name[0]}
-                  </div>
-                  <span className="text-sm font-medium text-gray-900">{c.name}</span>
-                </button>
-              ))}
-            </div>
+                    <div
+                      className="size-8 rounded-lg flex items-center justify-center text-white text-sm font-bold"
+                      style={{ backgroundColor: c.color ?? "#94a3b8" }}
+                    >
+                      {c.name[0]}
+                    </div>
+                    <span className="text-sm font-medium text-gray-900">{c.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -239,7 +360,14 @@ export default function NovoAgendamentoPage() {
           </Link>
           <button
             onClick={handleSave}
-            disabled={!displayName.trim() || !selectedService || !selectedCollab || !selectedDate || !selectedTime}
+            disabled={
+              !displayName.trim() ||
+              !selectedService ||
+              !selectedCollab ||
+              collabsForService.length === 0 ||
+              !selectedDate ||
+              !selectedTime
+            }
             className="flex-1 py-3 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl text-sm"
           >
             Criar agendamento

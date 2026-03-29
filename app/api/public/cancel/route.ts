@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     .select("min_advance_hours")
     .eq("business_id", apt.business_id as string)
     .maybeSingle();
-  const minAdvanceHours = typeof n?.min_advance_hours === "number" ? n.min_advance_hours : 2;
+  const minAdvanceHours = typeof n?.min_advance_hours === "number" ? n.min_advance_hours : 0;
 
   const dateStr = apt.date as string;
   const t = String(apt.time_start).slice(0, 5);

@@ -9,12 +9,17 @@ export const runtime = "nodejs";
 function planFromMetadata(plan: string | undefined): string | undefined {
   if (!plan) return undefined;
   const legacy: Record<string, string> = {
-    starter: "plano_1",
-    growth: "plano_2",
-    enterprise: "plano_3",
+    starter: "paid_02",
+    growth: "paid_04",
+    enterprise: "plan_enterprise",
+    plano_1: "paid_02",
+    plano_2: "paid_04",
+    plano_3: "paid_09",
   };
   const n = legacy[plan] ?? plan;
-  if (["plano_1", "plano_2", "plano_3", "free"].includes(n)) return n;
+  if (n === "free" || n === "plan_enterprise") return n;
+  if (/^paid_(2[1-8])$/.test(n)) return "paid_20";
+  if (/^paid_(0[1-9]|1[0-9]|20)$/.test(n)) return n;
   return undefined;
 }
 
@@ -75,6 +80,7 @@ export async function POST(req: Request) {
           subscription_status: sub.status,
           stripe_price_id: sub.items.data[0]?.price?.id ?? null,
           subscription_current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+          billing_issue_deadline: null,
           ...(planId ? { plan: planId } : {}),
         });
         break;
@@ -95,11 +101,29 @@ export async function POST(req: Request) {
 
         if (!businessId) break;
 
-        await syncSubscriptionToBusiness(admin, businessId, {
+        const { data: existing } = await admin
+          .from("businesses")
+          .select("billing_issue_deadline")
+          .eq("id", businessId)
+          .maybeSingle();
+
+        const patch: Record<string, unknown> = {
           subscription_status: sub.status,
           stripe_price_id: sub.items.data[0]?.price?.id ?? null,
           subscription_current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-        });
+        };
+
+        if (sub.status === "active" || sub.status === "trialing") {
+          patch.billing_issue_deadline = null;
+        } else if (sub.status === "past_due" || sub.status === "unpaid") {
+          if (!existing?.billing_issue_deadline) {
+            patch.billing_issue_deadline = new Date(Date.now() + 5 * 864e5).toISOString();
+          }
+        } else {
+          patch.billing_issue_deadline = null;
+        }
+
+        await syncSubscriptionToBusiness(admin, businessId, patch);
         break;
       }
 
@@ -118,6 +142,7 @@ export async function POST(req: Request) {
           subscription_status: "canceled",
           stripe_price_id: null,
           subscription_current_period_end: null,
+          billing_issue_deadline: null,
           plan: "free",
         });
         break;

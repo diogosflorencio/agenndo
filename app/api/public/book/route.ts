@@ -16,10 +16,9 @@ import {
   type BlockDbRow,
   BOOKING_TZ,
 } from "@/lib/public-booking";
+import { hasFullServiceAccess } from "@/lib/billing-access";
 
 export const runtime = "nodejs";
-
-const SLOT_STEP = 15;
 
 function parseLocalDate(dateStr: string) {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -83,8 +82,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Servidor indisponível" }, { status: 503 });
   }
 
-  const { data: biz, error: bizErr } = await admin.from("businesses").select("id, name").eq("slug", slug).maybeSingle();
+  const { data: biz, error: bizErr } = await admin
+    .from("businesses")
+    .select(
+      "id, name, plan, stripe_subscription_id, subscription_status, subscription_current_period_end, trial_ends_at, billing_issue_deadline, created_at"
+    )
+    .eq("slug", slug)
+    .maybeSingle();
   if (bizErr || !biz?.id) return NextResponse.json({ error: "Negócio não encontrado" }, { status: 404 });
+  if (!hasFullServiceAccess(biz)) {
+    return NextResponse.json(
+      { error: "Agendamentos online estão suspensos para este negócio. Tente novamente mais tarde ou entre em contato diretamente." },
+      { status: 403 }
+    );
+  }
   const bid = biz.id as string;
   const businessName = (biz.name as string) ?? "";
 
@@ -141,9 +152,9 @@ export async function POST(req: Request) {
       .maybeSingle(),
   ]);
 
-  const bufferMinutes = typeof n?.booking_buffer_minutes === "number" ? n.booking_buffer_minutes : 15;
-  const minAdvanceHours = typeof n?.min_advance_hours === "number" ? n.min_advance_hours : 2;
-  const maxFutureDays = typeof n?.booking_max_future_days === "number" ? n.booking_max_future_days : 60;
+  const bufferMinutes = typeof n?.booking_buffer_minutes === "number" ? n.booking_buffer_minutes : 0;
+  const minAdvanceHours = typeof n?.min_advance_hours === "number" ? n.min_advance_hours : 0;
+  const maxFutureDays = typeof n?.booking_max_future_days === "number" ? n.booking_max_future_days : 30;
 
   const selectedDay = parseLocalDate(dateStr);
   const today = localTodayMidnight();
@@ -184,7 +195,6 @@ export async function POST(req: Request) {
       schedule,
       durationMinutes,
       bufferMinutes,
-      slotStepMinutes: SLOT_STEP,
       minAdvanceHours,
       collaboratorId: cid,
       appointments,

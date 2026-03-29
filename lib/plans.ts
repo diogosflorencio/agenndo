@@ -1,32 +1,86 @@
-export type PlanId = "free" | "plano_1" | "plano_2" | "plano_3";
+/** 20 degraus de preço (paid_01 … paid_20): mesmo produto; valor mensal conforme escada Stripe. */
+export const PAID_PLAN_IDS = [
+  "paid_01",
+  "paid_02",
+  "paid_03",
+  "paid_04",
+  "paid_05",
+  "paid_06",
+  "paid_07",
+  "paid_08",
+  "paid_09",
+  "paid_10",
+  "paid_11",
+  "paid_12",
+  "paid_13",
+  "paid_14",
+  "paid_15",
+  "paid_16",
+  "paid_17",
+  "paid_18",
+  "paid_19",
+  "paid_20",
+] as const;
 
-/** Texto único em qualquer lugar público */
-export const PLANO_LABEL = "Plano";
-
-export const PAID_PLAN_IDS = ["plano_1", "plano_2", "plano_3"] as const;
 export type PaidPlanId = (typeof PAID_PLAN_IDS)[number];
 
-/** Normaliza valores antigos (starter/growth/enterprise) vindos do BD ou metadata Stripe. */
-export function normalizePlanId(raw: string | null | undefined): PlanId {
-  if (!raw) return "free";
-  const legacy: Record<string, PlanId> = {
-    starter: "plano_1",
-    growth: "plano_2",
-    enterprise: "plano_3",
-  };
-  const v = legacy[raw] ?? (raw as PlanId);
-  if (v === "free" || PAID_PLAN_IDS.includes(v as PaidPlanId)) return v as PlanId;
-  return "free";
+export type PlanId = "free" | "plan_enterprise" | PaidPlanId;
+
+export const PLANO_LABEL = "Plano";
+
+/** Plano sugerido no checkout quando ainda não há tier definido (entrada Solo). */
+export const DEFAULT_CHECKOUT_PLAN: PaidPlanId = "paid_02";
+
+/**
+ * Valores mensais (BRL) por degrau — espelho dos 20 preços recorrentes no Stripe (paid_01 = menor … paid_20 = maior).
+ */
+const LADDER_PRICES: readonly number[] = [
+  29.9, 49.9, 69.9, 89.9, 109.9, 129.9, 149.9, 169.9, 189.9, 209.9, 229.9, 249.9, 289.9, 329.9, 369.9, 409.9,
+  449.9, 489.9, 529.9, 569.9,
+];
+
+if (LADDER_PRICES.length !== PAID_PLAN_IDS.length) {
+  throw new Error(`plans: escada ${LADDER_PRICES.length} ≠ ${PAID_PLAN_IDS.length} ids`);
 }
 
-export function isPaidPlanId(v: string | null | undefined): v is PaidPlanId {
-  return v != null && PAID_PLAN_IDS.includes(v as PaidPlanId);
+/**
+ * Itens de “O que está incluído” — iguais em qualquer plano (grátis, degraus pagos ou enterprise).
+ * O preço varia pelo perfil; o escopo de produto não é limitado por “1 colaborador / 5 serviços” etc.
+ */
+export const UNIVERSAL_PLAN_INCLUSION: readonly string[] = [
+  "Produto completo: página pública de agendamento, painel, clientes, equipe, financeiro e notificações",
+  "Uso ilimitado de colaboradores, serviços e agendamentos, coerente com o perfil informado na inscrição",
+  "Infraestrutura dedicada dimensionada conforme as características da sua empresa no momento da assinatura",
+  "Suporte via WhatsApp",
+  "Caso o uso real seja muito diferente do perfil apresentado na inscrição, a YWP reserva-se o direito de intervir ou propor ajustes, conforme os Termos de Serviço.",
+];
+
+/** Lista única para qualquer degrau pago: preço muda; mensagem de inclusão é a mesma. */
+const PAID_FEATURES: readonly string[] = [...UNIVERSAL_PLAN_INCLUSION];
+
+const PAID_LIMITS = { appointments: Infinity, collaborators: Infinity, services: Infinity } as const;
+
+function buildPaidPlans(): Record<PaidPlanId, Plan> {
+  const acc = {} as Record<PaidPlanId, Plan>;
+  for (let i = 0; i < PAID_PLAN_IDS.length; i++) {
+    const id = PAID_PLAN_IDS[i];
+    const price = LADDER_PRICES[i];
+    acc[id] = {
+      id,
+      label: PLANO_LABEL,
+      price,
+      limits: { ...PAID_LIMITS },
+      features: [...PAID_FEATURES],
+    };
+  }
+  return acc;
 }
 
 export interface Plan {
   id: PlanId;
   label: string;
-  price: number;
+  /** null = Enterprise (sob consulta) */
+  price: number | null;
   trialDays?: number;
   limits: {
     appointments: number;
@@ -38,11 +92,7 @@ export interface Plan {
   badge?: string;
 }
 
-const PAID_FEATURES = [
-  "Página pública e agendamentos online",
-  "Gestão de agenda, clientes e equipe no painel",
-  "Notificações e acompanhamento no app",
-];
+const PAID_PLANS = buildPaidPlans();
 
 export const PLANS: Record<PlanId, Plan> = {
   free: {
@@ -51,49 +101,62 @@ export const PLANS: Record<PlanId, Plan> = {
     price: 0,
     trialDays: 7,
     limits: { appointments: 30, collaborators: 1, services: 5 },
-    features: [
-      "Página pública",
-      "1 colaborador",
-      "5 serviços",
-      "30 agendamentos/mês",
-      "Suporte por e-mail",
-    ],
+    features: [...UNIVERSAL_PLAN_INCLUSION],
     badge: "7 dias grátis",
   },
-  plano_1: {
-    id: "plano_1",
-    label: PLANO_LABEL,
-    price: 49.9,
-    limits: { appointments: 150, collaborators: 2, services: 20 },
-    features: PAID_FEATURES,
+  plan_enterprise: {
+    id: "plan_enterprise",
+    label: "Enterprise",
+    price: null,
+    limits: { appointments: Infinity, collaborators: Infinity, services: Infinity },
+    features: [
+      "Operações de grande porte ou necessidades especiais (múltiplas unidades, contrato, SLA): proposta e valor sob consulta",
+      ...UNIVERSAL_PLAN_INCLUSION,
+    ],
+    badge: "Sob consulta",
   },
-  plano_2: {
-    id: "plano_2",
-    label: PLANO_LABEL,
-    price: 89.9,
-    limits: { appointments: Infinity, collaborators: 8, services: Infinity },
-    features: PAID_FEATURES,
-  },
-  plano_3: {
-    id: "plano_3",
-    label: PLANO_LABEL,
-    price: 179.9,
-    limits: {
-      appointments: Infinity,
-      collaborators: Infinity,
-      services: Infinity,
-    },
-    features: PAID_FEATURES,
-  },
+  ...PAID_PLANS,
 };
 
-export const PLAN_ORDER: PlanId[] = ["free", "plano_1", "plano_2", "plano_3"];
+const PAID_ID_SET = new Set<string>(PAID_PLAN_IDS);
 
-export function getPlan(id: PlanId): Plan {
-  return PLANS[id];
+/** Mapeia valores antigos (BD / metadata Stripe / onboarding). */
+export function normalizePlanId(raw: string | null | undefined): PlanId {
+  if (!raw) return "free";
+  const legacy: Record<string, PlanId> = {
+    starter: "paid_02",
+    growth: "paid_04",
+    enterprise: "plan_enterprise",
+    plano_1: "paid_02",
+    plano_2: "paid_04",
+    plano_3: "paid_09",
+  };
+  /** Migração: versões antigas com paid_21 … paid_28 → último degrau atual. */
+  if (/^paid_(2[1-8])$/.test(raw)) return "paid_20";
+  const v = legacy[raw] ?? (raw as PlanId);
+  if (v === "free" || v === "plan_enterprise") return v;
+  if (PAID_ID_SET.has(v)) return v as PaidPlanId;
+  return "free";
 }
 
-export function formatPrice(price: number): string {
+export function isPaidPlanId(v: string | null | undefined): v is PaidPlanId {
+  return v != null && PAID_ID_SET.has(v);
+}
+
+export const PLAN_ORDER: PlanId[] = ["free", ...PAID_PLAN_IDS, "plan_enterprise"];
+
+export function getPlan(id: PlanId): Plan {
+  return PLANS[id] ?? PLANS.free;
+}
+
+export function formatPrice(price: number | null): string {
+  if (price == null) return "Sob consulta";
   if (price === 0) return "Grátis";
   return `R$ ${price.toFixed(2).replace(".", ",")}`;
+}
+
+/** Preço mensal do degrau (para calculadora / lock). */
+export function getPaidTierPrice(id: PaidPlanId): number {
+  const p = PLANS[id]?.price;
+  return typeof p === "number" ? p : 0;
 }

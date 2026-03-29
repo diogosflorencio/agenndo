@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { getSiteUrl } from "@/lib/site-url";
+import { AppAlertProvider } from "@/components/app-alert-provider";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -105,7 +106,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        {children}
+        <AppAlertProvider>{children}</AppAlertProvider>
       </body>
     </html>
   );

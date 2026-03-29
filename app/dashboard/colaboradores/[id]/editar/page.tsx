@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
+import { SwitchToggle } from "@/components/switch-toggle";
+import { formatBrazilPhoneFromDigits, maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
 
 const COLORS = [
   "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B",
@@ -61,7 +63,7 @@ export default function EditarColaboradorPage() {
     setForm({
       name: row.name,
       role: row.role ?? "",
-      phone: row.phone ?? "",
+      phone: formatBrazilPhoneFromDigits(row.phone ?? ""),
       color: row.color ?? "#3B82F6",
       active: row.active,
     });
@@ -82,7 +84,7 @@ export default function EditarColaboradorPage() {
       .update({
         name: form.name.trim(),
         role: form.role.trim() || null,
-        phone: form.phone.trim() || null,
+        phone: phoneDigitsOnly(form.phone) || null,
         color: form.color,
         active: form.active,
       })
@@ -179,8 +181,10 @@ export default function EditarColaboradorPage() {
             <label className="text-sm font-medium text-gray-700 block mb-1.5">Telefone (opcional)</label>
             <input
               type="tel"
+              inputMode="tel"
+              autoComplete="tel"
               value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              onChange={(e) => setForm({ ...form, phone: maskPhoneInputRaw(e.target.value) })}
               placeholder="(11) 99999-9999"
               className="w-full h-11 bg-gray-50 border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm"
             />
@@ -204,19 +208,7 @@ export default function EditarColaboradorPage() {
           </div>
 
           <div className="flex items-center gap-3 py-3 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={() => setForm({ ...form, active: !form.active })}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                form.active ? "bg-primary" : "bg-gray-200"
-              }`}
-            >
-              <span
-                className={`inline-block size-4 rounded-full bg-white transition-transform ${
-                  form.active ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
+            <SwitchToggle checked={form.active} onChange={() => setForm({ ...form, active: !form.active })} />
             <div>
               <p className="text-sm text-gray-900 font-medium">Colaborador ativo</p>
               <p className="text-xs text-gray-500">Aparece na agenda e na página pública de agendamento</p>

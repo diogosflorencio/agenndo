@@ -3,10 +3,42 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense, type CSSProperties } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, rgbaFromHex } from "@/lib/utils";
 import { recordPublicPageVisit } from "@/lib/visited-public-pages";
+import {
+  collectAvailableStartMinutes,
+  isDateOpenForPublicBooking,
+  isPublicStartMinuteBookable,
+  publicSlotReasonLabel,
+  type AvailabilityDbRow,
+  type OverrideDbRow,
+  type PublicSlotCell,
+} from "@/lib/public-booking";
+import { PublicBookingDayTimeline, type PublicDayTimelinePayload } from "@/components/public-booking-day-timeline";
+import { minutesToTime, timeToMinutes, type DaySchedule } from "@/lib/disponibilidade";
+
+function initialSliderStartMin(payload: PublicDayTimelinePayload): number {
+  const now = new Date();
+  const available = collectAvailableStartMinutes({
+    dateStr: payload.dateStr,
+    schedule: payload.schedule as DaySchedule,
+    durationMinutes: payload.durationMinutes,
+    bufferMinutes: payload.bufferMinutes,
+    collaboratorId: payload.viewCollaboratorId,
+    appointments: payload.appointments,
+    blocks: payload.blocks,
+    minAdvanceHours: payload.minAdvanceHours,
+    now,
+  });
+  if (payload.suggestedStartMin != null && available.has(payload.suggestedStartMin)) {
+    return payload.suggestedStartMin;
+  }
+  const sorted = Array.from(available).sort((a, b) => a - b);
+  if (sorted.length > 0) return sorted[0]!;
+  return timeToMinutes(payload.schedule.start);
+}
 
 function localISODate(d: Date = new Date()) {
   const y = d.getFullYear();
@@ -85,8 +117,15 @@ function PublicPageInner() {
     maxFutureDays: number;
     minAdvanceHours: number;
     bufferMinutes: number;
+    publicBookingTimeUi: "slider" | "blocks";
+    publicBookingLocked?: boolean;
+    publicBookingLockMessage?: string | null;
+    weeklyAvailability: AvailabilityDbRow[];
+    availabilityOverrides: OverrideDbRow[];
   } | null>(null);
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [slotTimeline, setSlotTimeline] = useState<PublicSlotCell[]>([]);
+  const [dayTimeline, setDayTimeline] = useState<PublicDayTimelinePayload | null>(null);
+  const [sliderStartMin, setSliderStartMin] = useState(9 * 60);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotsError, setSlotsError] = useState<string | null>(null);
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
@@ -152,10 +191,58 @@ function PublicPageInner() {
     fetch(`/api/public/booking-meta?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
       .then((j) => {
-        if (j && typeof j.maxFutureDays === "number") setBookingMeta(j);
+        if (j && typeof j.maxFutureDays === "number") {
+          const weeklyRaw = Array.isArray(j.weeklyAvailability) ? j.weeklyAvailability : [];
+          const overridesRaw = Array.isArray(j.availabilityOverrides) ? j.availabilityOverrides : [];
+          setBookingMeta({
+            maxFutureDays: j.maxFutureDays,
+            minAdvanceHours: typeof j.minAdvanceHours === "number" ? j.minAdvanceHours : 0,
+            bufferMinutes: typeof j.bufferMinutes === "number" ? j.bufferMinutes : 0,
+            publicBookingTimeUi: j.publicBookingTimeUi === "blocks" ? "blocks" : "slider",
+            publicBookingLocked: j.publicBookingLocked === true,
+            publicBookingLockMessage:
+              typeof j.publicBookingLockMessage === "string" ? j.publicBookingLockMessage : null,
+            weeklyAvailability: weeklyRaw as AvailabilityDbRow[],
+            availabilityOverrides: overridesRaw.map((o: Record<string, unknown>) => ({
+              date:
+                typeof o.date === "string"
+                  ? o.date.slice(0, 10)
+                  : String(o.date ?? "").slice(0, 10),
+              closed: Boolean(o.closed),
+              open_time: (o.open_time as string | null) ?? null,
+              close_time: (o.close_time as string | null) ?? null,
+              breaks: o.breaks ?? [],
+            })) as OverrideDbRow[],
+          });
+        }
       })
-      .catch(() => setBookingMeta({ maxFutureDays: 60, minAdvanceHours: 2, bufferMinutes: 15 }));
+      .catch(() =>
+        setBookingMeta({
+          maxFutureDays: 30,
+          minAdvanceHours: 0,
+          bufferMinutes: 0,
+          publicBookingTimeUi: "slider",
+          publicBookingLocked: false,
+          weeklyAvailability: [],
+          availabilityOverrides: [],
+        })
+      );
   }, [slug]);
+
+  useEffect(() => {
+    if (!bookingMeta || !selectedDate) return;
+    if (
+      !isDateOpenForPublicBooking(
+        selectedDate,
+        bookingMeta.weeklyAvailability,
+        bookingMeta.availabilityOverrides
+      )
+    ) {
+      setSelectedTime(null);
+      setSelectedDate(null);
+      if (step >= 4) setStep(3);
+    }
+  }, [bookingMeta, selectedDate, step]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -185,20 +272,58 @@ function PublicPageInner() {
     });
     fetch(`/api/public/slots?${q}`)
       .then(async (r) => {
-        const j = await r.json();
+        const j = (await r.json()) as {
+          slots?: string[];
+          timeline?: PublicSlotCell[];
+          dayTimeline?: PublicDayTimelinePayload | null;
+          error?: string;
+        };
         if (!r.ok) throw new Error(j.error || "Erro ao carregar horários");
-        return j.slots as string[];
+        let timeline: PublicSlotCell[];
+        if (Array.isArray(j.timeline) && j.timeline.length > 0) {
+          timeline = j.timeline.filter(
+            (c): c is PublicSlotCell =>
+              Boolean(c) &&
+              typeof c === "object" &&
+              typeof (c as PublicSlotCell).start === "string" &&
+              typeof (c as PublicSlotCell).available === "boolean" &&
+              typeof (c as PublicSlotCell).reason === "string"
+          );
+        } else {
+          const slots = Array.isArray(j.slots) ? j.slots : [];
+          timeline = slots.map((s) => ({
+            start: String(s).slice(0, 5),
+            available: true,
+            reason: "livre" as const,
+          }));
+        }
+        let nextDayTl: PublicDayTimelinePayload | null = null;
+        const raw = j.dayTimeline;
+        if (
+          raw &&
+          typeof raw === "object" &&
+          raw.schedule?.active &&
+          raw.viewCollaboratorId &&
+          raw.dateStr === selectedDate
+        ) {
+          nextDayTl = raw as PublicDayTimelinePayload;
+        }
+        return { timeline, dayTimeline: nextDayTl };
       })
-      .then((slots) => {
+      .then(({ timeline, dayTimeline: nextDay }) => {
         if (!cancelled) {
-          setAvailableSlots(slots);
+          setSlotTimeline(timeline);
+          setDayTimeline(nextDay);
+          if (nextDay) setSliderStartMin(initialSliderStartMin(nextDay));
+          else setSliderStartMin(9 * 60);
           setSlotsLoading(false);
         }
       })
       .catch((e: Error) => {
         if (!cancelled) {
           setSlotsError(e.message);
-          setAvailableSlots([]);
+          setSlotTimeline([]);
+          setDayTimeline(null);
           setSlotsLoading(false);
         }
       });
@@ -216,7 +341,9 @@ function PublicPageInner() {
     setNotes("");
     setClientName("");
     setBookError(null);
-    setAvailableSlots([]);
+    setSlotTimeline([]);
+    setDayTimeline(null);
+    setSliderStartMin(9 * 60);
     setSlotsError(null);
   }, []);
 
@@ -225,8 +352,18 @@ function PublicPageInner() {
     resetBookingForm();
   }, [resetBookingForm]);
 
+  const bookingBlocked = bookingMeta?.publicBookingLocked === true;
+
+  useEffect(() => {
+    if (bookingMeta?.publicBookingLocked && view === "booking") {
+      setView("home");
+      resetBookingForm();
+    }
+  }, [bookingMeta?.publicBookingLocked, view, resetBookingForm]);
+
   const startBooking = useCallback(
     (prefillService?: ServiceRow | null) => {
+      if (bookingMeta?.publicBookingLocked) return;
       setBooked(false);
       setBookedCollabName(null);
       resetBookingForm();
@@ -236,33 +373,50 @@ function PublicPageInner() {
         setStep(2);
       }
     },
-    [resetBookingForm]
+    [resetBookingForm, bookingMeta?.publicBookingLocked]
   );
 
   const daysInMonth = getDaysInMonth(calYear, calMonth);
   const firstDay = getFirstDay(calYear, calMonth);
 
-  const maxFutureDays = bookingMeta?.maxFutureDays ?? 60;
+  const maxFutureDays = bookingMeta?.maxFutureDays ?? 30;
   const limitDate = new Date(today);
   limitDate.setHours(0, 0, 0, 0);
   limitDate.setDate(limitDate.getDate() + maxFutureDays);
 
   const slotGroups = (() => {
-    const morning = availableSlots.filter((t) => Number(t.split(":")[0]) < 12);
-    const afternoon = availableSlots.filter((t) => {
-      const h = Number(t.split(":")[0]);
+    const morning = slotTimeline.filter((c) => Number(c.start.split(":")[0]) < 12);
+    const afternoon = slotTimeline.filter((c) => {
+      const h = Number(c.start.split(":")[0]);
       return h >= 12 && h < 17;
     });
-    const evening = availableSlots.filter((t) => Number(t.split(":")[0]) >= 17);
+    const evening = slotTimeline.filter((c) => Number(c.start.split(":")[0]) >= 17);
     return [
-      { label: "Manhã", icon: "wb_sunny" as const, times: morning },
-      { label: "Tarde", icon: "wb_twilight" as const, times: afternoon },
-      { label: "Noite", icon: "nightlight" as const, times: evening },
-    ].filter((g) => g.times.length > 0);
+      { label: "Manhã", icon: "wb_sunny" as const, cells: morning },
+      { label: "Tarde", icon: "wb_twilight" as const, cells: afternoon },
+      { label: "Noite", icon: "nightlight" as const, cells: evening },
+    ].filter((g) => g.cells.length > 0);
   })();
 
+  const sliderPositionValid = useMemo(() => {
+    if (!dayTimeline) return false;
+    return isPublicStartMinuteBookable({
+      startMinute: sliderStartMin,
+      dateStr: dayTimeline.dateStr,
+      schedule: dayTimeline.schedule as DaySchedule,
+      durationMinutes: dayTimeline.durationMinutes,
+      bufferMinutes: dayTimeline.bufferMinutes,
+      collaboratorId: dayTimeline.viewCollaboratorId,
+      appointments: dayTimeline.appointments,
+      blocks: dayTimeline.blocks,
+      minAdvanceHours: dayTimeline.minAdvanceHours,
+      now: new Date(),
+    });
+  }, [dayTimeline, sliderStartMin]);
+
   const handleBook = async () => {
-    if (!business || !selectedService || !selectedDate || !selectedTime || !clientName.trim() || !slug) return;
+    if (bookingBlocked || !business || !selectedService || !selectedDate || !selectedTime || !clientName.trim() || !slug)
+      return;
     setBookingSubmitting(true);
     setBookError(null);
     try {
@@ -360,6 +514,7 @@ function PublicPageInner() {
         slug={slug}
         businessName={business.name}
         collaboratorName={bookedCollabName}
+        accentColor={accent}
       />
     );
   }
@@ -467,6 +622,26 @@ function PublicPageInner() {
 
         {/* pt compensa metade do avatar (translate-y-1/2) para o texto começar abaixo da foto, sem coluna ao lado */}
         <main className="relative z-[5] max-w-3xl lg:max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pb-28 pt-[3.25rem] sm:pt-[4.25rem]">
+          {bookingBlocked && (
+            <div
+              className={cn(
+                "mb-6 rounded-xl border p-4 text-sm",
+                isDark ? "border-amber-500/35 bg-amber-950/35 text-amber-50" : "border-amber-300 bg-amber-50 text-amber-950"
+              )}
+            >
+              <p className="font-bold flex items-center gap-2">
+                <span className="material-symbols-outlined text-xl">event_busy</span>
+                Agendamento online pausado
+              </p>
+              <p className="mt-2 opacity-95 leading-relaxed text-[13px]">
+                {bookingMeta?.publicBookingLockMessage ??
+                  "Este negócio não está aceitando novos agendamentos pelo site no momento."}
+              </p>
+              {Boolean((business.phone ?? "").replace(/\D/g, "") || personalization?.whatsapp_number) && (
+                <p className="mt-2 text-xs opacity-90">Use o telefone ou WhatsApp desta página para falar com o negócio.</p>
+              )}
+            </div>
+          )}
           <section className="mb-10 lg:mb-12">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between lg:gap-10 xl:gap-14 w-full min-w-0">
               <div className="min-w-0 flex-1 space-y-3 lg:space-y-4 w-full">
@@ -556,14 +731,18 @@ function PublicPageInner() {
               <div className="shrink-0 flex flex-col gap-2 w-full lg:w-auto lg:min-w-[240px] lg:max-w-[280px] lg:items-stretch xl:min-w-[260px]">
                 <button
                   type="button"
+                  disabled={bookingBlocked}
                   onClick={() => startBooking()}
-                  className="w-full lg:w-full px-8 py-4 rounded-xl font-bold text-black text-base shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
+                  className={cn(
+                    "w-full lg:w-full px-8 py-4 rounded-xl font-bold text-black text-base shadow-lg transition-transform",
+                    bookingBlocked ? "opacity-50 cursor-not-allowed grayscale" : "hover:scale-[1.02] active:scale-[0.98]"
+                  )}
                   style={{ backgroundColor: accent, boxShadow: `0 0 28px ${accent}55` }}
                 >
                   Novo agendamento
                 </button>
                 <p className={cn("text-xs leading-relaxed lg:text-right", mutedCls)}>
-                  Escolha serviço, profissional, data e horário
+                  {bookingBlocked ? "Agendamento pelo site indisponível no momento" : "Escolha serviço, profissional, data e horário"}
                 </p>
               </div>
             </div>
@@ -591,7 +770,7 @@ function PublicPageInner() {
 
           {collaborators.length > 0 && (
             <section className="mb-10">
-              <h2 className={cn("text-sm font-bold uppercase tracking-wider mb-4", subCls)}>Equipe</h2>
+              <h2 className={cn("text-sm font-bold uppercase tracking-wider mb-4", subCls)}>Equipe Disponível</h2>
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
                 {collaborators.map((c) => {
                   const col = c.color ?? "#3B82F6";
@@ -624,11 +803,12 @@ function PublicPageInner() {
                   <button
                     key={service.id}
                     type="button"
+                    disabled={bookingBlocked}
                     onClick={() => startBooking(service)}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-xl border text-left transition-all hover:-translate-y-0.5",
+                      "flex items-center gap-4 p-4 rounded-xl border text-left transition-all",
                       cardCls,
-                      cardHover
+                      bookingBlocked ? "opacity-60 cursor-not-allowed" : `${cardHover} hover:-translate-y-0.5`
                     )}
                   >
                     <div
@@ -673,8 +853,16 @@ function PublicPageInner() {
 
   /* ——— visão agendamento (fluxo em etapas) ——— */
   return (
-    <div className={bookUi.page}>
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-primary/8 blur-[100px] rounded-full pointer-events-none z-0" />
+    <div
+      className={bookUi.page}
+      style={
+        {
+          ["--public-accent"]: accent,
+          ["--pa-slot-glow"]: rgbaFromHex(accent, 0.3),
+        } as CSSProperties
+      }
+    >
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-[color-mix(in_srgb,var(--public-accent)_8%,transparent)] blur-[100px] rounded-full pointer-events-none z-0" />
 
       <header className={cn("relative z-10 border-b backdrop-blur-md", bookUi.header)}>
         <div className="max-w-4xl lg:max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center gap-3">
@@ -693,7 +881,9 @@ function PublicPageInner() {
             <div
               className={cn(
                 "size-11 rounded-xl border shrink-0 overflow-hidden flex items-center justify-center text-lg font-bold",
-                business.logo_url ? "border-primary/40" : "bg-primary/20 border-primary/40 text-primary"
+                business.logo_url
+                  ? "border-[color-mix(in_srgb,var(--public-accent)_40%,transparent)]"
+                  : "bg-[color-mix(in_srgb,var(--public-accent)_20%,transparent)] border-[color-mix(in_srgb,var(--public-accent)_40%,transparent)] text-[var(--public-accent)]"
               )}
             >
               {business.logo_url ? (
@@ -729,16 +919,16 @@ function PublicPageInner() {
                 <div
                   className={`size-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
                     step > s
-                      ? "bg-primary text-black"
+                      ? "bg-[var(--public-accent)] text-black"
                       : step === s
-                        ? "bg-primary/20 border-2 border-primary text-primary"
+                        ? "bg-[color-mix(in_srgb,var(--public-accent)_20%,transparent)] border-2 border-[var(--public-accent)] text-[var(--public-accent)]"
                         : bookUi.stepIdle
                   }`}
                 >
                   {step > s ? <span className="material-symbols-outlined text-sm">check</span> : s}
                 </div>
                 {s < 5 && (
-                  <div className={`flex-1 h-px mx-1 ${step > s ? "bg-primary" : bookUi.stepLine}`} />
+                  <div className={`flex-1 h-px mx-1 ${step > s ? "bg-[var(--public-accent)]" : bookUi.stepLine}`} />
                 )}
               </div>
             ))}
@@ -747,7 +937,9 @@ function PublicPageInner() {
             {["Serviço", "Profissional", "Data", "Horário", "Confirmar"].map((label, i) => (
               <span
                 key={label}
-                className={`text-xs flex-1 text-center ${step === i + 1 ? "text-primary font-semibold" : "text-gray-600"}`}
+                className={`text-xs flex-1 text-center ${
+                  step === i + 1 ? "text-[var(--public-accent)] font-semibold" : isDark ? "text-gray-500" : "text-gray-600"
+                }`}
               >
                 {label}
               </span>
@@ -769,7 +961,7 @@ function PublicPageInner() {
                 type="text"
                 placeholder="Buscar serviço..."
                 className={cn(
-                  "w-full h-11 border rounded-xl pl-9 pr-4 text-sm outline-none focus:border-primary transition-colors",
+                  "w-full h-11 border rounded-xl pl-9 pr-4 text-sm outline-none focus:border-[var(--public-accent)] transition-colors",
                   bookUi.input
                 )}
               />
@@ -786,7 +978,7 @@ function PublicPageInner() {
                   className={cn(
                     "flex items-center gap-4 p-4 rounded-xl border text-left transition-all hover:-translate-y-0.5",
                     selectedService?.id === service.id
-                      ? "border-primary bg-primary/10"
+                      ? "border-[var(--public-accent)] bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)]"
                       : cn(bookUi.card, bookUi.cardHover)
                   )}
                 >
@@ -834,7 +1026,10 @@ function PublicPageInner() {
                   setSelectedCollab("any");
                   setStep(3);
                 }}
-                className={cn("flex items-center gap-4 p-4 rounded-xl border hover:border-primary/40 text-left transition-all", bookUi.card)}
+                className={cn(
+                  "flex items-center gap-4 p-4 rounded-xl border hover:border-[color-mix(in_srgb,var(--public-accent)_40%,transparent)] text-left transition-all",
+                  bookUi.card
+                )}
               >
                 <div
                   className={cn(
@@ -842,7 +1037,7 @@ function PublicPageInner() {
                     isDark ? "bg-[#213428]" : "bg-gray-100"
                   )}
                 >
-                  <span className="material-symbols-outlined text-primary text-2xl">shuffle</span>
+                  <span className="material-symbols-outlined text-[var(--public-accent)] text-2xl">shuffle</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={cn("font-semibold", bookUi.title)}>Tanto faz / Primeiro disponível</p>
@@ -860,7 +1055,10 @@ function PublicPageInner() {
                       setSelectedCollab(collab);
                       setStep(3);
                     }}
-                    className={cn("flex items-center gap-4 p-4 rounded-xl border hover:border-primary/40 text-left transition-all", bookUi.card)}
+                    className={cn(
+                      "flex items-center gap-4 p-4 rounded-xl border hover:border-[color-mix(in_srgb,var(--public-accent)_40%,transparent)] text-left transition-all",
+                      bookUi.card
+                    )}
                   >
                     <div
                       className="size-12 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0"
@@ -882,57 +1080,67 @@ function PublicPageInner() {
         )}
 
         {step === 3 && (
-          <div className="max-w-lg">
-            <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Escolha a data</h2>
-            <p className={cn("text-sm mb-5", bookUi.subtitle)}>Selecione o dia do seu atendimento</p>
-            <div className={cn("rounded-2xl border p-5 sm:p-6", bookUi.card)}>
-              <div className="flex items-center justify-between mb-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (calMonth === 0) {
-                      setCalMonth(11);
-                      setCalYear(calYear - 1);
-                    } else setCalMonth(calMonth - 1);
-                  }}
+          <div className="w-full max-w-lg mx-auto lg:max-w-none">
+            <div className="lg:grid lg:grid-cols-12 lg:gap-8 xl:gap-10 lg:items-start">
+              <div className="lg:col-span-7 xl:col-span-8 min-w-0">
+                <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Escolha a data</h2>
+                <p className={cn("text-sm mb-5 lg:mb-6", bookUi.subtitle)}>Selecione o dia do seu atendimento</p>
+                <div
                   className={cn(
-                    "size-9 rounded-xl flex items-center justify-center transition-colors",
-                    isDark
-                      ? "bg-[#213428] hover:bg-white/10 text-gray-400 hover:text-white"
-                      : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900"
+                    "rounded-2xl border p-5 sm:p-6 lg:p-8 lg:min-h-[min(28rem,calc(100vh-16rem))] flex flex-col",
+                    bookUi.card
                   )}
                 >
-                  <span className="material-symbols-outlined text-base">chevron_left</span>
-                </button>
-                <h3 className={cn("font-bold", bookUi.title)}>
-                  {MONTHS[calMonth]} {calYear}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (calMonth === 11) {
-                      setCalMonth(0);
-                      setCalYear(calYear + 1);
-                    } else setCalMonth(calMonth + 1);
-                  }}
-                  className={cn(
-                    "size-9 rounded-xl flex items-center justify-center transition-colors",
-                    isDark
-                      ? "bg-[#213428] hover:bg-white/10 text-gray-400 hover:text-white"
-                      : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900"
-                  )}
-                >
-                  <span className="material-symbols-outlined text-base">chevron_right</span>
-                </button>
-              </div>
-              <div className="grid grid-cols-7 mb-2">
-                {WEEKDAYS.map((d) => (
-                  <div key={d} className="text-center text-xs text-gray-500 font-medium py-1">
-                    {d}
+                  <div className="flex items-center justify-between mb-4 lg:mb-5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (calMonth === 0) {
+                          setCalMonth(11);
+                          setCalYear(calYear - 1);
+                        } else setCalMonth(calMonth - 1);
+                      }}
+                      className={cn(
+                        "size-9 lg:size-10 rounded-xl flex items-center justify-center transition-colors",
+                        isDark
+                          ? "bg-[#213428] hover:bg-white/10 text-gray-400 hover:text-white"
+                          : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900"
+                      )}
+                    >
+                      <span className="material-symbols-outlined text-base">chevron_left</span>
+                    </button>
+                    <h3 className={cn("font-bold text-base lg:text-lg", bookUi.title)}>
+                      {MONTHS[calMonth]} {calYear}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (calMonth === 11) {
+                          setCalMonth(0);
+                          setCalYear(calYear + 1);
+                        } else setCalMonth(calMonth + 1);
+                      }}
+                      className={cn(
+                        "size-9 lg:size-10 rounded-xl flex items-center justify-center transition-colors",
+                        isDark
+                          ? "bg-[#213428] hover:bg-white/10 text-gray-400 hover:text-white"
+                          : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900"
+                      )}
+                    >
+                      <span className="material-symbols-outlined text-base">chevron_right</span>
+                    </button>
                   </div>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
+                  <div className="grid grid-cols-7 mb-2 lg:mb-3">
+                    {WEEKDAYS.map((d) => (
+                      <div
+                        key={d}
+                        className="text-center text-[11px] lg:text-xs text-gray-500 font-semibold py-1 lg:tracking-wide"
+                      >
+                        {d}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1.5 lg:gap-2 flex-1 content-start">
                 {Array.from({ length: firstDay }).map((_, i) => (
                   <div key={`empty-${i}`} />
                 ))}
@@ -945,26 +1153,63 @@ function PublicPageInner() {
                   today0.setHours(0, 0, 0, 0);
                   const isPast = cellDate.getTime() < today0.getTime();
                   const isTooFar = cellDate.getTime() > limitDate.getTime();
+                  const isClosedBySchedule =
+                    bookingMeta != null &&
+                    !isDateOpenForPublicBooking(
+                      dateStr,
+                      bookingMeta.weeklyAvailability,
+                      bookingMeta.availabilityOverrides
+                    );
+                  const isDisabled = isPast || isTooFar || isClosedBySchedule;
+                  const disableKind: "past" | "tooFar" | "closed" | null = isDisabled
+                    ? isPast
+                      ? "past"
+                      : isTooFar
+                        ? "tooFar"
+                        : "closed"
+                    : null;
+                  const maxDays = bookingMeta?.maxFutureDays ?? maxFutureDays;
+                  const dayTitle =
+                    disableKind === "past"
+                      ? "Dia já passou — não é possível agendar"
+                      : disableKind === "tooFar"
+                        ? `Fora do período permitido (máx. ${maxDays} dias à frente)`
+                        : disableKind === "closed"
+                          ? "Sem atendimento neste dia (fechado ou folga no calendário do negócio)"
+                          : `Dia ${day} — toque para agendar`;
                   const isSelected = selectedDate === dateStr;
                   return (
                     <button
                       key={day}
                       type="button"
-                      disabled={isPast || isTooFar}
+                      disabled={isDisabled}
+                      title={dayTitle}
+                      aria-label={dayTitle}
                       onClick={() => {
                         setSelectedDate(dateStr);
                         setSelectedTime(null);
                         setStep(4);
                       }}
+                      style={isSelected ? { boxShadow: `0 0 0 2px ${rgbaFromHex(accent, 0.35)}` } : undefined}
                       className={cn(
-                        "aspect-square flex items-center justify-center rounded-xl text-sm font-semibold transition-all",
+                        "aspect-square min-h-[2.5rem] sm:min-h-[2.75rem] lg:aspect-auto lg:min-h-[3.25rem] xl:min-h-[3.5rem] flex items-center justify-center rounded-xl text-sm lg:text-base font-semibold transition-all relative",
                         isSelected
-                          ? "bg-primary text-black"
-                          : isPast || isTooFar
-                            ? "text-gray-400 cursor-not-allowed"
+                          ? "bg-[var(--public-accent)] text-black"
+                          : isDisabled
+                            ? disableKind === "past"
+                              ? isDark
+                                ? "text-white/25 cursor-not-allowed line-through decoration-white/20"
+                                : "text-gray-400 cursor-not-allowed line-through decoration-gray-300"
+                              : disableKind === "tooFar"
+                                ? isDark
+                                  ? "text-white/35 cursor-not-allowed ring-1 ring-inset ring-dashed ring-white/25"
+                                  : "text-gray-500 cursor-not-allowed ring-1 ring-inset ring-dashed ring-gray-300"
+                                : isDark
+                                  ? "text-white/40 cursor-not-allowed bg-white/[0.07]"
+                                  : "text-gray-500 cursor-not-allowed bg-gray-100"
                             : isDark
-                              ? "text-white hover:bg-primary/20 hover:text-primary"
-                              : "text-gray-900 hover:bg-primary/15 hover:text-primary"
+                              ? "text-white hover:bg-[color-mix(in_srgb,var(--public-accent)_20%,transparent)] hover:text-[var(--public-accent)]"
+                              : "text-gray-900 hover:bg-[color-mix(in_srgb,var(--public-accent)_15%,transparent)] hover:text-[var(--public-accent)]"
                       )}
                     >
                       {day}
@@ -972,21 +1217,140 @@ function PublicPageInner() {
                   );
                 })}
               </div>
+                  <div
+                    className={cn(
+                      "mt-auto pt-4 lg:pt-5 border-t flex flex-wrap gap-x-5 gap-y-2.5 text-[11px] lg:text-xs leading-tight",
+                      isDark ? "border-white/10 text-white/55" : "border-gray-100 text-gray-600"
+                    )}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "size-6 lg:size-7 shrink-0 rounded-lg text-[10px] font-semibold flex items-center justify-center line-through",
+                          isDark ? "text-white/25 bg-transparent ring-1 ring-white/15" : "text-gray-400 ring-1 ring-gray-200"
+                        )}
+                      >
+                        9
+                      </span>
+                      Passou
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "size-6 lg:size-7 shrink-0 rounded-lg text-[10px] font-semibold flex items-center justify-center ring-1 ring-inset ring-dashed",
+                          isDark ? "text-white/35 ring-white/25" : "text-gray-500 ring-gray-300"
+                        )}
+                      >
+                        9
+                      </span>
+                      Limite de dias
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "size-6 lg:size-7 shrink-0 rounded-lg text-[10px] font-semibold flex items-center justify-center",
+                          isDark ? "text-white/40 bg-white/[0.07]" : "text-gray-500 bg-gray-100"
+                        )}
+                      >
+                        9
+                      </span>
+                      Fechado / folga
+                    </span>
+                  </div>
+                </div>
+                <p
+                  className={cn(
+                    "text-xs mt-3 lg:mt-4 text-center lg:text-left",
+                    isDark ? "text-white/45" : "text-gray-500"
+                  )}
+                >
+                  Toque num dia disponível. Passe o dedo (ou o mouse) sobre um dia bloqueado para ver o motivo.
+                  {bookingMeta?.minAdvanceHours != null
+                    ? ` Antecedência mínima: ${bookingMeta.minAdvanceHours}h.`
+                    : ""}
+                  {bookingMeta?.maxFutureDays != null
+                    ? ` Até ${bookingMeta.maxFutureDays} dias à frente.`
+                    : ""}
+                </p>
+              </div>
+
+              {selectedService && (
+                <aside className="hidden lg:block lg:col-span-5 xl:col-span-4 min-w-0">
+                  <div
+                    className={cn(
+                      "sticky top-28 rounded-2xl border overflow-hidden",
+                      bookUi.card,
+                      isDark
+                        ? "border-[color-mix(in_srgb,var(--public-accent)_25%,transparent)] shadow-[0_0_40px_-12px_var(--pa-glow-soft)]"
+                        : "border-gray-200/80 shadow-sm"
+                    )}
+                    style={
+                      isDark
+                        ? ({ ["--pa-glow-soft"]: rgbaFromHex(accent, 0.25) } as CSSProperties)
+                        : undefined
+                    }
+                  >
+                    <div
+                      className="h-1 w-full bg-[var(--public-accent)]"
+                      style={{ boxShadow: `0 0 20px ${rgbaFromHex(accent, 0.5)}` }}
+                    />
+                    <div className="p-6 xl:p-7">
+                      <p className={cn("text-[11px] font-bold uppercase tracking-widest mb-5", bookUi.muted)}>
+                        Seu agendamento
+                      </p>
+                      <div className="flex gap-4 mb-6">
+                        <div
+                          className={cn(
+                            "size-16 xl:size-[4.5rem] rounded-2xl flex items-center justify-center text-3xl shrink-0",
+                            isDark ? "bg-[#213428]" : "bg-gray-100"
+                          )}
+                        >
+                          {selectedService.emoji ? (
+                            <span className="leading-none">{selectedService.emoji}</span>
+                          ) : (
+                            <span className="material-symbols-outlined text-gray-500 text-3xl">category</span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className={cn("font-bold text-lg xl:text-xl leading-snug", bookUi.title)}>
+                            {selectedService.name}
+                          </p>
+                          <p className={cn("text-sm mt-2", bookUi.subtitle)}>
+                            {selectedService.duration_minutes} min · {formatCurrency(selectedService.price_cents / 100)}
+                          </p>
+                        </div>
+                      </div>
+                      <div
+                        className={cn(
+                          "rounded-xl p-4 border",
+                          isDark ? "border-white/10 bg-white/[0.04]" : "border-gray-100 bg-gray-50/90"
+                        )}
+                      >
+                        <p className={cn("text-[11px] font-semibold uppercase tracking-wide mb-1.5", bookUi.muted)}>
+                          Profissional
+                        </p>
+                        <p className={cn("text-sm font-semibold", bookUi.title)}>
+                          {selectedCollab === "any"
+                            ? "Primeiro disponível na equipe"
+                            : selectedCollab
+                              ? selectedCollab.name
+                              : "—"}
+                        </p>
+                      </div>
+                      <p className={cn("text-xs leading-relaxed mt-6", bookUi.muted)}>
+                        No calendário ao lado, os dias em destaque estão livres para agendar. Passe o cursor sobre um
+                        dia indisponível para ver se já passou, está fora do período ou o estabelecimento não abre.
+                      </p>
+                    </div>
+                  </div>
+                </aside>
+              )}
             </div>
-            <p className="text-xs text-gray-500 mt-3 text-center">
-              Respeitamos a disponibilidade cadastrada pelo negócio
-              {bookingMeta?.minAdvanceHours != null
-                ? ` · mínimo de ${bookingMeta.minAdvanceHours}h de antecedência`
-                : ""}
-              {bookingMeta?.maxFutureDays != null
-                ? ` · até ${bookingMeta.maxFutureDays} dias à frente`
-                : ""}
-            </p>
           </div>
         )}
 
         {step === 4 && (
-          <div className="max-w-2xl">
+          <div className="w-full max-w-2xl lg:max-w-4xl mx-auto">
             <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Escolha o horário</h2>
             <p className={cn("text-sm mb-6", bookUi.subtitle)}>
               {selectedDate &&
@@ -998,7 +1362,7 @@ function PublicPageInner() {
             </p>
             {slotsLoading && (
               <div className={cn("flex items-center gap-3 text-sm py-8", bookUi.subtitle)}>
-                <div className="size-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                <div className="size-6 border-2 border-[color-mix(in_srgb,var(--public-accent)_30%,transparent)] border-t-[var(--public-accent)] rounded-full animate-spin" />
                 Carregando horários livres…
               </div>
             )}
@@ -1007,47 +1371,134 @@ function PublicPageInner() {
                 {slotsError}
               </div>
             )}
-            {!slotsLoading && !slotsError && availableSlots.length === 0 && (
+            {!slotsLoading && !slotsError && dayTimeline && (
+              <div className="space-y-4">
+                <p className={cn("text-xs leading-relaxed", bookUi.muted)}>
+                  A linha do tempo mostra o expediente, pausas e horários já ocupados neste profissional. Arraste o
+                  bloco &quot;Você&quot; para escolher o horário de início do seu atendimento (o horário em destaque é o
+                  seu).
+                  {dayTimeline.bufferMinutes > 0 ? (
+                    <>
+                      {" "}
+                      A faixa listrada após o bloco verde é o intervalo fixo entre um atendimento e outro.
+                    </>
+                  ) : null}
+                </p>
+                <p className={cn("text-sm font-semibold", bookUi.title)}>
+                  {dayTimeline.viewCollaboratorName}
+                </p>
+                <PublicBookingDayTimeline
+                  isDark={isDark}
+                  accentColor={accent}
+                  payload={dayTimeline}
+                  startMin={sliderStartMin}
+                  onStartMinChange={setSliderStartMin}
+                />
+                <p className={cn("text-sm", bookUi.subtitle)}>
+                  Início do seu atendimento:{" "}
+                  <span className={cn("font-bold tabular-nums", bookUi.title)}>{minutesToTime(sliderStartMin)}</span>
+                  {!sliderPositionValid && (
+                    <span
+                      className={cn(
+                        "block text-xs mt-1",
+                        isDark ? "text-amber-200/90" : "text-amber-800"
+                      )}
+                    >
+                      Este encaixe não é válido (sobrepõe pausa, bloqueio ou horário indisponível). Arraste para outro
+                      horário.
+                    </span>
+                  )}
+                </p>
+                <button
+                  type="button"
+                  disabled={!sliderPositionValid}
+                  onClick={() => {
+                    if (!sliderPositionValid) return;
+                    setSelectedTime(minutesToTime(sliderStartMin));
+                    setStep(5);
+                  }}
+                  style={{ boxShadow: `0 0 16px ${rgbaFromHex(accent, 0.25)}` }}
+                  className="w-full py-3.5 bg-[var(--public-accent)] hover:brightness-95 disabled:opacity-45 disabled:cursor-not-allowed text-black font-bold rounded-xl text-base transition-all"
+                >
+                  Continuar
+                </button>
+              </div>
+            )}
+            {!slotsLoading && !slotsError && !dayTimeline && slotTimeline.length === 0 && (
               <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                 Nenhum horário disponível neste dia para a combinação escolhida. Tente outra data ou outro
                 profissional.
               </div>
             )}
-            {!slotsLoading &&
-              !slotsError &&
-              slotGroups.map(({ label, icon, times }) => (
-                <div key={label} className="mb-6">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className={cn("material-symbols-outlined text-base", bookUi.muted)}>{icon}</span>
-                    <h3 className={cn("text-sm font-semibold", bookUi.muted)}>{label}</h3>
-                  </div>
-                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 sm:gap-3">
-                    {times.map((time) => (
-                      <button
-                        key={time}
-                        type="button"
-                        onClick={() => {
-                          setSelectedTime(time);
-                          setStep(5);
-                        }}
-                        className={cn(
-                          "py-3 rounded-xl text-sm font-bold transition-all border",
-                          selectedTime === time
-                            ? "bg-primary text-black border-primary shadow-[0_0_10px_rgba(19,236,91,0.3)]"
-                            : cn(
+            {!slotsLoading && !slotsError && !dayTimeline && slotTimeline.length > 0 && (
+              <div className="space-y-4">
+                {bookingMeta?.publicBookingTimeUi === "blocks" ? (
+                  <p className={cn("text-sm leading-relaxed", bookUi.muted)}>
+                    Escolha um horário tocando em um dos blocos abaixo. Horários esmaecidos estão indisponíveis (já
+                    ocupados, pausa no expediente ou intervalo após outro atendimento).
+                  </p>
+                ) : (
+                  <p className={cn("text-xs leading-relaxed", bookUi.muted)}>
+                    Horários esmaecidos estão indisponíveis (já ocupados, pausa no expediente ou intervalo após outro
+                    atendimento).
+                  </p>
+                )}
+                {selectedCollab && selectedCollab !== "any" ? (
+                  <p className={cn("text-sm font-semibold", bookUi.title)}>{selectedCollab.name}</p>
+                ) : selectedCollab === "any" ? (
+                  <p className={cn("text-sm font-semibold", bookUi.title)}>Primeiro disponível na equipe</p>
+                ) : null}
+                {slotGroups.map(({ label, icon, cells }) => (
+                  <div key={label} className="mb-6 last:mb-0">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={cn("material-symbols-outlined text-base", bookUi.muted)}>{icon}</span>
+                      <h3 className={cn("text-sm font-semibold", bookUi.muted)}>{label}</h3>
+                    </div>
+                    <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-2 sm:gap-3">
+                      {cells.map((cell) => (
+                        <button
+                          key={cell.start}
+                          type="button"
+                          disabled={!cell.available}
+                          title={!cell.available ? publicSlotReasonLabel(cell.reason) : undefined}
+                          aria-label={
+                            cell.available
+                              ? `Agendar às ${cell.start}`
+                              : `${cell.start} indisponível: ${publicSlotReasonLabel(cell.reason)}`
+                          }
+                          onClick={() => {
+                            if (!cell.available) return;
+                            setSelectedTime(cell.start);
+                            setStep(5);
+                          }}
+                          className={cn(
+                            "py-3 lg:py-3.5 rounded-xl text-sm lg:text-base font-bold transition-all border",
+                            !cell.available &&
+                              cn(
+                                "opacity-50 cursor-not-allowed border-dashed",
+                                isDark ? "border-white/25 text-gray-500" : "border-gray-300 text-gray-500"
+                              ),
+                            cell.available &&
+                              selectedTime === cell.start &&
+                              "bg-[var(--public-accent)] text-black border-[var(--public-accent)] shadow-[0_0_10px_var(--pa-slot-glow)]",
+                            cell.available &&
+                              selectedTime !== cell.start &&
+                              cn(
                                 bookUi.card,
                                 isDark
-                                  ? "text-white hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
-                                  : "text-gray-900 hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                                  ? "text-white hover:border-[color-mix(in_srgb,var(--public-accent)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)] hover:text-[var(--public-accent)]"
+                                  : "text-gray-900 hover:border-[color-mix(in_srgb,var(--public-accent)_40%,transparent)] hover:bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)] hover:text-[var(--public-accent)]"
                               )
-                        )}
-                      >
-                        {time}
-                      </button>
-                    ))}
+                          )}
+                        >
+                          {cell.start}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1057,7 +1508,12 @@ function PublicPageInner() {
             <p className={cn("text-sm mb-6", bookUi.subtitle)}>Revise os detalhes antes de confirmar</p>
 
             <div className="lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
-              <div className={cn("border border-primary/30 rounded-2xl p-5 sm:p-6 mb-5", bookUi.card)}>
+              <div
+                className={cn(
+                  "border border-[color-mix(in_srgb,var(--public-accent)_30%,transparent)] rounded-2xl p-5 sm:p-6 mb-5",
+                  bookUi.card
+                )}
+              >
                 <div className="space-y-3">
                   {[
                     { icon: "content_cut", label: "Serviço", value: selectedService?.name ?? "" },
@@ -1095,7 +1551,7 @@ function PublicPageInner() {
                       <span
                         className={cn(
                           "text-sm font-semibold",
-                          item.highlight ? "text-primary" : bookUi.title
+                          item.highlight ? "text-[var(--public-accent)]" : bookUi.title
                         )}
                       >
                         {item.value}
@@ -1116,7 +1572,7 @@ function PublicPageInner() {
                     onChange={(e) => setClientName(e.target.value)}
                     placeholder="Como quer ser chamado(a)"
                     className={cn(
-                      "w-full h-11 border focus:border-primary rounded-xl px-4 outline-none transition-colors text-sm",
+                      "w-full h-11 border focus:border-[var(--public-accent)] rounded-xl px-4 outline-none transition-colors text-sm",
                       bookUi.input
                     )}
                   />
@@ -1132,7 +1588,7 @@ function PublicPageInner() {
                     placeholder="Ex: Prefiro deixar um pouco mais comprido nas laterais..."
                     rows={3}
                     className={cn(
-                      "w-full border focus:border-primary rounded-xl px-4 py-3 outline-none transition-colors text-sm resize-none",
+                      "w-full border focus:border-[var(--public-accent)] rounded-xl px-4 py-3 outline-none transition-colors text-sm resize-none",
                       bookUi.input
                     )}
                   />
@@ -1148,7 +1604,7 @@ function PublicPageInner() {
                   >
                     Você pode agendar sem criar conta — basta informar seu nome. Com conta de cliente você acompanha
                     histórico e cancelamentos em{" "}
-                    <Link href="/conta" className="font-semibold text-primary hover:underline">
+                    <Link href="/conta" className="font-semibold text-[var(--public-accent)] hover:underline">
                       Minha conta
                     </Link>{" "}
                     após o vínculo com o negócio.
@@ -1186,7 +1642,8 @@ function PublicPageInner() {
                   type="button"
                   onClick={() => void handleBook()}
                   disabled={!clientName.trim() || bookingSubmitting}
-                  className="w-full py-4 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl text-lg transition-all shadow-[0_0_20px_rgba(19,236,91,0.3)] flex items-center justify-center gap-2"
+                  style={{ boxShadow: `0 0 20px ${rgbaFromHex(accent, 0.3)}` }}
+                  className="w-full py-4 bg-[var(--public-accent)] hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl text-lg transition-all flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined">check_circle</span>
                   {bookingSubmitting ? "Confirmando…" : "Confirmar agendamento"}
@@ -1268,6 +1725,7 @@ function SuccessScreen({
   slug,
   businessName,
   collaboratorName,
+  accentColor,
 }: {
   service: ServiceRow | null;
   collab: CollabRow | "any" | null;
@@ -1276,14 +1734,20 @@ function SuccessScreen({
   slug: string;
   businessName: string;
   collaboratorName: string | null;
+  accentColor: string;
 }) {
   return (
-    <div className="min-h-screen bg-[#020403] flex flex-col items-center justify-center px-4 py-8 sm:py-12">
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-primary/15 blur-[100px] rounded-full pointer-events-none" />
+    <div
+      className="min-h-screen bg-[#020403] flex flex-col items-center justify-center px-4 py-8 sm:py-12"
+      style={{ ["--public-accent"]: accentColor } as CSSProperties}
+    >
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-[color-mix(in_srgb,var(--public-accent)_15%,transparent)] blur-[100px] rounded-full pointer-events-none" />
       <div className="relative z-10 w-full max-w-sm sm:max-w-md lg:max-w-lg flex flex-col sm:flex-row sm:items-stretch gap-6 sm:gap-8">
         <div className="flex flex-col items-center sm:items-start text-center sm:text-left flex-1">
-          <div className="size-20 sm:size-24 rounded-3xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center mb-4 sm:mb-6">
-            <span className="material-symbols-outlined text-primary text-4xl sm:text-5xl filled">check_circle</span>
+          <div className="size-20 sm:size-24 rounded-3xl bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)] border-2 border-[color-mix(in_srgb,var(--public-accent)_30%,transparent)] flex items-center justify-center mb-4 sm:mb-6">
+            <span className="material-symbols-outlined text-[var(--public-accent)] text-4xl sm:text-5xl filled">
+              check_circle
+            </span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">Agendamento confirmado!</h1>
           <p className="text-gray-400 text-sm mb-6 sm:mb-0">Você receberá uma confirmação por e-mail em breve.</p>
@@ -1308,7 +1772,9 @@ function SuccessScreen({
               ].map((item) => (
                 <div key={item.label} className="flex justify-between items-center">
                   <span className="text-gray-400 text-sm">{item.label}</span>
-                  <span className={`text-sm font-bold ${item.highlight ? "text-primary" : "text-white"}`}>
+                  <span
+                    className={`text-sm font-bold ${item.highlight ? "text-[var(--public-accent)]" : "text-white"}`}
+                  >
                     {item.value}
                   </span>
                 </div>
@@ -1325,7 +1791,7 @@ function SuccessScreen({
             </button>
             <Link
               href="/conta"
-              className="block w-full py-3 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all text-center"
+              className="block w-full py-3 bg-[var(--public-accent)] hover:brightness-95 text-black font-bold rounded-xl text-sm transition-all text-center"
             >
               Minha conta e agendamentos
             </Link>
@@ -1337,7 +1803,7 @@ function SuccessScreen({
             </Link>
             <p className="text-xs text-gray-500 text-center">
               Com sua conta você gerencia e cancela em{" "}
-              <Link href="/conta" className="text-primary font-semibold hover:underline">
+              <Link href="/conta" className="text-[var(--public-accent)] font-semibold hover:underline">
                 Minha conta
               </Link>
               .
