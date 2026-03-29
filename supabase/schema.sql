@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.businesses (
   city TEXT,
   primary_color TEXT DEFAULT '#13EC5B',
   logo_url TEXT,
-  plan TEXT NOT NULL DEFAULT 'free', -- 'free' | 'starter' | 'growth' | 'enterprise'
+  plan TEXT NOT NULL DEFAULT 'free', -- 'free' | 'plano_1' | 'plano_2' | 'plano_3'
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -62,6 +62,7 @@ CREATE TABLE IF NOT EXISTS public.collaborators (
   business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   role TEXT,
+  phone TEXT,
   color TEXT DEFAULT '#3B82F6',
   avatar_url TEXT,
   active BOOLEAN NOT NULL DEFAULT true,
@@ -186,6 +187,8 @@ CREATE TABLE IF NOT EXISTS public.notification_settings (
   reminder_email BOOLEAN NOT NULL DEFAULT true,
   reminder_whatsapp BOOLEAN NOT NULL DEFAULT false,
   min_advance_hours INT NOT NULL DEFAULT 2,
+  booking_buffer_minutes INT NOT NULL DEFAULT 15,
+  booking_max_future_days INT NOT NULL DEFAULT 60,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -199,8 +202,14 @@ CREATE TABLE IF NOT EXISTS public.personalization (
   instagram_url TEXT,
   facebook_url TEXT,
   whatsapp_number TEXT,
+  tagline TEXT,
+  about TEXT,
+  public_theme TEXT NOT NULL DEFAULT 'dark',
+  show_whatsapp_fab BOOLEAN NOT NULL DEFAULT true,
+  address_line TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT personalization_public_theme_check CHECK (public_theme IN ('dark', 'light'))
 );
 
 -- ========== RLS (Row Level Security) ==========
@@ -256,6 +265,7 @@ CREATE POLICY "notification_settings_own" ON public.notification_settings FOR AL
 CREATE POLICY "personalization_own" ON public.personalization FOR ALL USING (
   business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
 );
+CREATE POLICY "personalization_public_read" ON public.personalization FOR SELECT USING (true);
 
 -- Página pública: leitura de negócio por slug (anon)
 CREATE POLICY "businesses_public_read" ON public.businesses FOR SELECT USING (true);
@@ -264,6 +274,16 @@ CREATE POLICY "collaborators_public_read" ON public.collaborators FOR SELECT USI
 
 -- Cliente com conta: leitura dos próprios dados e agendamentos
 CREATE POLICY "clients_self" ON public.clients FOR ALL USING (auth_user_id = auth.uid());
+
+CREATE POLICY "appointments_client_read" ON public.appointments
+  FOR SELECT TO authenticated
+  USING (
+    client_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1 FROM public.clients c
+      WHERE c.id = appointments.client_id AND c.auth_user_id = auth.uid()
+    )
+  );
 
 -- Trigger updated_at (tabelas que têm coluna updated_at)
 CREATE OR REPLACE FUNCTION public.set_updated_at()
@@ -308,4 +328,18 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- ========== STRIPE (assinatura) — ou rode supabase/migrations/20250328_stripe_billing.sql ==========
+ALTER TABLE public.businesses
+  ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT,
+  ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT,
+  ADD COLUMN IF NOT EXISTS subscription_status TEXT,
+  ADD COLUMN IF NOT EXISTS stripe_price_id TEXT,
+  ADD COLUMN IF NOT EXISTS subscription_current_period_end TIMESTAMPTZ;
+
+-- ========== PERFIL DE PRECIFICAÇÃO (onboarding) — ou migrations/20250328_profiles_pricing_lock.sql ==========
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS recommended_plan TEXT,
+  ADD COLUMN IF NOT EXISTS recommended_price_display NUMERIC(10, 2),
+  ADD COLUMN IF NOT EXISTS onboarding_inputs JSONB;
 

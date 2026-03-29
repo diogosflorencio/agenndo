@@ -67,7 +67,7 @@ export default function ClienteDetalhePage() {
 
   if (!client) {
     return (
-      <div className="w-full max-w-lg mx-auto text-center py-12">
+      <div className="w-full text-center py-12">
         <p className="text-gray-600 mb-4">Cliente não encontrado.</p>
         <Link href="/dashboard/clientes" className="text-primary font-semibold hover:underline">Voltar para Clientes</Link>
       </div>
@@ -81,7 +81,7 @@ export default function ClienteDetalhePage() {
   const attendRate = client.total_appointments > 0 ? Math.round(((client.total_appointments - client.no_shows) / client.total_appointments) * 100) : 0;
 
   return (
-    <div className="w-full max-w-3xl mx-auto">
+    <div className="w-full">
       <div className="mb-6 flex items-center gap-3">
         <button type="button" onClick={() => router.back()} className="size-9 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600">
           <span className="material-symbols-outlined text-lg">arrow_back</span>

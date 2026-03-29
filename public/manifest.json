@@ -1,7 +1,7 @@
 {
-  "name": "Agenndo — Agendamento Online",
+  "name": "Agenndo — Sistema de agendamento online",
   "short_name": "Agenndo",
-  "description": "Agende e gerencie sua agenda. Adicione à tela inicial para acessar rápido.",
+  "description": "Agenda e agendamento online para prestadores: link público, lembretes e painel. Instale como app (PWA).",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020403",
@@ -10,16 +10,10 @@
   "lang": "pt-BR",
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
     }
   ]
 }

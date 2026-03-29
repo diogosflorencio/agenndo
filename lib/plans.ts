@@ -1,4 +1,27 @@
-export type PlanId = "free" | "starter" | "growth" | "enterprise";
+export type PlanId = "free" | "plano_1" | "plano_2" | "plano_3";
+
+/** Texto único em qualquer lugar público */
+export const PLANO_LABEL = "Plano";
+
+export const PAID_PLAN_IDS = ["plano_1", "plano_2", "plano_3"] as const;
+export type PaidPlanId = (typeof PAID_PLAN_IDS)[number];
+
+/** Normaliza valores antigos (starter/growth/enterprise) vindos do BD ou metadata Stripe. */
+export function normalizePlanId(raw: string | null | undefined): PlanId {
+  if (!raw) return "free";
+  const legacy: Record<string, PlanId> = {
+    starter: "plano_1",
+    growth: "plano_2",
+    enterprise: "plano_3",
+  };
+  const v = legacy[raw] ?? (raw as PlanId);
+  if (v === "free" || PAID_PLAN_IDS.includes(v as PaidPlanId)) return v as PlanId;
+  return "free";
+}
+
+export function isPaidPlanId(v: string | null | undefined): v is PaidPlanId {
+  return v != null && PAID_PLAN_IDS.includes(v as PaidPlanId);
+}
 
 export interface Plan {
   id: PlanId;
@@ -14,6 +37,12 @@ export interface Plan {
   highlight?: boolean;
   badge?: string;
 }
+
+const PAID_FEATURES = [
+  "Página pública e agendamentos online",
+  "Gestão de agenda, clientes e equipe no painel",
+  "Notificações e acompanhamento no app",
+];
 
 export const PLANS: Record<PlanId, Plan> = {
   free: {
@@ -31,59 +60,34 @@ export const PLANS: Record<PlanId, Plan> = {
     ],
     badge: "7 dias grátis",
   },
-  starter: {
-    id: "starter",
-    label: "Starter",
+  plano_1: {
+    id: "plano_1",
+    label: PLANO_LABEL,
     price: 49.9,
     limits: { appointments: 150, collaborators: 2, services: 20 },
-    features: [
-      "Tudo do Grátis",
-      "2 colaboradores",
-      "20 serviços",
-      "150 agendamentos/mês",
-      "Lembretes por e-mail",
-      "QR Code da página",
-    ],
+    features: PAID_FEATURES,
   },
-  growth: {
-    id: "growth",
-    label: "Growth",
+  plano_2: {
+    id: "plano_2",
+    label: PLANO_LABEL,
     price: 89.9,
     limits: { appointments: Infinity, collaborators: 8, services: Infinity },
-    features: [
-      "Tudo do Starter",
-      "Agendamentos ilimitados",
-      "8 colaboradores",
-      "Lembretes WhatsApp",
-      "Personalização avançada",
-      "Analytics detalhado",
-      "Exportação CSV",
-    ],
-    highlight: true,
-    badge: "Mais popular",
+    features: PAID_FEATURES,
   },
-  enterprise: {
-    id: "enterprise",
-    label: "Enterprise",
+  plano_3: {
+    id: "plano_3",
+    label: PLANO_LABEL,
     price: 179.9,
     limits: {
       appointments: Infinity,
       collaborators: Infinity,
       services: Infinity,
     },
-    features: [
-      "Tudo do Growth",
-      "Colaboradores ilimitados",
-      "Múltiplos locais",
-      "API REST",
-      "Suporte VIP",
-      "Onboarding assistido",
-      "SLA 99.9%",
-    ],
+    features: PAID_FEATURES,
   },
 };
 
-export const PLAN_ORDER: PlanId[] = ["free", "starter", "growth", "enterprise"];
+export const PLAN_ORDER: PlanId[] = ["free", "plano_1", "plano_2", "plano_3"];
 
 export function getPlan(id: PlanId): Plan {
   return PLANS[id];

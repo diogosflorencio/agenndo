@@ -38,7 +38,7 @@ export default function NovoAgendamentoPage() {
 
   if (saved) {
     return (
-      <div className="w-full max-w-lg mx-auto text-center py-12">
+      <div className="w-full text-center py-12">
         <div className="size-16 rounded-2xl bg-primary/20 border-2 border-primary/40 flex items-center justify-center mx-auto mb-4">
           <span className="material-symbols-outlined text-primary text-4xl filled">check_circle</span>
         </div>
@@ -65,7 +65,7 @@ export default function NovoAgendamentoPage() {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full">
       <div className="mb-6 flex items-center gap-3">
         <Link
           href="/dashboard/agendamentos"
@@ -147,7 +147,11 @@ export default function NovoAgendamentoPage() {
                     : "border-gray-200 hover:border-gray-300 text-gray-700"
                 }`}
               >
-                <span className="text-xl block mb-1">{s.emoji}</span>
+                <span className="text-xl block mb-1 min-h-[1.25rem] flex items-center justify-start">
+                  {s.emoji ?? (
+                    <span className="material-symbols-outlined text-gray-400 text-xl">category</span>
+                  )}
+                </span>
                 <span className="text-sm font-semibold block truncate">{s.name}</span>
                 <span className="text-xs text-primary font-bold">{formatCurrency(s.price)}</span>
               </button>

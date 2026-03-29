@@ -58,7 +58,7 @@ export default function NotificacoesPage() {
   );
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Notificações</h1>
         <p className="text-gray-600 text-sm mt-1">Configure alertas para você e lembretes para seus clientes</p>
@@ -281,7 +281,7 @@ export default function NotificacoesPage() {
                     .replace("{servico}", "Corte + Barba")
                     .replace("{colaborador}", "Carlos")
                     .replace("{endereco}", "Rua das Flores, 123")
-                    .replace("{link}", "agenndo.com/cancel/abc123")}
+                    .replace("{link}", "agenndo.com.br/cancel/abc123")}
                 </p>
               </div>
 

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useDashboard } from "@/lib/dashboard-context";
+import { createClient } from "@/lib/supabase/client";
 
 const COLORS = [
   "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B",
@@ -11,21 +13,44 @@ const COLORS = [
 
 export default function NovoColaboradorPage() {
   const router = useRouter();
+  const { business } = useDashboard();
   const [form, setForm] = useState({
     name: "",
     role: "",
     phone: "",
     color: "#3B82F6",
-    customHours: false,
   });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSave = () => {
-    // In production: save to DB
-    router.push("/dashboard/colaboradores");
+  const handleSave = async () => {
+    if (!form.name.trim() || !business?.id) return;
+    setSaving(true);
+    setError(null);
+    const supabase = createClient();
+    const { data, error: insErr } = await supabase
+      .from("collaborators")
+      .insert({
+        business_id: business.id,
+        name: form.name.trim(),
+        role: form.role.trim() || null,
+        phone: form.phone.trim() || null,
+        color: form.color,
+        active: true,
+      })
+      .select("id")
+      .single();
+
+    setSaving(false);
+    if (insErr || !data?.id) {
+      setError(insErr?.message ?? "Não foi possível criar o colaborador.");
+      return;
+    }
+    router.push(`/dashboard/colaboradores/${data.id}/servicos`);
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full">
       <div className="flex items-center gap-3 mb-6">
         <Link
           href="/dashboard/colaboradores"
@@ -38,6 +63,17 @@ export default function NovoColaboradorPage() {
           <p className="text-gray-600 text-sm">Adicione um novo membro à equipe</p>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+          {error}
+          {error.includes("phone") && (
+            <span className="block text-xs mt-1 text-red-700">
+              Rode a migração <code className="font-mono">20250332_collaborators_phone.sql</code> no Supabase se a coluna ainda não existir.
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
         <div className="flex justify-center mb-6">
@@ -52,12 +88,6 @@ export default function NovoColaboradorPage() {
                 <span className="material-symbols-outlined text-gray-500 text-3xl">person</span>
               )}
             </div>
-            <button
-              type="button"
-              className="absolute -bottom-1 -right-1 size-8 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center text-gray-600 transition-colors"
-            >
-              <span className="material-symbols-outlined text-sm">photo_camera</span>
-            </button>
           </div>
         </div>
 
@@ -81,13 +111,13 @@ export default function NovoColaboradorPage() {
               type="text"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
-              placeholder="Ex: Barbeiro Senior, Manicure..."
+              placeholder="Ex: Barbeiro, Manicure..."
               className="w-full h-11 bg-gray-50 border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1.5">Telefone</label>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">Telefone (opcional)</label>
             <input
               type="tel"
               value={form.phone}
@@ -113,26 +143,6 @@ export default function NovoColaboradorPage() {
               ))}
             </div>
           </div>
-
-          <div className="flex items-center gap-3 py-3 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={() => setForm({ ...form, customHours: !form.customHours })}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                form.customHours ? "bg-primary" : "bg-gray-200"
-              }`}
-            >
-              <span
-                className={`inline-block size-4 rounded-full bg-white transition-transform ${
-                  form.customHours ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
-            <div>
-              <p className="text-sm text-gray-900 font-medium">Horários personalizados</p>
-              <p className="text-xs text-gray-500">Definir horários diferentes do negócio</p>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -144,12 +154,13 @@ export default function NovoColaboradorPage() {
           Cancelar
         </Link>
         <button
-          onClick={handleSave}
-          disabled={!form.name}
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={!form.name.trim() || saving || !business?.id}
           className="flex-1 py-4 bg-primary hover:bg-primary/90 disabled:bg-primary/40 disabled:cursor-not-allowed text-black font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
         >
-          Salvar e vincular serviços
-          <span className="material-symbols-outlined text-base">arrow_forward</span>
+          {saving ? "Salvando…" : "Salvar e vincular serviços"}
+          {!saving && <span className="material-symbols-outlined text-base">arrow_forward</span>}
         </button>
       </div>
     </div>

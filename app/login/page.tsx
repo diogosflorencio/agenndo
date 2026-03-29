@@ -1,32 +1,97 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useState, Suspense, useEffect } from "react";
-import { Scissors } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, Suspense, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  buildOAuthStartUrl,
+  buildSupabaseOAuthRedirectUrl,
+  getOAuthRedirectOrigin,
+  isLocalhostOAuthPopup,
+  OAUTH_POPUP_MESSAGE,
+} from "@/lib/auth/oauth-popup";
 
 function LoginContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const popupHandledRef = useRef(false);
+  const popupPollRef = useRef<number | null>(null);
 
   useEffect(() => {
     const err = searchParams.get("error");
     if (err) setError(decodeURIComponent(err));
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!isLocalhostOAuthPopup()) return;
+
+    function onMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return;
+      const payload = e.data as { type?: string; ok?: boolean; next?: string; error?: string };
+      if (payload?.type !== OAUTH_POPUP_MESSAGE) return;
+      popupHandledRef.current = true;
+      if (popupPollRef.current) {
+        clearInterval(popupPollRef.current);
+        popupPollRef.current = null;
+      }
+      setLoading(false);
+      if (payload.ok && payload.next) {
+        router.push(payload.next);
+        router.refresh();
+      } else {
+        setError(payload.error ?? "Não foi possível entrar.");
+      }
+    }
+
+    window.addEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("message", onMessage);
+      if (popupPollRef.current) {
+        clearInterval(popupPollRef.current);
+        popupPollRef.current = null;
+      }
+    };
+  }, [router]);
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
+    popupHandledRef.current = false;
+    const origin = getOAuthRedirectOrigin() || window.location.origin;
+
+    if (isLocalhostOAuthPopup()) {
+      const startUrl = buildOAuthStartUrl(origin, { next: "/dashboard" });
+      const popup = window.open(startUrl, "agenndo-oauth", "width=520,height=720,scrollbars=yes");
+      if (!popup) {
+        setError("Permita popups para este site ou use outro navegador.");
+        setLoading(false);
+        return;
+      }
+      popup.focus();
+      if (popupPollRef.current) clearInterval(popupPollRef.current);
+      popupPollRef.current = window.setInterval(() => {
+        if (popup.closed && !popupHandledRef.current) {
+          if (popupPollRef.current) {
+            clearInterval(popupPollRef.current);
+            popupPollRef.current = null;
+          }
+          setLoading(false);
+        }
+      }, 400);
+      return;
+    }
+
     const supabase = createClient();
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const redirectTo = `${origin}/auth/callback?next=/dashboard`;
+    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/callback", { next: "/dashboard" });
 
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo,
+        skipBrowserRedirect: false,
         queryParams: {
           access_type: "offline",
           prompt: "consent",
@@ -37,14 +102,11 @@ function LoginContent() {
     if (err) {
       setError(err.message);
       setLoading(false);
-      return;
     }
-    // Redirecionamento é feito pelo Supabase
   };
 
   return (
     <div className="min-h-screen bg-[#102216] text-white flex flex-col lg:flex-row">
-      {/* Aside — desktop: lateral esquerda; mobile: oculto */}
       <aside className="hidden lg:flex lg:w-[42%] xl:w-[45%] lg:min-h-screen flex-col relative overflow-hidden bg-gradient-to-br from-[#0d2818] via-[#102216] to-[#0a1f12]">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_20%,rgba(19,236,91,0.12),transparent)]" />
         <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-[#13ec5b]/10 blur-[80px]" />
@@ -54,9 +116,6 @@ function LoginContent() {
         <div className="absolute bottom-[25%] left-[20%] w-24 h-24 border border-white/5 rounded-3xl -rotate-6" />
         <div className="relative z-10 flex flex-col flex-1 justify-center px-12 xl:px-16 py-16">
           <div className="flex items-center gap-2.5 mb-12">
-            <div className="h-9 w-9 rounded-lg bg-[#13ec5b]/20 border border-[#13ec5b]/30 flex items-center justify-center">
-              <Scissors size={18} className="text-[#13ec5b]" />
-            </div>
             <span className="text-xl font-bold tracking-tight text-white">Agenndo</span>
           </div>
           <h2 className="text-2xl xl:text-3xl font-extrabold leading-tight tracking-tight text-white max-w-sm mb-4">
@@ -68,14 +127,12 @@ function LoginContent() {
         </div>
       </aside>
 
-      {/* Coluna do formulário */}
       <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 lg:flex lg:items-center lg:justify-center lg:py-8 bg-[#020403]">
         <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/8 blur-[140px] rounded-full pointer-events-none lg:left-[58%]" />
 
         <header className="relative z-10 py-5 px-6 border-b border-white/5 lg:border-0 lg:absolute lg:top-0 lg:left-0 lg:right-0">
           <div className="max-w-md mx-auto flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-              <span className="material-symbols-outlined text-primary text-2xl">calendar_month</span>
               <span className="text-lg font-bold text-white">Agenndo</span>
             </Link>
             <Link href="/" className="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1">
@@ -113,7 +170,9 @@ function LoginContent() {
               ) : (
                 <GoogleIcon />
               )}
-              <span>{loading ? "Redirecionando..." : "Continuar com Google"}</span>
+              <span>
+                {loading && isLocalhostOAuthPopup() ? "Aguarde o popup…" : loading ? "Redirecionando..." : "Continuar com Google"}
+              </span>
             </button>
 
             <div className="text-center">

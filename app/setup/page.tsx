@@ -1,11 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Scissors, ArrowLeft } from "lucide-react";
-import { type PlanId } from "@/lib/plans";
-import { calculateDynamicPlan } from "@/lib/planCalculator";
+import { type PlanId, normalizePlanId, isPaidPlanId } from "@/lib/plans";
+import {
+  readPricingLock,
+  writePricingLock,
+  resolveEffectiveDynamicPlan,
+  type PricingLockPayload,
+} from "@/lib/pricing-lock";
 import { slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 
@@ -46,9 +51,17 @@ function formatPhone(value: string): string {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
+type ProfilePricingRow = {
+  recommended_plan: string | null;
+  recommended_price_display: number | null;
+  onboarding_inputs: unknown;
+};
+
 export default function SetupPage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
+  const [lockSnapshot, setLockSnapshot] = useState<PricingLockPayload | null>(null);
+  const [profileRec, setProfileRec] = useState<ProfilePricingRow | null>(null);
   const [data, setData] = useState<SetupFormData>({
     businessName: "",
     segment: "",
@@ -64,17 +77,95 @@ export default function SetupPage() {
   const totalSteps = 5;
   const progress = ((step - 1) / (totalSteps - 1)) * 100;
 
-  const dynamicPlan = calculateDynamicPlan(
-    data.teamSize,
-    data.dailyAppointments,
-    data.averageTicket
+  useEffect(() => {
+    setLockSnapshot(readPricingLock());
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("recommended_plan, recommended_price_display, onboarding_inputs")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!cancelled && data) setProfileRec(data as ProfilePricingRow);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!profileRec?.onboarding_inputs || typeof profileRec.onboarding_inputs !== "object") return;
+    const o = profileRec.onboarding_inputs as Record<string, unknown>;
+    setData((prev) => ({
+      ...prev,
+      ...(typeof o.teamSize === "string" && ["1", "2-5", "6-15", "16+"].includes(o.teamSize)
+        ? { teamSize: o.teamSize as SetupFormData["teamSize"] }
+        : {}),
+      ...(typeof o.dailyAppointments === "number" ? { dailyAppointments: o.dailyAppointments } : {}),
+      ...(typeof o.averageTicket === "number" ? { averageTicket: o.averageTicket } : {}),
+    }));
+  }, [profileRec?.onboarding_inputs]);
+
+  const effectivePlan = useMemo(
+    () =>
+      resolveEffectiveDynamicPlan(
+        {
+          teamSize: data.teamSize,
+          dailyAppointments: data.dailyAppointments,
+          averageTicket: data.averageTicket,
+        },
+        lockSnapshot,
+        profileRec
+      ),
+    [
+      data.teamSize,
+      data.dailyAppointments,
+      data.averageTicket,
+      lockSnapshot,
+      profileRec?.recommended_plan,
+      profileRec?.recommended_price_display,
+    ]
   );
+
+  const pricingPinnedNotice =
+    lockSnapshot != null ||
+    (profileRec?.recommended_plan != null && isPaidPlanId(normalizePlanId(profileRec.recommended_plan)));
 
   const handleNext = () => {
     if (step < totalSteps) setStep(step + 1);
   };
   const handleBack = () => {
     if (step > 1) setStep(step - 1);
+  };
+
+  const persistPricingIdentity = async (userId: string) => {
+    const supabase = createClient();
+    const tierToLock = effectivePlan.tier;
+    const priceToLock = effectivePlan.monthlyPrice;
+    const onboarding_inputs = {
+      teamSize: data.teamSize,
+      dailyAppointments: data.dailyAppointments,
+      averageTicket: data.averageTicket,
+    };
+    const { error: profileErr } = await supabase
+      .from("profiles")
+      .update({
+        recommended_plan: tierToLock,
+        recommended_price_display: priceToLock,
+        onboarding_inputs,
+      })
+      .eq("id", userId);
+    if (profileErr) console.warn("[setup] perfil de precificação:", profileErr.message);
+    writePricingLock(tierToLock, priceToLock);
+    setLockSnapshot(readPricingLock());
   };
 
   const handleFinish = async (planId: PlanId) => {
@@ -86,34 +177,55 @@ export default function SetupPage() {
     }
 
     const slug = data.slug || slugify(data.businessName) || "meu-negocio";
-    const { error: bizError } = await supabase.from("businesses").insert({
-      profile_id: user.id,
-      name: data.businessName || "Meu Negócio",
-      slug,
-      segment: data.segment || null,
-      phone: data.phone ? formatPhone(data.phone) : null,
-      primary_color: data.primaryColor || "#13EC5B",
-      plan: planId,
-    });
+    const { data: inserted, error: bizError } = await supabase
+      .from("businesses")
+      .insert({
+        profile_id: user.id,
+        name: data.businessName || "Meu Negócio",
+        slug,
+        segment: data.segment || null,
+        phone: data.phone ? formatPhone(data.phone) : null,
+        primary_color: data.primaryColor || "#13EC5B",
+        plan: planId,
+      })
+      .select("id")
+      .single();
 
-    if (bizError) {
+    if (bizError || !inserted?.id) {
       console.error(bizError);
-      // Slug duplicado ou outro erro: ainda salva no localStorage para não travar o fluxo
       localStorage.setItem("agenndo_setup_complete", "true");
       localStorage.setItem("agenndo_plan", planId);
-      if (planId !== "free") {
-        localStorage.setItem("agenndo_plan_price", String(dynamicPlan.monthlyPrice));
-      }
+      localStorage.setItem("agenndo_plan_price", String(effectivePlan.monthlyPrice));
+      await persistPricingIdentity(user.id);
       window.location.href = "/dashboard";
       return;
     }
 
     localStorage.setItem("agenndo_setup_complete", "true");
     localStorage.setItem("agenndo_plan", planId);
+    localStorage.setItem("agenndo_plan_price", String(effectivePlan.monthlyPrice));
+
+    await persistPricingIdentity(user.id);
+
     if (planId !== "free") {
-      localStorage.setItem("agenndo_plan_price", String(dynamicPlan.monthlyPrice));
+      try {
+        const res = await fetch("/api/stripe/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ businessId: inserted.id, planId }),
+        });
+        const json = (await res.json()) as { url?: string; error?: string };
+        if (res.ok && json.url) {
+          window.location.href = json.url;
+          return;
+        }
+        console.warn("Checkout Stripe:", json.error ?? res.status);
+      } catch (e) {
+        console.warn("Checkout Stripe falhou", e);
+      }
     }
-    // Redirecionamento completo para garantir que o servidor receba os cookies e veja o negócio recém-criado
+
     window.location.href = "/dashboard";
   };
 
@@ -146,7 +258,7 @@ export default function SetupPage() {
             <div className="h-9 w-9 rounded-lg bg-[#13ec5b]/20 border border-[#13ec5b]/30 flex items-center justify-center">
               <Scissors size={18} className="text-[#13ec5b]" />
             </div>
-            <span className="text-xl font-bold tracking-tight text-white">Agenndar</span>
+            <span className="text-xl font-bold tracking-tight text-white">Agenndo</span>
           </div>
           <h2 className="text-2xl xl:text-3xl font-extrabold leading-tight tracking-tight text-white max-w-sm mb-4">
             Um ambiente pensado para o seu negócio crescer
@@ -166,7 +278,6 @@ export default function SetupPage() {
         <header className="relative z-10 py-5 px-6 border-b border-white/5 lg:border-0 lg:absolute lg:top-0 lg:left-0 lg:right-0">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-2xl">calendar_month</span>
               <span className="text-lg font-bold">Agenndo</span>
             </Link>
             <span className="text-sm text-gray-500">Passo {step} de {totalSteps}</span>
@@ -217,7 +328,13 @@ export default function SetupPage() {
             <Step4 data={data} update={updateData} colors={COLORS} />
           )}
           {step === 5 && (
-            <Step5 data={data} dynamicPlan={dynamicPlan} onFinish={handleFinish} onFree={() => handleFinish("free")} />
+            <Step5
+              data={data}
+              dynamicPlan={effectivePlan}
+              pricingPinnedNotice={pricingPinnedNotice}
+              onFinish={handleFinish}
+              onFree={() => handleFinish("free")}
+            />
           )}
 
           {/* Navigation */}
@@ -270,7 +387,7 @@ function Step1({ data, update, segments }: { data: SetupFormData; update: (f: st
           {data.businessName && (
             <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
               <span className="material-symbols-outlined text-xs text-primary">link</span>
-              agenndo.com/{data.slug}
+              agenndo.com.br/{data.slug}
             </p>
           )}
         </FormField>
@@ -463,7 +580,7 @@ function Step4({ data, update, colors }: { data: { primaryColor: string; busines
               </div>
               <div>
                 <p className="text-white text-sm font-bold">{data.businessName || "Meu Negócio"}</p>
-                <p className="text-gray-500 text-xs">agenndo.com/{data.slug || "meu-negocio"}</p>
+                <p className="text-gray-500 text-xs">agenndo.com.br/{data.slug || "meu-negocio"}</p>
               </div>
             </div>
             <button
@@ -483,32 +600,42 @@ function Step4({ data, update, colors }: { data: { primaryColor: string; busines
 function Step5({
   data,
   dynamicPlan,
+  pricingPinnedNotice,
   onFinish,
   onFree,
 }: {
   data: { businessName: string; teamSize: string; dailyAppointments: number; averageTicket: number };
   dynamicPlan: { tier: PlanId; monthlyPrice: number; infrastructure: string; highlight: string; features: { title: string; sub: string }[] };
+  pricingPinnedNotice: boolean;
   onFinish: (plan: PlanId) => void;
   onFree: () => void;
 }) {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-2">Seu plano ideal</h1>
+        <h1 className="text-2xl font-bold text-white mb-2">Plano</h1>
         <p className="text-gray-400 text-sm">
-          Com base no seu perfil, preparamos a infraestrutura ideal para{" "}
-          <span className="text-primary font-semibold">{data.businessName || "seu negócio"}</span>
+          Para seguir com <span className="text-primary font-semibold">{data.businessName || "seu negócio"}</span>, o valor
+          da assinatura é o abaixo. Condições gerais estão nos Termos de Uso.
         </p>
+        {pricingPinnedNotice && (
+          <p className="mt-3 text-xs text-amber-200/90 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2 leading-relaxed">
+            Este valor segue o que já foi definido neste aparelho ou na sua conta. Informações falsas ou uso incompatível com
+            o declarado podem ensejar medidas descritas nos Termos.
+          </p>
+        )}
       </div>
 
       <div className="bg-[#14221A] border border-primary/30 rounded-2xl p-5 mb-6 relative overflow-hidden">
         <div className="absolute top-0 right-0 bg-primary px-3 py-1 rounded-bl-xl">
           <p className="text-[10px] font-bold uppercase tracking-wider text-[#102216]">Recomendado</p>
         </div>
-        <div className="flex items-center gap-2 mb-4">
-          <span className="material-symbols-outlined text-primary text-lg">bolt</span>
-          <p className="text-sm font-semibold text-primary">{dynamicPlan.infrastructure}</p>
-        </div>
+        {dynamicPlan.infrastructure.trim() ? (
+          <div className="flex items-center gap-2 mb-4">
+            <span className="material-symbols-outlined text-primary text-lg">bolt</span>
+            <p className="text-sm font-semibold text-primary">{dynamicPlan.infrastructure}</p>
+          </div>
+        ) : null}
         <p className="text-gray-400 text-sm mb-4">{dynamicPlan.highlight}</p>
         <ul className="space-y-3 mb-5">
           {dynamicPlan.features.map((f) => (
@@ -532,7 +659,7 @@ function Step5({
           <div className="text-right">
             <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
               <p className="text-xs font-bold text-primary">7 dias grátis</p>
-              <p className="text-[10px] text-gray-400">sem cartão de crédito</p>
+              <p className="text-[10px] text-gray-400">cobrança no cartão após o trial</p>
             </div>
           </div>
         </div>
@@ -550,10 +677,11 @@ function Step5({
         onClick={onFree}
         className="w-full mt-3 py-3 text-sm text-gray-400 hover:text-gray-300 transition-colors"
       >
-        Continuar com o plano básico gratuito
+        Continuar sem assinar (grátis)
       </button>
       <p className="text-xs text-gray-500 text-center mt-4">
-        Todos os planos incluem 7 dias de trial completo. Sem cobrança agora.
+        7 dias de trial com acesso completo. Depois, cobrança em cartão (Stripe) no valor contratado. Outros meios podem ser
+        adicionados depois.
       </p>
     </div>
   );

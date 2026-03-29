@@ -1,63 +1,127 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
-import { calculateDynamicPlan } from "@/lib/planCalculator";
+import { getPlan, formatPrice, normalizePlanId } from "@/lib/plans";
+import { describeSubscriptionStatus, formatPeriodEnd } from "@/lib/subscription-ui";
 
-type Tab = "plano" | "negocio" | "seguranca";
+type Tab = "plano" | "seguranca";
 
 const INVOICES: { id: string; date: string; amount: number; status: string }[] = [];
+
+function StripeQuerySync() {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const s = searchParams.get("stripe");
+    if (s === "success" || s === "cancel") {
+      window.history.replaceState({}, "", "/dashboard/conta");
+    }
+  }, [searchParams]);
+  return null;
+}
 
 export default function ContaPage() {
   const { business, profile } = useDashboard();
   const [tab, setTab] = useState<Tab>("plano");
-  const [form, setForm] = useState({
-    businessName: "",
-    phone: "",
-    city: "",
-    slug: "",
-    segment: "",
-  });
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [signOutLoading, setSignOutLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  useEffect(() => {
-    if (business) {
-      setForm({
-        businessName: business.name ?? "",
-        phone: business.phone ?? "",
-        city: business.city ?? "",
-        slug: business.slug ?? "",
-        segment: business.segment ?? "",
+  const safePlan = normalizePlanId(business?.plan ?? null);
+  const planInfo = getPlan(safePlan);
+
+  const subUi = describeSubscriptionStatus(safePlan, business?.subscription_status);
+  const periodEnd = formatPeriodEnd(business?.subscription_current_period_end ?? null);
+  const hasPortal = Boolean(business?.stripe_customer_id);
+
+  async function openPortal() {
+    if (!business?.id) return;
+    setPortalLoading(true);
+    try {
+      const res = await fetch("/api/stripe/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ businessId: business.id }),
       });
+      const json = (await res.json()) as { url?: string; error?: string };
+      if (res.ok && json.url) {
+        window.location.href = json.url;
+        return;
+      }
+      alert(json.error ?? "Portal indisponível.");
+    } finally {
+      setPortalLoading(false);
     }
-  }, [business]);
+  }
 
-  const dynamicPlan = calculateDynamicPlan("2-5", 15, 80);
-  const [monthlyPrice, setMonthlyPrice] = useState(89.9);
-  useEffect(() => {
-    const p = localStorage.getItem("agenndo_plan_price");
-    if (p) setMonthlyPrice(Number(p));
-  }, []);
-  // Próxima fatura: ciclo de cobrança (não há limite de agendamentos por mês)
-  const nextBillingDate = (() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 1);
-    d.setDate(1);
-    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-  })();
+  async function handleSignOut() {
+    if (signOutLoading) return;
+    setSignOutLoading(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      window.location.href = "/login";
+    } catch {
+      setSignOutLoading(false);
+      alert("Não foi possível sair. Tente de novo.");
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteLoading) return;
+    if (
+      !window.confirm(
+        "Isso apaga sua conta e todos os dados do negócio (agenda, clientes, etc.). Esta ação não pode ser desfeita. Deseja continuar?"
+      )
+    ) {
+      return;
+    }
+    const typed = window.prompt('Digite EXCLUIR em letras maiúsculas para confirmar:');
+    if (typed !== "EXCLUIR") {
+      if (typed !== null) alert("Confirmação incorreta. Nada foi alterado.");
+      return;
+    }
+    setDeleteLoading(true);
+    try {
+      const res = await fetch("/api/account/delete", {
+        method: "POST",
+        credentials: "include",
+      });
+      const json = (await res.json()) as { ok?: boolean; error?: string };
+      if (!res.ok) {
+        alert(json.error ?? "Não foi possível excluir a conta.");
+        setDeleteLoading(false);
+        return;
+      }
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      window.location.href = "/";
+    } catch {
+      alert("Erro de rede. Tente de novo.");
+      setDeleteLoading(false);
+    }
+  }
 
   return (
     <div className="w-full">
+      <Suspense fallback={null}>
+        <StripeQuerySync />
+      </Suspense>
+
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Conta</h1>
-        <p className="text-gray-600 text-sm mt-1">Gerencie seu plano e configurações</p>
+        <p className="text-gray-600 text-sm mt-1">
+          Plano, faturamento e segurança da conta.
+        </p>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 p-1 bg-white border border-gray-200 rounded-xl mb-6 shadow-sm">
         {[
           { key: "plano", label: "Meu plano", icon: "workspace_premium" },
-          { key: "negocio", label: "Dados do negócio", icon: "store" },
           { key: "seguranca", label: "Segurança", icon: "security" },
         ].map((t) => (
           <button
@@ -73,60 +137,81 @@ export default function ContaPage() {
         ))}
       </div>
 
-      {/* ── PLANO (único card, plano destinado ao usuário) ── */}
       {tab === "plano" && (
         <div className="space-y-5">
           <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <h2 className="text-lg font-bold text-gray-900">Seu plano</h2>
                   <span className="text-xs bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-semibold">
-                    Ativo
+                    {subUi.badge}
                   </span>
                 </div>
-                <p className="text-sm text-gray-600 mb-1">{dynamicPlan.infrastructure}</p>
-                <p className="text-2xl font-extrabold text-gray-900">
-                  R$ {monthlyPrice.toFixed(2).replace(".", ",")}
-                  <span className="text-sm text-gray-500 font-normal">/mês</span>
+                <p className="text-sm text-gray-600 mb-1">
+                  {safePlan === "free"
+                    ? "Uso gratuito com limites. Assine quando quiser."
+                    : "Assinatura mensal. Detalhes e histórico no portal de pagamento."}
                 </p>
+                <p className="text-2xl font-extrabold text-gray-900">
+                  {formatPrice(planInfo.price)}
+                  {planInfo.price > 0 && (
+                    <span className="text-sm text-gray-500 font-normal">/mês</span>
+                  )}
+                </p>
+                {subUi.detail && <p className="text-xs text-gray-500 mt-2">{subUi.detail}</p>}
               </div>
-              <span className="material-symbols-outlined text-primary text-4xl">workspace_premium</span>
+              <span className="material-symbols-outlined text-primary text-4xl shrink-0">workspace_premium</span>
             </div>
 
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-gray-600">Próxima cobrança</span>
-                <span className="text-gray-900 font-semibold">{nextBillingDate}</span>
+                <span className="text-gray-600">Fim do período / próxima renovação</span>
+                <span className="text-gray-900 font-semibold">
+                  {periodEnd ?? "—"}
+                </span>
               </div>
               <p className="text-xs text-gray-500">
-                O valor é cobrado no início de cada ciclo. Não há limite de agendamentos.
+                Cobrança via Stripe. Trial de 7 dias nos planos pagos quando configurado no checkout.
               </p>
             </div>
 
-            <div className="flex gap-2 mt-4">
+            <div className="flex flex-col sm:flex-row gap-2 mt-4">
+              {hasPortal && (
+                <button
+                  type="button"
+                  disabled={portalLoading}
+                  onClick={() => void openPortal()}
+                  className="flex-1 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-60 text-black font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-sm">payments</span>
+                  {portalLoading ? "Abrindo…" : "Fatura e método de pagamento"}
+                </button>
+              )}
               <a
                 href="https://wa.me/5511999999999"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">support_agent</span>
-                Falar com suporte
+                Suporte
               </a>
-              <button className="px-4 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 rounded-xl text-sm transition-all">
-                Cancelar plano
-              </button>
             </div>
+            {hasPortal && (
+              <p className="text-[11px] text-gray-500 mt-2">
+                Para cancelar ou mudar cartão, use &quot;Fatura e método de pagamento&quot; (portal Stripe).
+              </p>
+            )}
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-900 mb-3">Recursos inclusos</h3>
+            <h3 className="text-sm font-bold text-gray-900 mb-3">O que está incluído</h3>
             <div className="space-y-2">
-              {dynamicPlan.features.map((f) => (
-                <div key={f.title} className="flex items-center gap-2 text-sm text-gray-600">
-                  <span className="material-symbols-outlined text-primary text-base">check_circle</span>
-                  {f.title} — {f.sub}
+              {planInfo.features.map((line) => (
+                <div key={line} className="flex items-start gap-2 text-sm text-gray-600">
+                  <span className="material-symbols-outlined text-primary text-base shrink-0">check_circle</span>
+                  {line}
                 </div>
               ))}
             </div>
@@ -135,8 +220,12 @@ export default function ContaPage() {
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
             <div className="p-4 border-b border-gray-200">
               <h3 className="text-sm font-bold text-gray-900">Histórico de faturas</h3>
+              <p className="text-xs text-gray-500 mt-1">Use o portal Stripe para PDF e histórico completo.</p>
             </div>
             <div className="divide-y divide-gray-100">
+              {INVOICES.length === 0 && (
+                <p className="p-4 text-sm text-gray-500">Nenhuma fatura local — veja no portal Stripe.</p>
+              )}
               {INVOICES.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between p-4">
                   <div>
@@ -160,52 +249,6 @@ export default function ContaPage() {
         </div>
       )}
 
-      {/* ── NEGÓCIO ── */}
-      {tab === "negocio" && (
-        <div className="space-y-4">
-          <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm">
-            {[
-              { label: "Nome do negócio", key: "businessName", type: "text" },
-              { label: "Telefone", key: "phone", type: "tel" },
-              { label: "Cidade", key: "city", type: "text" },
-              { label: "Segmento", key: "segment", type: "text" },
-            ].map((field) => (
-              <div key={field.key}>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">{field.label}</label>
-                <input
-                  type={field.type}
-                  value={form[field.key as keyof typeof form]}
-                  onChange={(e) => setForm({ ...form, [field.key]: e.target.value })}
-                  className="w-full h-11 bg-gray-50 border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm"
-                />
-              </div>
-            ))}
-
-            <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1.5">URL pública</label>
-              <div className="flex items-center h-11 bg-gray-50 border border-gray-200 focus-within:border-primary rounded-xl overflow-hidden transition-colors">
-                <span className="px-3 text-gray-500 text-sm border-r border-gray-200 h-full flex items-center flex-shrink-0">
-                  agenndo.com/
-                </span>
-                <input
-                  type="text"
-                  value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                  className="flex-1 h-full bg-transparent px-3 text-gray-900 text-sm outline-none"
-                />
-              </div>
-              <p className="text-xs text-amber-700 mt-1 flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs">warning</span>
-                Alterar o slug mudará seu link público. Avise seus clientes.
-              </p>
-            </div>
-          </div>
-
-          <SaveNegocioButton businessId={business?.id} form={form} />
-        </div>
-      )}
-
-      {/* ── SEGURANÇA ── */}
       {tab === "seguranca" && (
         <div className="space-y-4">
           <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
@@ -227,7 +270,7 @@ export default function ContaPage() {
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
               <span className="material-symbols-outlined text-primary text-xl">computer</span>
               <div className="flex-1">
-                <p className="text-gray-900 text-sm font-medium">Chrome — São Paulo, BR</p>
+                <p className="text-gray-900 text-sm font-medium">Neste dispositivo</p>
                 <p className="text-gray-500 text-xs">Último acesso: agora</p>
               </div>
               <span className="size-2 rounded-full bg-primary" />
@@ -235,9 +278,14 @@ export default function ContaPage() {
           </div>
 
           <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3 shadow-sm">
-            <button className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all">
+            <button
+              type="button"
+              disabled={signOutLoading}
+              onClick={() => void handleSignOut()}
+              className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:bg-gray-50 text-gray-700 transition-all disabled:opacity-60"
+            >
               <span className="material-symbols-outlined text-base">logout</span>
-              <span className="text-sm font-medium">Sair da conta</span>
+              <span className="text-sm font-medium">{signOutLoading ? "Saindo…" : "Sair da conta"}</span>
             </button>
           </div>
 
@@ -249,37 +297,19 @@ export default function ContaPage() {
             <p className="text-xs text-gray-600 mb-4 leading-relaxed">
               Excluir sua conta é uma ação irreversível. Todos os dados, agendamentos e configurações serão permanentemente removidos.
             </p>
-            <button className="px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-600 text-sm font-semibold rounded-xl border border-red-200 transition-all flex items-center gap-2">
+            <button
+              type="button"
+              disabled={deleteLoading}
+              onClick={() => void handleDeleteAccount()}
+              className="px-4 py-2.5 bg-red-100 hover:bg-red-200 text-red-600 text-sm font-semibold rounded-xl border border-red-200 transition-all flex items-center gap-2 disabled:opacity-60"
+            >
               <span className="material-symbols-outlined text-sm">delete_forever</span>
-              Excluir minha conta
+              {deleteLoading ? "Excluindo…" : "Excluir minha conta"}
             </button>
           </div>
         </div>
       )}
     </div>
-  );
-}
-
-function SaveNegocioButton({ businessId, form }: { businessId: string | undefined; form: { businessName: string; phone: string; city: string; slug: string; segment: string } }) {
-  const [saving, setSaving] = useState(false);
-  if (!businessId) return null;
-  const handleSave = async () => {
-    setSaving(true);
-    const supabase = createClient();
-    await supabase.from("businesses").update({
-      name: form.businessName || undefined,
-      phone: form.phone || undefined,
-      city: form.city || undefined,
-      slug: form.slug || undefined,
-      segment: form.segment || undefined,
-    }).eq("id", businessId);
-    setSaving(false);
-  };
-  return (
-    <button type="button" onClick={handleSave} disabled={saving} className="w-full py-4 bg-primary hover:bg-primary/90 disabled:opacity-70 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2">
-      <span className="material-symbols-outlined text-base">save</span>
-      {saving ? "Salvando..." : "Salvar alterações"}
-    </button>
   );
 }
 

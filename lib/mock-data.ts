@@ -5,7 +5,7 @@ export const MOCK_USER = {
   businessName: "Barbearia Elite",
   phone: "(11) 99999-8888",
   slug: "barbearia-elite",
-  plan: "growth" as const,
+  plan: "plano_2" as const,
   avatar: null,
   city: "São Paulo",
   segment: "Barbearia",

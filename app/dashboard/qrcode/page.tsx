@@ -143,7 +143,7 @@ export default function QrCodePage() {
   }, [captureCardAsImage]);
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full">
       <div className="mb-6">
         <Link
           href="/dashboard/personalizacao"

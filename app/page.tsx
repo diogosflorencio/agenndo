@@ -43,7 +43,7 @@ const FAQS = [
   },
   {
     q: "Como funciona o período de teste?",
-    a: "Você tem 7 dias para testar todas as funcionalidades gratuitamente, sem precisar inserir cartão de crédito. Após o período, escolha o plano ideal para seu negócio.",
+    a: "Você tem 7 dias para testar com acesso completo. Após o período, a assinatura é feita em cartão (Stripe) no valor do plano escolhido. Outros meios de pagamento podem ser adicionados no futuro.",
   },
   {
     q: "Posso personalizar minha página?",
@@ -71,10 +71,7 @@ export default function HomePage() {
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-[#020403]/80 backdrop-blur-lg border-b border-white/5">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-3xl">calendar_month</span>
-            <span className="text-xl font-bold tracking-tight">Agenndo</span>
-          </div>
+          <span className="text-xl font-bold tracking-tight">Agenndo</span>
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
             <Link className="hover:text-primary transition-colors" href="/sobre">Sobre nós</Link>
             <Link className="hover:text-primary transition-colors" href="/termos">Termos</Link>
@@ -449,8 +446,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-12">
             <div className="col-span-2">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="material-symbols-outlined text-primary text-2xl">calendar_month</span>
+              <div className="mb-4">
                 <span className="text-xl font-bold text-white">Agenndo</span>
               </div>
               <p className="text-gray-400 text-sm max-w-sm mb-6 leading-relaxed">

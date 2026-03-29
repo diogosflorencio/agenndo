@@ -1,6 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+function redirectWithCookies(source: NextResponse, targetUrl: string): NextResponse {
+  const out = NextResponse.redirect(targetUrl);
+  const setCookies = source.headers.getSetCookie?.() ?? [];
+  for (const cookie of setCookies) {
+    const [nameValue] = cookie.split(";").map((s) => s.trim());
+    const eq = nameValue.indexOf("=");
+    if (eq > 0) {
+      out.cookies.set(nameValue.slice(0, eq), nameValue.slice(eq + 1));
+    }
+  }
+  return out;
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -17,7 +30,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login`);
   }
 
-  // Resposta de redirect que receberá os cookies da sessão
   let redirectTo = `${origin}${nextPath.startsWith("/") ? nextPath : `/${nextPath}`}`;
   const response = NextResponse.redirect(redirectTo);
 
@@ -49,7 +61,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login`);
   }
 
-  // Garantir que o profile existe
   const { data: profile } = await supabase.from("profiles").select("id").eq("id", user.id).single();
   if (!profile) {
     await supabase.from("profiles").upsert(
@@ -64,7 +75,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Prestador: se não tem negócio, redirecionar para o setup
   if (context !== "cliente") {
     const { data: business } = await supabase
       .from("businesses")
@@ -75,16 +85,8 @@ export async function GET(request: NextRequest) {
 
     if (!business) {
       redirectTo = `${origin}/setup`;
-      const setupResponse = NextResponse.redirect(redirectTo);
-      const setCookies = response.headers.getSetCookie?.() ?? [];
-      for (const cookie of setCookies) {
-        const [nameValue, ...rest] = cookie.split(";").map((s) => s.trim());
-        const eq = nameValue.indexOf("=");
-        if (eq > 0) setupResponse.cookies.set(nameValue.slice(0, eq), nameValue.slice(eq + 1));
-      }
-      return setupResponse;
     }
   }
 
-  return response;
+  return redirectWithCookies(response, redirectTo);
 }

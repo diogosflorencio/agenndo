@@ -1,37 +1,112 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { MOCK_COLLABORATORS } from "@/lib/mock-data";
+import { useDashboard } from "@/lib/dashboard-context";
+import { createClient } from "@/lib/supabase/client";
 
 const COLORS = [
   "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B",
   "#EF4444", "#14B8A6", "#6366F1", "#13EC5B",
 ];
 
+type Row = {
+  id: string;
+  name: string;
+  role: string | null;
+  phone: string | null;
+  color: string | null;
+  active: boolean;
+};
+
 export default function EditarColaboradorPage() {
   const router = useRouter();
   const params = useParams();
   const id = typeof params?.id === "string" ? params.id : "";
-  const existing = MOCK_COLLABORATORS.find((c) => c.id === id);
+  const { business } = useDashboard();
 
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   const [form, setForm] = useState({
-    name: existing?.name ?? "",
-    role: existing?.role ?? "",
+    name: "",
+    role: "",
     phone: "",
-    color: existing?.color ?? "#3B82F6",
-    active: existing?.active ?? true,
-    customHours: false,
+    color: "#3B82F6",
+    active: true,
   });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSave = () => {
+  const load = useCallback(async () => {
+    if (!id || !business?.id) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const supabase = createClient();
+    const { data, error: qErr } = await supabase
+      .from("collaborators")
+      .select("id, name, role, phone, color, active")
+      .eq("id", id)
+      .eq("business_id", business.id)
+      .maybeSingle();
+
+    setLoading(false);
+    if (qErr || !data) {
+      setNotFound(true);
+      return;
+    }
+    const row = data as Row;
+    setForm({
+      name: row.name,
+      role: row.role ?? "",
+      phone: row.phone ?? "",
+      color: row.color ?? "#3B82F6",
+      active: row.active,
+    });
+    setNotFound(false);
+  }, [id, business?.id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !id) return;
+    setSaving(true);
+    setError(null);
+    const supabase = createClient();
+    const { error: uErr } = await supabase
+      .from("collaborators")
+      .update({
+        name: form.name.trim(),
+        role: form.role.trim() || null,
+        phone: form.phone.trim() || null,
+        color: form.color,
+        active: form.active,
+      })
+      .eq("id", id);
+
+    setSaving(false);
+    if (uErr) {
+      setError(uErr.message);
+      return;
+    }
     router.push("/dashboard/colaboradores");
   };
 
-  if (!existing) {
+  if (loading) {
     return (
-      <div className="w-full max-w-2xl mx-auto text-center py-12">
+      <div className="flex items-center justify-center py-20 w-full">
+        <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="w-full text-center py-12">
         <p className="text-gray-600 mb-4">Colaborador não encontrado.</p>
         <Link href="/dashboard/colaboradores" className="text-primary font-semibold hover:underline">
           Voltar para Equipe
@@ -41,7 +116,7 @@ export default function EditarColaboradorPage() {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full">
       <div className="flex items-center gap-3 mb-6">
         <Link
           href="/dashboard/colaboradores"
@@ -51,29 +126,27 @@ export default function EditarColaboradorPage() {
         </Link>
         <div>
           <h1 className="text-xl font-bold text-gray-900">Editar colaborador</h1>
-          <p className="text-gray-600 text-sm">{existing.name}</p>
+          <p className="text-gray-600 text-sm">{form.name}</p>
         </div>
       </div>
 
+      {error && (
+        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+          {error}
+        </div>
+      )}
+
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
         <div className="flex justify-center mb-6">
-          <div className="relative">
-            <div
-              className="size-20 rounded-2xl flex items-center justify-center text-gray-900 font-bold text-3xl"
-              style={{ backgroundColor: form.color + "30", border: `2px solid ${form.color}50` }}
-            >
-              {form.name ? (
-                <span style={{ color: form.color }}>{form.name[0].toUpperCase()}</span>
-              ) : (
-                <span className="material-symbols-outlined text-gray-500 text-3xl">person</span>
-              )}
-            </div>
-            <button
-              type="button"
-              className="absolute -bottom-1 -right-1 size-8 bg-gray-100 hover:bg-gray-200 border border-gray-200 rounded-lg flex items-center justify-center text-gray-600 transition-colors"
-            >
-              <span className="material-symbols-outlined text-sm">photo_camera</span>
-            </button>
+          <div
+            className="size-20 rounded-2xl flex items-center justify-center text-gray-900 font-bold text-3xl"
+            style={{ backgroundColor: form.color + "30", border: `2px solid ${form.color}50` }}
+          >
+            {form.name ? (
+              <span style={{ color: form.color }}>{form.name[0].toUpperCase()}</span>
+            ) : (
+              <span className="material-symbols-outlined text-gray-500 text-3xl">person</span>
+            )}
           </div>
         </div>
 
@@ -103,7 +176,7 @@ export default function EditarColaboradorPage() {
           </div>
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1.5">Telefone</label>
+            <label className="text-sm font-medium text-gray-700 block mb-1.5">Telefone (opcional)</label>
             <input
               type="tel"
               value={form.phone}
@@ -146,27 +219,7 @@ export default function EditarColaboradorPage() {
             </button>
             <div>
               <p className="text-sm text-gray-900 font-medium">Colaborador ativo</p>
-              <p className="text-xs text-gray-500">Aparece na agenda e na página pública</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 py-3 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={() => setForm({ ...form, customHours: !form.customHours })}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                form.customHours ? "bg-primary" : "bg-gray-200"
-              }`}
-            >
-              <span
-                className={`inline-block size-4 rounded-full bg-white transition-transform ${
-                  form.customHours ? "translate-x-6" : "translate-x-1"
-                }`}
-              />
-            </button>
-            <div>
-              <p className="text-sm text-gray-900 font-medium">Horários personalizados</p>
-              <p className="text-xs text-gray-500">Definir horários diferentes do negócio</p>
+              <p className="text-xs text-gray-500">Aparece na agenda e na página pública de agendamento</p>
             </div>
           </div>
         </div>
@@ -180,12 +233,13 @@ export default function EditarColaboradorPage() {
           Cancelar
         </Link>
         <button
-          onClick={handleSave}
-          disabled={!form.name}
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={!form.name.trim() || saving}
           className="flex-1 py-4 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
         >
-          Salvar alterações
-          <span className="material-symbols-outlined text-base">check</span>
+          {saving ? "Salvando…" : "Salvar alterações"}
+          {!saving && <span className="material-symbols-outlined text-base">check</span>}
         </button>
       </div>
 
