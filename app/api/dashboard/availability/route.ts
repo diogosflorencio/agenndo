@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/supabase/effective-user";
 import {
   DEFAULT_WEEKLY_SCHEDULE,
   WEEKDAY_KEYS,
@@ -33,7 +34,9 @@ async function resolveBusiness(supabase: Awaited<ReturnType<typeof createClient>
     error: authErr,
   } = await supabase.auth.getUser();
   if (authErr || !user) return { error: "Não autenticado", status: 401 as const, businessId: null as string | null };
-  const { data: biz, error } = await supabase.from("businesses").select("id").eq("profile_id", user.id).maybeSingle();
+  const effectiveId = await getEffectiveUserId(supabase);
+  if (!effectiveId) return { error: "Sessão inválida", status: 401 as const, businessId: null as string | null };
+  const { data: biz, error } = await supabase.from("businesses").select("id").eq("profile_id", effectiveId).maybeSingle();
   if (error || !biz?.id) return { error: "Negócio não encontrado", status: 404 as const, businessId: null as string | null };
   return { businessId: biz.id as string, error: null, status: null };
 }

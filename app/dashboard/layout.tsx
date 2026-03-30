@@ -9,12 +9,26 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/dashboard");
 
-  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
-  const { data: business } = await supabase.from("businesses").select("*").eq("profile_id", user.id).maybeSingle();
+  /** Mesmo critério do RLS (effective_user_id): não usar profile.id !== user.id — perfis legados podem ter id ≠ auth.users.id. */
+  const { data: effRaw, error: effError } = await supabase.rpc("get_effective_user_id");
+  const effectiveUserId =
+    !effError && typeof effRaw === "string" && effRaw.length > 0 ? effRaw : user.id;
+  const isImpersonating = effectiveUserId !== user.id;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", effectiveUserId)
+    .maybeSingle();
+  if (!profile) redirect("/setup");
+
+  const { data: business } = await supabase.from("businesses").select("*").eq("profile_id", profile.id).maybeSingle();
   if (!business) redirect("/setup");
 
   const userInfo: UserInfo = {
-    id: user.id,
+    id: profile.id,
+    realUserId: user.id,
+    isImpersonating,
     email: user.email ?? null,
     user_metadata: user.user_metadata ?? undefined,
   };

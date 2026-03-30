@@ -15,6 +15,18 @@ export async function POST() {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
 
+  const { data: impSession } = await supabase
+    .from("session_impersonation")
+    .select("real_uid")
+    .eq("real_uid", user.id)
+    .maybeSingle();
+  if (impSession) {
+    return NextResponse.json(
+      { error: "Encerre o acesso compartilhado (voltar à sua conta) antes de excluir a conta." },
+      { status: 403 }
+    );
+  }
+
   let admin: ReturnType<typeof createAdminClient>;
   try {
     admin = createAdminClient();

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/supabase/effective-user";
 import { normalizeDocumentPayload } from "@/lib/billing-fiscal";
 import { syncStripeCustomerTaxId } from "@/lib/stripe/sync-billing";
 
@@ -21,13 +22,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "businessId é obrigatório" }, { status: 400 });
     }
 
+    const effectiveId = await getEffectiveUserId(supabase);
+    if (!effectiveId) {
+      return NextResponse.json({ error: "Sessão inválida" }, { status: 401 });
+    }
+
     const { data: business, error: bizErr } = await supabase
       .from("businesses")
       .select("id, profile_id, stripe_customer_id")
       .eq("id", businessId)
       .single();
 
-    if (bizErr || !business || business.profile_id !== user.id) {
+    if (bizErr || !business || business.profile_id !== effectiveId) {
       return NextResponse.json({ error: "Negócio não encontrado" }, { status: 403 });
     }
 

@@ -12,6 +12,7 @@ import {
   type VisitedPublicPage,
 } from "@/lib/visited-public-pages";
 import { useAppAlert } from "@/components/app-alert-provider";
+import { clearImpersonationSession } from "@/lib/auth/impersonation-client";
 
 type ClientLink = {
   id: string;
@@ -160,6 +161,11 @@ export default function ContaClientePage() {
   };
 
   const handleSignOut = async () => {
+    try {
+      await clearImpersonationSession();
+    } catch {
+      /* best-effort */
+    }
     const supabase = createClient();
     await supabase.auth.signOut();
     router.replace("/entrar");

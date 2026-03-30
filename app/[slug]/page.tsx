@@ -578,7 +578,7 @@ function PublicPageInner() {
                 <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-[25] flex items-center gap-2 pr-[max(0px,env(safe-area-inset-right))] pt-[max(0px,env(safe-area-inset-top))]">
                   {authUserId && (
                     <Link href="/conta" className={floatBtn}>
-                      Minha conta
+                      Área do cliente
                     </Link>
                   )}
                   {!authUserId && (

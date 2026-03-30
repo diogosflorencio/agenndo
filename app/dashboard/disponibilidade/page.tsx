@@ -21,7 +21,7 @@ import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/lib/theme-context";
 import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
-import { cn } from "@/lib/utils";
+import { cn, getAuthHeaders } from "@/lib/utils";
 import {
   DEFAULT_WEEKLY_SCHEDULE,
   UI_DAY_ORDER,
@@ -614,7 +614,10 @@ export default function DisponibilidadePage() {
     let ok = true;
     (async () => {
       try {
-        const r = await fetch("/api/dashboard/availability");
+        const r = await fetch("/api/dashboard/availability", {
+          credentials: "include",
+          headers: { ...getAuthHeaders() },
+        });
         const data = await r.json();
         if (!ok) return;
         if (!r.ok) {
@@ -775,7 +778,8 @@ export default function DisponibilidadePage() {
     try {
       const r = await fetch("/api/dashboard/availability", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        credentials: "include",
         body: JSON.stringify({
           weekly: schedule,
           overrides,

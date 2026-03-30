@@ -10,7 +10,8 @@ import type { UserInfo } from "@/lib/dashboard-context";
 import type { BusinessRow } from "@/lib/dashboard-context";
 import type { ProfileRow } from "@/lib/dashboard-context";
 import { WhatsAppSupportWidget } from "@/components/whatsapp-support-widget";
-
+import { stopImpersonation } from "@/lib/auth/impersonation-client";
+import { useAppAlert } from "@/components/app-alert-provider";
 const MENU_AGENDA = [
   { href: "/dashboard/agendamentos", icon: "calendar_month", label: "Agendamentos" },
   { href: "/dashboard/disponibilidade", icon: "schedule", label: "Disponibilidade" },
@@ -81,7 +82,9 @@ function NavItem({
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
-  const { business } = useDashboard();
+  const { showAlert } = useAppAlert();
+  const { business, user, profile } = useDashboard();
+  const [impersonationExitLoading, setImpersonationExitLoading] = useState(false);
   /** Apenas um grupo aberto por vez; Início e Conta fecham todos. */
   const [openSidebarGroup, setOpenSidebarGroup] = useState<GroupKey | null>(null);
   const [mobileExpandedGroup, setMobileExpandedGroup] = useState<"agenda" | "cadastros" | "dados" | "config" | null>(null);
@@ -141,8 +144,52 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={`min-h-screen flex flex-col lg:flex-row ${bgMain}`} data-theme={theme}>
+      {user?.isImpersonating && (
+        <div
+          className={`fixed top-0 left-0 right-0 z-[100] flex flex-wrap items-center justify-center gap-3 px-4 py-2.5 text-sm border-b ${
+            isLight
+              ? "bg-amber-100 border-amber-200 text-amber-950"
+              : "bg-amber-950/95 border-amber-700/50 text-amber-50"
+          }`}
+        >
+          <p className="text-center leading-snug max-w-[min(100%,52rem)]">
+            <strong>Acesso compartilhado ao dashboard:</strong> você está no painel de{" "}
+            <strong>{business?.name ?? "—"}</strong>
+            {profile?.email ? (
+              <>
+                {" "}
+                (<span className="tabular-nums">{profile.email}</span>)
+              </>
+            ) : null}
+            .
+          </p>
+          <button
+            type="button"
+            disabled={impersonationExitLoading}
+            onClick={() => {
+              setImpersonationExitLoading(true);
+              void stopImpersonation()
+                .catch((e) => {
+                  showAlert(e instanceof Error ? e.message : "Não foi possível voltar à sua conta.", {
+                    title: "Acesso compartilhado",
+                  });
+                  setImpersonationExitLoading(false);
+                });
+            }}
+            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors disabled:opacity-60 ${
+              isLight
+                ? "bg-white border-amber-300 text-amber-950 hover:bg-amber-50"
+                : "bg-amber-800 border-amber-600 text-white hover:bg-amber-700"
+            }`}
+          >
+            {impersonationExitLoading ? "Saindo…" : "Voltar à minha conta"}
+          </button>
+        </div>
+      )}
       <aside
-        className={`hidden lg:flex lg:flex-col lg:w-64 lg:shrink-0 lg:fixed lg:left-0 lg:top-0 lg:z-40 lg:h-screen lg:border-r ${sidebarBg}`}
+        className={`hidden lg:flex lg:flex-col lg:w-64 lg:shrink-0 lg:fixed lg:left-0 lg:z-40 lg:border-r ${sidebarBg} ${
+          user?.isImpersonating ? "lg:top-14 lg:h-[calc(100vh-3.5rem)]" : "lg:top-0 lg:h-screen"
+        }`}
       >
         <div className="p-4 border-b border-inherit">
           <Link href="/" className={`block font-bold tracking-tight text-lg transition-opacity hover:opacity-90 ${isLight ? "text-gray-900" : "text-white"}`}>
@@ -208,7 +255,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex flex-col flex-1 min-w-0 min-h-screen lg:pl-64">
+      <div
+        className={`flex flex-col flex-1 min-w-0 min-h-screen lg:pl-64 ${user?.isImpersonating ? "pt-14" : ""}`}
+      >
         <header className={`lg:hidden sticky top-0 z-28 border-b shadow-sm ${headerBg}`}>
           <div className="px-4 sm:px-6">
             <div className="flex items-center justify-between h-14">
@@ -244,17 +293,31 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 billing_issue_deadline: business.billing_issue_deadline,
                 created_at: business.created_at,
               }) && (
-                <div className="mb-4 rounded-xl border border-amber-400/80 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm">
-                  <p className="font-bold flex items-center gap-2">
+                <div
+                  className={`mb-4 rounded-xl border px-4 py-3 text-sm shadow-sm ${
+                    isLight
+                      ? "border-amber-400/80 bg-amber-50 text-amber-950"
+                      : "border-amber-500/45 bg-amber-950/55 text-amber-50"
+                  }`}
+                >
+                  <p
+                    className={`font-bold flex items-center gap-2 ${isLight ? "text-amber-950" : "text-amber-100"}`}
+                  >
                     <span className="material-symbols-outlined text-lg">gpp_maybe</span>
                     Agendamentos públicos e novos cadastros estão bloqueados
                   </p>
-                  <p className="mt-1 text-amber-900/90 leading-relaxed">
+                  <p
+                    className={`mt-1 leading-relaxed ${isLight ? "text-amber-900/90" : "text-amber-200/95"}`}
+                  >
                     Ative ou regularize sua assinatura para liberar a página de agendamento e o uso completo do painel.
                   </p>
                   <Link
                     href="/dashboard/conta"
-                    className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-amber-950 underline underline-offset-2 hover:no-underline"
+                    className={`mt-2 inline-flex items-center gap-1 text-sm font-bold underline underline-offset-2 hover:no-underline ${
+                      isLight
+                        ? "text-amber-950 hover:text-amber-800"
+                        : "text-amber-100 hover:text-white"
+                    }`}
                   >
                     Ir para Meu plano
                     <span className="material-symbols-outlined text-base">chevron_right</span>
