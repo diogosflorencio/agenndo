@@ -12,6 +12,7 @@ import {
   tryRelativePathFromPublicUrl,
   removeBusinessObject,
 } from "@/lib/business-assets-storage";
+import { compressImageForUpload } from "@/lib/image-compress";
 import { useAppAlert } from "@/components/app-alert-provider";
 import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
 
@@ -81,6 +82,28 @@ function displayInstagram(url: string | null) {
   return url;
 }
 
+function normalizeGalleryUrls(raw: unknown): string[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((u): u is string => typeof u === "string" && u.length > 0);
+  }
+  if (typeof raw === "string") {
+    try {
+      const p = JSON.parse(raw) as unknown;
+      return Array.isArray(p) ? p.filter((u): u is string => typeof u === "string" && u.length > 0) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+function storageFileExt(file: File): string {
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  if (file.type === "image/gif") return "gif";
+  return "jpg";
+}
+
 export default function PersonalizacaoPage() {
   const { showAlert } = useAppAlert();
   const router = useRouter();
@@ -88,6 +111,8 @@ export default function PersonalizacaoPage() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const galleryReplaceInputRef = useRef<HTMLInputElement>(null);
+  const galleryReplaceIndexRef = useRef<number | null>(null);
 
   const [persId, setPersId] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -112,6 +137,7 @@ export default function PersonalizacaoPage() {
   });
 
   const [uploading, setUploading] = useState<"logo" | "banner" | "gallery" | null>(null);
+  const [uploadLabel, setUploadLabel] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<"aparencia" | "conteudo" | "contato" | "compartilhar">("aparencia");
   const [copied, setCopied] = useState(false);
@@ -164,7 +190,7 @@ export default function PersonalizacaoPage() {
       darkPage: (p?.public_theme ?? "dark") !== "light",
       logoUrl: business.logo_url ?? null,
       bannerUrl: p?.banner_url ?? null,
-      galleryUrls: Array.isArray(p?.gallery_urls) ? [...p.gallery_urls] : [],
+      galleryUrls: normalizeGalleryUrls(p?.gallery_urls),
     };
     const baseline = JSON.stringify(nextForm);
     setForm(nextForm);
@@ -181,6 +207,55 @@ export default function PersonalizacaoPage() {
     return JSON.stringify(form) !== formBaseline;
   }, [loading, form, formBaseline]);
 
+  const blockMediaActions = uploading !== null || saving;
+
+  const persistGalleryUrls = useCallback(
+    async (urls: string[]) => {
+      if (!business?.id) return;
+      const supabase = createClient();
+      const payload = {
+        gallery_urls: urls.length ? urls : null,
+        updated_at: new Date().toISOString(),
+      };
+      const { data: existing, error: selErr } = await supabase
+        .from("personalization")
+        .select("id")
+        .eq("business_id", business.id)
+        .maybeSingle();
+      if (selErr) throw new Error(selErr.message);
+
+      if (existing?.id) {
+        const { error } = await supabase.from("personalization").update(payload).eq("id", existing.id);
+        if (error) throw new Error(error.message);
+        setPersId(existing.id);
+      } else {
+        const { data: ins, error } = await supabase
+          .from("personalization")
+          .insert({
+            business_id: business.id,
+            ...payload,
+          })
+          .select("id")
+          .single();
+        if (error) throw new Error(error.message);
+        if (ins?.id) setPersId(ins.id as string);
+      }
+
+      setFormBaseline((prev) => {
+        if (prev === null) return null;
+        try {
+          const b = JSON.parse(prev) as Record<string, unknown>;
+          b.galleryUrls = urls;
+          return JSON.stringify(b);
+        } catch {
+          return prev;
+        }
+      });
+      router.refresh();
+    },
+    [business?.id, router]
+  );
+
   const publicUrl =
     typeof window !== "undefined" ? `${window.location.origin}/${business?.slug ?? ""}` : "";
 
@@ -194,13 +269,14 @@ export default function PersonalizacaoPage() {
   const onPickLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !business?.id) return;
+    if (!file || !business?.id || blockMediaActions) return;
     setUploading("logo");
+    setUploadLabel("Otimizando e enviando logo…");
     try {
+      const prepared = await compressImageForUpload(file);
+      const ext = storageFileExt(prepared);
       const supabase = createClient();
-      const ext = file.name.split(".").pop()?.toLowerCase();
-      const safe = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext || "") ? ext! : "jpg";
-      const url = await uploadBusinessImage(supabase, business.id, `logo.${safe}`, file);
+      const url = await uploadBusinessImage(supabase, business.id, `logo.${ext}`, prepared);
       const { error } = await supabase.from("businesses").update({ logo_url: url }).eq("id", business.id);
       if (error) throw new Error(error.message);
       setForm((f) => ({ ...f, logoUrl: url }));
@@ -209,31 +285,34 @@ export default function PersonalizacaoPage() {
       showAlert(err instanceof Error ? err.message : "Falha no upload", { title: "Upload" });
     } finally {
       setUploading(null);
+      setUploadLabel(null);
     }
   };
 
   const onPickBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !business?.id) return;
+    if (!file || !business?.id || blockMediaActions) return;
     setUploading("banner");
+    setUploadLabel("Otimizando e enviando capa…");
     try {
+      const prepared = await compressImageForUpload(file);
+      const ext = storageFileExt(prepared);
       const supabase = createClient();
-      const ext = file.name.split(".").pop()?.toLowerCase();
-      const safe = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext || "") ? ext! : "jpg";
-      const url = await uploadBusinessImage(supabase, business.id, `banner.${safe}`, file);
+      const url = await uploadBusinessImage(supabase, business.id, `banner.${ext}`, prepared);
       setForm((f) => ({ ...f, bannerUrl: url }));
     } catch (err) {
       showAlert(err instanceof Error ? err.message : "Falha no upload", { title: "Upload" });
     } finally {
       setUploading(null);
+      setUploadLabel(null);
     }
   };
 
   const onPickGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     e.target.value = "";
-    if (!files?.length || !business?.id) return;
+    if (!files?.length || !business?.id || blockMediaActions) return;
     const remaining = 8 - form.galleryUrls.length;
     if (remaining <= 0) {
       showAlert("Máximo de 8 fotos na galeria.", { title: "Galeria" });
@@ -241,45 +320,93 @@ export default function PersonalizacaoPage() {
     }
     setUploading("gallery");
     const supabase = createClient();
-    const next = [...form.galleryUrls];
+    let next = [...form.galleryUrls];
+    const count = Math.min(files.length, remaining);
     try {
-      for (let i = 0; i < Math.min(files.length, remaining); i++) {
-        const file = files[i];
-        const ext = file.name.split(".").pop()?.toLowerCase();
-        const safe = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext || "") ? ext! : "jpg";
-        const name = `gallery/${crypto.randomUUID()}.${safe}`;
-        const url = await uploadBusinessImage(supabase, business.id, name, file);
-        next.push(url);
+      for (let i = 0; i < count; i++) {
+        setUploadLabel(`Otimizando e enviando ${i + 1} de ${count}…`);
+        const prepared = await compressImageForUpload(files[i]);
+        const ext = storageFileExt(prepared);
+        const name = `gallery/${crypto.randomUUID()}.${ext}`;
+        const url = await uploadBusinessImage(supabase, business.id, name, prepared);
+        next = [...next, url];
+        await persistGalleryUrls(next);
+        setForm((f) => ({ ...f, galleryUrls: next }));
+      }
+    } catch (err) {
+      showAlert(err instanceof Error ? err.message : "Falha no upload", { title: "Galeria" });
+    } finally {
+      setUploading(null);
+      setUploadLabel(null);
+    }
+  };
+
+  const onPickGalleryReplace = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    const index = galleryReplaceIndexRef.current;
+    galleryReplaceIndexRef.current = null;
+    if (!file || !business?.id || index === null || blockMediaActions) return;
+    if (index < 0 || index >= form.galleryUrls.length) return;
+    setUploading("gallery");
+    setUploadLabel("Substituindo foto da galeria…");
+    const supabase = createClient();
+    const oldUrl = form.galleryUrls[index];
+    try {
+      const prepared = await compressImageForUpload(file);
+      const ext = storageFileExt(prepared);
+      const name = `gallery/${crypto.randomUUID()}.${ext}`;
+      const url = await uploadBusinessImage(supabase, business.id, name, prepared);
+      const next = [...form.galleryUrls];
+      next[index] = url;
+      await persistGalleryUrls(next);
+      const rel = tryRelativePathFromPublicUrl(oldUrl, business.id);
+      if (rel) {
+        try {
+          await removeBusinessObject(supabase, business.id, rel);
+        } catch {
+          /* arquivo antigo pode já ter sido removido */
+        }
       }
       setForm((f) => ({ ...f, galleryUrls: next }));
     } catch (err) {
-      showAlert(err instanceof Error ? err.message : "Falha no upload", { title: "Upload" });
+      showAlert(err instanceof Error ? err.message : "Falha ao substituir", { title: "Galeria" });
     } finally {
       setUploading(null);
+      setUploadLabel(null);
     }
   };
 
   const removeGalleryAt = async (index: number) => {
-    if (!business?.id) return;
+    if (!business?.id || blockMediaActions) return;
     const url = form.galleryUrls[index];
-    const supabase = createClient();
-    const rel = tryRelativePathFromPublicUrl(url, business.id);
-    if (rel) {
-      try {
-        await removeBusinessObject(supabase, business.id, rel);
-      } catch {
-        /* continua removendo da lista */
+    const next = form.galleryUrls.filter((_, i) => i !== index);
+    setUploading("gallery");
+    setUploadLabel("Atualizando galeria…");
+    try {
+      await persistGalleryUrls(next);
+      const supabase = createClient();
+      const rel = tryRelativePathFromPublicUrl(url, business.id);
+      if (rel) {
+        try {
+          await removeBusinessObject(supabase, business.id, rel);
+        } catch {
+          /* continua */
+        }
       }
+      setForm((f) => ({ ...f, galleryUrls: next }));
+    } catch (err) {
+      showAlert(err instanceof Error ? err.message : "Falha ao remover da galeria", { title: "Galeria" });
+    } finally {
+      setUploading(null);
+      setUploadLabel(null);
     }
-    setForm((f) => ({
-      ...f,
-      galleryUrls: f.galleryUrls.filter((_, i) => i !== index),
-    }));
   };
 
   const removeLogo = async () => {
-    if (!business?.id || !form.logoUrl) return;
+    if (!business?.id || !form.logoUrl || blockMediaActions) return;
     setUploading("logo");
+    setUploadLabel("Removendo logo…");
     try {
       const supabase = createClient();
       const rel = tryRelativePathFromPublicUrl(form.logoUrl, business.id);
@@ -298,13 +425,15 @@ export default function PersonalizacaoPage() {
       showAlert(err instanceof Error ? err.message : "Não foi possível remover a foto", { title: "Logo" });
     } finally {
       setUploading(null);
+      setUploadLabel(null);
     }
   };
 
   const removeBanner = async () => {
-    if (!business?.id || !form.bannerUrl) return;
+    if (!business?.id || !form.bannerUrl || blockMediaActions) return;
     const url = form.bannerUrl;
     setUploading("banner");
+    setUploadLabel("Removendo capa…");
     try {
       const supabase = createClient();
       const rel = tryRelativePathFromPublicUrl(url, business.id);
@@ -320,11 +449,12 @@ export default function PersonalizacaoPage() {
       showAlert(err instanceof Error ? err.message : "Não foi possível remover a capa", { title: "Capa" });
     } finally {
       setUploading(null);
+      setUploadLabel(null);
     }
   };
 
   const saveAll = async () => {
-    if (!business?.id) return;
+    if (!business?.id || uploading !== null) return;
     setSaving(true);
     setSaveMsg(null);
     const supabase = createClient();
@@ -480,7 +610,7 @@ export default function PersonalizacaoPage() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        disabled={uploading === "logo"}
+                        disabled={blockMediaActions}
                         onClick={() => logoInputRef.current?.click()}
                         className="px-4 py-2 bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
                       >
@@ -490,7 +620,7 @@ export default function PersonalizacaoPage() {
                       {form.logoUrl ? (
                         <button
                           type="button"
-                          disabled={uploading === "logo"}
+                          disabled={blockMediaActions}
                           onClick={() => void removeLogo()}
                           className="px-4 py-2 bg-white border border-gray-200 hover:bg-red-50 hover:border-red-200 text-red-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
                         >
@@ -519,7 +649,7 @@ export default function PersonalizacaoPage() {
                     <div className="flex flex-wrap gap-2">
                       <button
                         type="button"
-                        disabled={uploading === "banner"}
+                        disabled={blockMediaActions}
                         onClick={() => bannerInputRef.current?.click()}
                         className="px-4 py-2 bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
                       >
@@ -528,7 +658,7 @@ export default function PersonalizacaoPage() {
                       </button>
                       <button
                         type="button"
-                        disabled={uploading === "banner"}
+                        disabled={blockMediaActions}
                         onClick={() => void removeBanner()}
                         className="px-4 py-2 bg-white border border-gray-200 hover:bg-red-50 hover:border-red-200 text-red-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-2 disabled:opacity-50"
                       >
@@ -540,7 +670,7 @@ export default function PersonalizacaoPage() {
                 ) : (
                   <button
                     type="button"
-                    disabled={uploading === "banner"}
+                    disabled={blockMediaActions}
                     onClick={() => bannerInputRef.current?.click()}
                     className="relative w-full h-28 rounded-xl border-2 border-dashed border-gray-200 hover:border-primary/40 overflow-hidden group"
                   >
@@ -606,6 +736,9 @@ export default function PersonalizacaoPage() {
                   <label className="text-sm font-medium text-gray-700">Galeria de fotos</label>
                   <span className="text-xs text-gray-500">{form.galleryUrls.length}/8</span>
                 </div>
+                <p className="text-xs text-gray-500 mb-3">
+                  Fotos são otimizadas ao enviar e salvas automaticamente. Máx. 8 imagens.
+                </p>
                 <input
                   ref={galleryInputRef}
                   type="file"
@@ -614,29 +747,61 @@ export default function PersonalizacaoPage() {
                   className="hidden"
                   onChange={onPickGallery}
                 />
-                <div className="grid grid-cols-4 gap-2">
+                <input
+                  ref={galleryReplaceInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={onPickGalleryReplace}
+                />
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {form.galleryUrls.map((url, i) => (
-                    <div key={url} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
+                    <div
+                      key={`${i}-${url.slice(-24)}`}
+                      className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group"
+                    >
                       <Image src={url} alt="" fill className="object-cover" unoptimized />
-                      <button
-                        type="button"
-                        onClick={() => void removeGalleryAt(i)}
-                        className="absolute top-1 right-1 size-7 rounded-lg bg-black/60 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        ×
-                      </button>
+                      <div className="absolute inset-x-0 bottom-0 flex gap-0.5 p-1 bg-gradient-to-t from-black/70 to-transparent pt-6 justify-center opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <button
+                          type="button"
+                          disabled={blockMediaActions}
+                          onClick={() => {
+                            galleryReplaceIndexRef.current = i;
+                            galleryReplaceInputRef.current?.click();
+                          }}
+                          className="flex-1 min-w-0 py-1 px-0.5 rounded-md bg-white/95 text-[10px] font-bold text-gray-800 hover:bg-white disabled:opacity-50"
+                          title="Substituir"
+                        >
+                          Trocar
+                        </button>
+                        <button
+                          type="button"
+                          disabled={blockMediaActions}
+                          onClick={() => void removeGalleryAt(i)}
+                          className="flex-1 min-w-0 py-1 px-0.5 rounded-md bg-red-600/95 text-[10px] font-bold text-white hover:bg-red-600 disabled:opacity-50"
+                          title="Remover"
+                        >
+                          Remover
+                        </button>
+                      </div>
                     </div>
                   ))}
                   {form.galleryUrls.length < 8 && (
                     <button
                       type="button"
-                      disabled={uploading === "gallery"}
+                      disabled={blockMediaActions}
                       onClick={() => galleryInputRef.current?.click()}
-                      className="aspect-square bg-gray-100 rounded-lg border-2 border-dashed border-gray-200 hover:border-primary/40 flex items-center justify-center"
+                      className="aspect-square bg-gray-100 rounded-lg border-2 border-dashed border-gray-200 hover:border-primary/40 flex flex-col items-center justify-center gap-1 disabled:opacity-50"
                     >
-                      <span className="material-symbols-outlined text-gray-500 text-xl">
+                      <span
+                        className={cn(
+                          "material-symbols-outlined text-gray-500 text-xl",
+                          uploading === "gallery" && "animate-spin"
+                        )}
+                      >
                         {uploading === "gallery" ? "progress_activity" : "add"}
                       </span>
+                      <span className="text-[10px] font-semibold text-gray-500">Adicionar</span>
                     </button>
                   )}
                 </div>
@@ -756,7 +921,7 @@ export default function PersonalizacaoPage() {
           <UnsavedChangesIndicator dirty={formDirty} className="w-full mt-4" />
           <button
             type="button"
-            disabled={saving}
+            disabled={saving || uploading !== null}
             onClick={() => void saveAll()}
             className={cn(
               "w-full mt-3 py-4 bg-primary hover:bg-primary/90 disabled:opacity-60 text-black font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)] flex items-center justify-center gap-2",
@@ -775,6 +940,23 @@ export default function PersonalizacaoPage() {
           </div>
         </div>
       </div>
+
+      {uploading && (
+        <div
+          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/45 px-4"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-200 px-6 py-5 max-w-sm w-full text-center">
+            <div className="size-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-3" />
+            <p className="text-sm font-semibold text-gray-900">{uploadLabel ?? "Aguarde…"}</p>
+            <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+              Não clique várias vezes nem feche a aba até terminar.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

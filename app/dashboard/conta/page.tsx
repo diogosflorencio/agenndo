@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
@@ -22,6 +22,20 @@ import {
 } from "@/lib/billing-access";
 import { useAppAlert } from "@/components/app-alert-provider";
 import { BillingDocumentForm, hasBillingDocument } from "@/components/billing-fiscal-form";
+import {
+  clearImpersonationSession,
+  regenerateImpersonateToken,
+  startImpersonation,
+} from "@/lib/auth/impersonation-client";
+import { formatDateTimePtBr, getAuthHeaders } from "@/lib/utils";
+import { copyTextToClipboard } from "@/lib/clipboard";
+import { useTheme } from "@/lib/theme-context";
+import {
+  getSupportContactUrl,
+  isYwpSupportActorEmail,
+  SHARED_ACCESS_UNRECOGNIZED_MESSAGE,
+  YWP_UNRECOGNIZED_ACCESS_MESSAGE,
+} from "@/lib/ywp-support";
 
 type Tab = "plano" | "seguranca";
 
@@ -29,6 +43,19 @@ type Tab = "plano" | "seguranca";
 type StripePlanPricing = "loading" | "ok" | "missing" | "error";
 
 const INVOICES: { id: string; date: string; amount: number; status: string }[] = [];
+
+const TOKEN_GENERATE_COOLDOWN_MS = 45_000;
+const IMPERSONATE_RETRY_COOLDOWN_MS = 4_000;
+
+type ImpersonationSessionApi = {
+  id: string;
+  perspective: "supporter" | "target";
+  other_user_id: string;
+  other_email: string | null;
+  other_name: string | null;
+  expires_at: string;
+  created_at: string;
+};
 
 function StripeQuerySync() {
   const searchParams = useSearchParams();
@@ -42,8 +69,11 @@ function StripeQuerySync() {
 }
 
 export default function ContaPage() {
+  const { theme } = useTheme();
+  const isLight = theme === "light";
   const { showAlert, showConfirm, showPhraseConfirm } = useAppAlert();
-  const { business, profile } = useDashboard();
+  const { business, profile, user } = useDashboard();
+  const supportContactUrl = getSupportContactUrl();
   const [tab, setTab] = useState<Tab>("plano");
   const [portalLoading, setPortalLoading] = useState(false);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -51,6 +81,39 @@ export default function ContaPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [countdownTick, setCountdownTick] = useState(0);
   const [stripePlanPricing, setStripePlanPricing] = useState<StripePlanPricing>("loading");
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareBusy, setShareBusy] = useState(false);
+  const [impersonateInput, setImpersonateInput] = useState("");
+  const [impersonateBusy, setImpersonateBusy] = useState(false);
+  const [tokenCooldownUntil, setTokenCooldownUntil] = useState<number | null>(null);
+  const [impersonateRetryUntil, setImpersonateRetryUntil] = useState<number | null>(null);
+  const [impersonationSessions, setImpersonationSessions] = useState<ImpersonationSessionApi[]>([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [copyTokenDone, setCopyTokenDone] = useState(false);
+  const [lastSignInLabel, setLastSignInLabel] = useState<string | null>(null);
+
+  const loadImpersonationSessions = useCallback(async () => {
+    setSessionsLoading(true);
+    try {
+      const r = await fetch("/api/impersonation/sessions", { credentials: "include" });
+      const j = (await r.json()) as { sessions?: ImpersonationSessionApi[] };
+      if (Array.isArray(j.sessions)) setImpersonationSessions(j.sessions);
+      else setImpersonationSessions([]);
+    } catch {
+      setImpersonationSessions([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  }, []);
+
+  const tokenCooldownSec =
+    tokenCooldownUntil != null && Date.now() < tokenCooldownUntil
+      ? Math.max(0, Math.ceil((tokenCooldownUntil - Date.now()) / 1000))
+      : 0;
+  const impersonateRetrySec =
+    impersonateRetryUntil != null && Date.now() < impersonateRetryUntil
+      ? Math.max(0, Math.ceil((impersonateRetryUntil - Date.now()) / 1000))
+      : 0;
 
   const safePlan = normalizePlanId(business?.plan ?? null);
   const planInfo = getPlan(safePlan);
@@ -100,6 +163,20 @@ export default function ContaPage() {
       cancelled = true;
     };
   }, [planForCheckout]);
+
+  useEffect(() => {
+    if (tab !== "seguranca") return;
+    void loadImpersonationSessions();
+    void createClient()
+      .auth.getUser()
+      .then(({ data: { user } }) => {
+        if (user?.last_sign_in_at) {
+          setLastSignInLabel(formatDateTimePtBr(new Date(user.last_sign_in_at)));
+        } else {
+          setLastSignInLabel(null);
+        }
+      });
+  }, [tab, loadImpersonationSessions]);
 
   void countdownTick;
 
@@ -151,7 +228,7 @@ export default function ContaPage() {
     try {
       const res = await fetch("/api/stripe/portal", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         credentials: "include",
         body: JSON.stringify({ businessId: business.id }),
       });
@@ -172,7 +249,7 @@ export default function ContaPage() {
     try {
       const res = await fetch("/api/stripe/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         credentials: "include",
         body: JSON.stringify({ businessId: business.id, planId: planForCheckout }),
       });
@@ -191,6 +268,11 @@ export default function ContaPage() {
     if (signOutLoading) return;
     setSignOutLoading(true);
     try {
+      try {
+        await clearImpersonationSession();
+      } catch {
+        /* best-effort: evita ficar preso na impersonação ao voltar a entrar */
+      }
       const supabase = createClient();
       await supabase.auth.signOut();
       window.location.href = "/login";
@@ -202,6 +284,12 @@ export default function ContaPage() {
 
   async function handleDeleteAccount() {
     if (deleteLoading) return;
+    if (user?.isImpersonating) {
+      showAlert("Encerre o acesso compartilhado (voltar à sua conta) antes de excluir a conta.", {
+        title: "Exclusão indisponível",
+      });
+      return;
+    }
     const step1 = await showConfirm({
       title: "Excluir conta",
       message:
@@ -309,9 +397,15 @@ export default function ContaPage() {
             </div>
 
             {!fullAccess && (
-              <div className="rounded-xl border border-red-300 bg-red-50 px-3 py-2.5 text-sm text-red-900 mb-3">
-                <p className="font-bold">Acesso limitado</p>
-                <p className="mt-1 text-xs leading-relaxed">
+              <div
+                className={`rounded-xl border px-3 py-2.5 text-sm mb-3 ${
+                  isLight
+                    ? "border-red-300 bg-red-50 text-red-900"
+                    : "border-red-500/40 bg-red-950/55 text-red-50"
+                }`}
+              >
+                <p className={`font-bold ${isLight ? "text-red-900" : "text-red-100"}`}>Acesso limitado</p>
+                <p className={`mt-1 text-xs leading-relaxed ${isLight ? "text-red-900/95" : "text-red-200/95"}`}>
                   Sua página pública não aceita novos agendamentos e o uso completo está suspenso até o plano estar ativo
                   ou o pagamento regularizado.
                 </p>
@@ -319,12 +413,32 @@ export default function ContaPage() {
             )}
 
             {fullAccess && remainingMs != null && remainingMs > 0 && (
-              <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-3 mb-3">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-sky-800">Contagem regressiva</p>
-                <p className="text-xl font-extrabold text-sky-950 tabular-nums">{formatCountdownPt(remainingMs)}</p>
-                <p className="text-xs text-sky-900 mt-1 leading-relaxed">{deadlineHint}</p>
+              <div
+                className={`rounded-xl border px-3 py-3 mb-3 ${
+                  isLight
+                    ? "border-sky-200 bg-sky-50"
+                    : "border-sky-400/35 bg-sky-950/50"
+                }`}
+              >
+                <p
+                  className={`text-[10px] font-bold uppercase tracking-wide ${
+                    isLight ? "text-sky-800" : "text-sky-300"
+                  }`}
+                >
+                  Contagem regressiva
+                </p>
+                <p
+                  className={`text-xl font-extrabold tabular-nums ${
+                    isLight ? "text-sky-950" : "text-sky-50"
+                  }`}
+                >
+                  {formatCountdownPt(remainingMs)}
+                </p>
+                <p className={`text-xs mt-1 leading-relaxed ${isLight ? "text-sky-900" : "text-sky-200/95"}`}>
+                  {deadlineHint}
+                </p>
                 {periodEnd && (
-                  <p className="text-[11px] text-sky-800/80 mt-1">
+                  <p className={`text-[11px] mt-1 ${isLight ? "text-sky-800/80" : "text-sky-300/90"}`}>
                     Data de referência: <span className="font-semibold">{periodEnd}</span>
                   </p>
                 )}
@@ -384,13 +498,17 @@ export default function ContaPage() {
               </a>
             </div>
             {stripePlanPricing === "missing" && !paidActive && !isEnterprisePlan && (
-              <p className="text-[11px] text-amber-800 mt-2">
+              <p
+                className={`text-[11px] mt-2 ${isLight ? "text-amber-800" : "text-amber-200/95"}`}
+              >
                 Checkout indisponível: defina STRIPE_PRICE_PAID_01 … STRIPE_PRICE_PAID_20 (uma env por degrau com o ID{" "}
                 <code className="font-mono">price_…</code> do Stripe).
               </p>
             )}
             {stripePlanPricing === "error" && !paidActive && !isEnterprisePlan && (
-              <p className="text-[11px] text-amber-800 mt-2">
+              <p
+                className={`text-[11px] mt-2 ${isLight ? "text-amber-800" : "text-amber-200/95"}`}
+              >
                 Não foi possível verificar o Stripe no servidor (resposta inesperada). Recarregue a página; se persistir,
                 confira se o dev server está íntegro (<code className="font-mono">.next</code> no mesmo volume que{" "}
                 <code className="font-mono">node_modules</code>).
@@ -404,7 +522,13 @@ export default function ContaPage() {
           </div>
 
           {paidActive && business?.id && !hasBillingDocument(business) && (
-            <p className="text-[11px] text-amber-800 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+            <p
+              className={`text-[11px] rounded-lg border px-3 py-2 ${
+                isLight
+                  ? "text-amber-800 border-amber-200 bg-amber-50"
+                  : "text-amber-100 border-amber-500/40 bg-amber-950/45"
+              }`}
+            >
               Para fins de nota fiscal e declaração de imposto, informe seu <strong>CPF ou CNPJ</strong> no bloco abaixo
               (nome e endereço ficam no cadastro do Stripe).
             </p>
@@ -460,8 +584,173 @@ export default function ContaPage() {
 
       {tab === "seguranca" && (
         <div className="space-y-4">
+          {!user?.isImpersonating && (
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-3">
+              <h3 className="text-sm font-bold text-gray-900">Acesso compartilhado ao dashboard</h3>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Esta funcionalidade permite que mais pessoas administrem sua conta. Basta compartilhar seu token de acesso
+                com quem você autorizar. Gerar um novo token invalida o anterior para novas entradas; quem já estiver com o
+                painel aberto na sua conta continua até a sessão expirar (até 8 horas) ou até sair.
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <label className="text-xs font-medium text-gray-600 sm:pt-0.5 sm:flex-1 sm:min-w-0">
+                  Seu token de acesso (compartilhe para alguém acessar sua conta)
+                </label>
+                <button
+                  type="button"
+                  disabled={
+                    shareBusy ||
+                    (tokenCooldownUntil != null && Date.now() < tokenCooldownUntil)
+                  }
+                  onClick={() => {
+                    if (tokenCooldownUntil != null && Date.now() < tokenCooldownUntil) return;
+                    setShareBusy(true);
+                    void regenerateImpersonateToken()
+                      .then((t) => {
+                        setShareToken(t);
+                        setTokenCooldownUntil(Date.now() + TOKEN_GENERATE_COOLDOWN_MS);
+                        void loadImpersonationSessions();
+                      })
+                      .catch((e) =>
+                        showAlert(e instanceof Error ? e.message : "Não foi possível gerar o token.", {
+                          title: "Token",
+                        })
+                      )
+                      .finally(() => setShareBusy(false));
+                  }}
+                  className="w-full sm:w-auto shrink-0 px-4 py-2.5 bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-800 text-sm font-semibold rounded-xl transition-all disabled:opacity-60 text-center sm:text-left"
+                >
+                  {shareBusy
+                    ? "Gerando…"
+                    : tokenCooldownSec > 0
+                      ? `Aguarde ${tokenCooldownSec}s`
+                      : shareToken
+                        ? "Gerar novo token (invalida o anterior)"
+                        : "Gerar token de acesso"}
+                </button>
+              </div>
+              {shareToken ? (
+                <div className="space-y-1.5">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-stretch">
+                    <input
+                      readOnly
+                      value={shareToken}
+                      className="flex-1 min-h-10 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-xs font-mono text-gray-900"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void (async () => {
+                          const ok = await copyTextToClipboard(shareToken);
+                          if (ok) {
+                            setCopyTokenDone(true);
+                            window.setTimeout(() => setCopyTokenDone(false), 2000);
+                          } else {
+                            showAlert(
+                              "Não foi possível copiar automaticamente. Selecione o texto no campo ao lado e use Ctrl+C (ou copiar no menu).",
+                              { title: "Copiar token" }
+                            );
+                          }
+                        })();
+                      }}
+                      className="px-4 py-2 min-h-10 bg-primary hover:bg-primary/90 text-black text-sm font-bold rounded-xl shrink-0 w-full sm:w-auto"
+                    >
+                      {copyTokenDone ? "Copiado!" : "Copiar"}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    O token antigo deixa de funcionar para novas conexões. Sessões já abertas com o token anterior não são
+                    encerradas automaticamente.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {!user?.isImpersonating && (
+            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-3">
+              <h3 className="text-sm font-bold text-gray-900">Acessar a conta de outro usuário</h3>
+              <label className="text-xs font-medium text-gray-600">Acessar a conta de outro usuário (cole o token)</label>
+              <input
+                type="text"
+                value={impersonateInput}
+                onChange={(e) => setImpersonateInput(e.target.value.replace(/\s/g, "").toLowerCase())}
+                placeholder="ex.: a1b2c3d4e5f6789012345678abcdef01"
+                autoComplete="off"
+                spellCheck={false}
+                className="w-full h-11 bg-gray-50 border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm font-mono"
+              />
+              <p className="text-xs text-gray-500">Aceita token de acesso (hash de 32 caracteres).</p>
+              <button
+                type="button"
+                disabled={
+                  impersonateBusy ||
+                  impersonateRetrySec > 0 ||
+                  !/^[0-9a-f]{32}$/.test(impersonateInput.trim())
+                }
+                onClick={() => {
+                  if (impersonateRetrySec > 0) return;
+                  setImpersonateBusy(true);
+                  void startImpersonation(impersonateInput.trim())
+                    .catch((e) => {
+                      showAlert(e instanceof Error ? e.message : "Falha ao entrar na conta.", {
+                        title: "Acesso compartilhado",
+                      });
+                      setImpersonateRetryUntil(Date.now() + IMPERSONATE_RETRY_COOLDOWN_MS);
+                      setImpersonateBusy(false);
+                    });
+                }}
+                className="w-full py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-black font-bold rounded-xl text-sm transition-all"
+              >
+                {impersonateBusy
+                  ? "Entrando…"
+                  : impersonateRetrySec > 0
+                    ? `Aguarde ${impersonateRetrySec}s para tentar de novo`
+                    : "Entrar nesta conta"}
+              </button>
+            </div>
+          )}
+
           <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
             <h3 className="text-sm font-bold text-gray-900 mb-4">Conta vinculada</h3>
+            {user?.isImpersonating ? (
+              <div
+                className={`rounded-lg border px-3 py-2.5 text-xs mb-3 leading-relaxed ${
+                  isLight
+                    ? "border-amber-200 bg-amber-50 text-amber-950"
+                    : "border-amber-500/40 bg-amber-950/45 text-amber-50"
+                }`}
+              >
+                <p className={`font-bold ${isLight ? "text-amber-950" : "text-amber-100"}`}>
+                  Acesso compartilhado (conta de outro usuário)
+                </p>
+                <p className={`mt-1 ${isLight ? "text-amber-950" : "text-amber-100/95"}`}>
+                  Painel do negócio: <strong>{business?.name}</strong> — {profile?.email}
+                </p>
+                <p className={`mt-1 ${isLight ? "text-amber-900/95" : "text-amber-200/90"}`}>
+                  Sessão na conta (Google): {user.email ?? user.realUserId}
+                </p>
+                <p
+                  className={`mt-2 pt-2 border-t text-[11px] leading-relaxed ${
+                    isLight ? "border-amber-300/70 text-amber-900/90" : "border-amber-500/30 text-amber-100/90"
+                  }`}
+                >
+                  {SHARED_ACCESS_UNRECOGNIZED_MESSAGE}{" "}
+                  {supportContactUrl ? (
+                    <a
+                      href={supportContactUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`font-semibold underline underline-offset-2 ${
+                        isLight ? "text-amber-950 hover:text-amber-800" : "text-amber-50 hover:text-white"
+                      }`}
+                    >
+                      Suporte Agenndo
+                    </a>
+                  ) : null}
+                </p>
+              </div>
+            ) : null}
             <div className="flex items-center gap-4">
               <div className="size-12 rounded-xl bg-blue-500/10 flex items-center justify-center">
                 <GoogleIcon />
@@ -474,15 +763,104 @@ export default function ContaPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-            <h3 className="text-sm font-bold text-gray-900 mb-4">Sessão ativa</h3>
+          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
+            <h3 className="text-sm font-bold text-gray-900">Sessão e acesso compartilhado</h3>
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
               <span className="material-symbols-outlined text-primary text-xl">computer</span>
-              <div className="flex-1">
-                <p className="text-gray-900 text-sm font-medium">Neste dispositivo</p>
-                <p className="text-gray-500 text-xs">Último acesso: agora</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-gray-900 text-sm font-medium">Este navegador</p>
+                <p className="text-gray-500 text-xs">
+                  {lastSignInLabel ? (
+                    <>Último login nesta sessão: {lastSignInLabel}</>
+                  ) : (
+                    <>Sessão ativa (Supabase Auth)</>
+                  )}
+                </p>
               </div>
-              <span className="size-2 rounded-full bg-primary" />
+              <span className="size-2 rounded-full bg-primary shrink-0" title="Sessão ativa" />
+            </div>
+
+            <div>
+              <p
+                className={`text-xs font-semibold mb-2 ${isLight ? "text-gray-700" : "text-white/90"}`}
+              >
+                Painel aberto via token (até expirar ou sair)
+              </p>
+              {sessionsLoading ? (
+                <p className={`text-xs ${isLight ? "text-gray-500" : "text-gray-400"}`}>Carregando…</p>
+              ) : impersonationSessions.length === 0 ? (
+                <p className={`text-xs leading-relaxed ${isLight ? "text-gray-500" : "text-gray-400"}`}>
+                  Nenhuma sessão de acesso compartilhado ativa no momento (ou a lista não pôde ser carregada no servidor).
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {impersonationSessions.map((s) => {
+                    const label = s.other_name?.trim() || s.other_email || `${s.other_user_id.slice(0, 8)}…`;
+                    const otherIsYwp = isYwpSupportActorEmail(s.other_email);
+                    return (
+                      <li
+                        key={s.id}
+                        className={`text-xs leading-relaxed rounded-lg border px-3 py-2 ${
+                          isLight
+                            ? "border-gray-100 bg-gray-50 text-gray-700"
+                            : "border-white/[0.08] bg-white/[0.05] text-gray-200"
+                        }`}
+                      >
+                        {s.perspective === "supporter" ? (
+                          <>
+                            <span className={isLight ? "font-semibold text-gray-900" : "font-semibold text-white"}>
+                              Você está no painel de:
+                            </span>{" "}
+                            {label}
+                            <span
+                              className={`block mt-1 ${isLight ? "text-gray-500" : "text-gray-400"}`}
+                            >
+                              Expira em {formatDateTimePtBr(s.expires_at)}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className={isLight ? "font-semibold text-gray-900" : "font-semibold text-white"}>
+                              Alguém está no seu painel:
+                            </span>{" "}
+                            <span className="font-medium">{label}</span>
+                            {otherIsYwp ? (
+                              <span className="text-[11px] opacity-90"> (Suporte técnico YWP)</span>
+                            ) : null}
+                            <span
+                              className={`block mt-1 ${isLight ? "text-gray-500" : "text-gray-400"}`}
+                            >
+                              Expira em {formatDateTimePtBr(s.expires_at)}
+                            </span>
+                            <span
+                              className={`block mt-1.5 text-[10px] leading-snug ${isLight ? "text-gray-600" : "text-gray-400"}`}
+                            >
+                              {YWP_UNRECOGNIZED_ACCESS_MESSAGE}{" "}
+                              {supportContactUrl ? (
+                                <a
+                                  href={supportContactUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`font-semibold underline underline-offset-2 ${
+                                    isLight ? "text-gray-800" : "text-primary"
+                                  }`}
+                                >
+                                  Canais oficiais YWP
+                                </a>
+                              ) : null}
+                            </span>
+                          </>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <p
+                className={`text-[11px] mt-2 leading-relaxed ${isLight ? "text-gray-400" : "text-gray-500"}`}
+              >
+                Gerar novo token não encerra essas sessões; só impede novas entradas com o hash antigo.
+              </p>
             </div>
           </div>
 

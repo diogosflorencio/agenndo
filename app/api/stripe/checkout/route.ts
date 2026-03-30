@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/supabase/effective-user";
 import { getStripe } from "@/lib/stripe/server";
 import { getStripePriceIdForPlan } from "@/lib/stripe/prices";
 import type { PlanId } from "@/lib/plans";
@@ -36,26 +37,38 @@ export async function POST(req: Request) {
       );
     }
 
+    const effectiveId = await getEffectiveUserId(supabase);
+    if (!effectiveId) {
+      return NextResponse.json({ error: "Sessão inválida" }, { status: 401 });
+    }
+
     const { data: business, error: bizErr } = await supabase
       .from("businesses")
       .select("id, profile_id, stripe_customer_id, name")
       .eq("id", businessId)
       .single();
 
-    if (bizErr || !business || business.profile_id !== user.id) {
+    if (bizErr || !business || business.profile_id !== effectiveId) {
       return NextResponse.json({ error: "Negócio não encontrado" }, { status: 403 });
     }
+
+    const { data: ownerProfile } = await supabase
+      .from("profiles")
+      .select("email, full_name")
+      .eq("id", business.profile_id)
+      .maybeSingle();
+    const billingEmail = (ownerProfile?.email as string | null) ?? user.email ?? undefined;
 
     const stripe = getStripe();
     let customerId = business.stripe_customer_id as string | null;
 
     if (!customerId) {
       const customer = await stripe.customers.create({
-        email: user.email ?? undefined,
-        name: (business.name as string) ?? undefined,
+        email: billingEmail,
+        name: (ownerProfile?.full_name as string | null) ?? (business.name as string) ?? undefined,
         metadata: {
           business_id: businessId,
-          profile_id: user.id,
+          profile_id: business.profile_id as string,
         },
       });
       customerId = customer.id;

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { onlyDigits, isValidBrazilianTaxId, type BillingFiscalFields } from "@/lib/billing-fiscal";
 import { useAppAlert } from "@/components/app-alert-provider";
-import { cn } from "@/lib/utils";
+import { cn, getAuthHeaders } from "@/lib/utils";
 
 type Props = {
   businessId: string;
@@ -31,7 +31,7 @@ export function BillingDocumentForm({ businessId, business }: Props) {
     try {
       const res = await fetch("/api/business/billing-fiscal", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         credentials: "include",
         body: JSON.stringify({
           businessId,

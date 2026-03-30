@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getEffectiveUserId } from "@/lib/supabase/effective-user";
 import { getStripe } from "@/lib/stripe/server";
 
 export const runtime = "nodejs";
@@ -20,13 +21,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "businessId obrigatório" }, { status: 400 });
     }
 
+    const effectiveId = await getEffectiveUserId(supabase);
+    if (!effectiveId) {
+      return NextResponse.json({ error: "Sessão inválida" }, { status: 401 });
+    }
+
     const { data: business, error } = await supabase
       .from("businesses")
       .select("id, profile_id, stripe_customer_id")
       .eq("id", businessId)
       .single();
 
-    if (error || !business || business.profile_id !== user.id) {
+    if (error || !business || business.profile_id !== effectiveId) {
       return NextResponse.json({ error: "Negócio não encontrado" }, { status: 403 });
     }
 

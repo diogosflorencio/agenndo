@@ -29,6 +29,17 @@ export function formatTime(date: Date | string): string {
   }).format(d);
 }
 
+export function formatDateTimePtBr(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(d);
+}
+
 /** Hex (#RGB ou #RRGGBB) → `rgba(r,g,b,a)` para sombras e overlays com a cor do negócio. */
 export function rgbaFromHex(hex: string, alpha: number): string {
   const t = hex.trim();
@@ -60,6 +71,34 @@ export function phoneToWhatsAppHref(phone: string | null | undefined): string | 
   if (!raw) return null;
   const digits = raw.startsWith("55") && raw.length >= 12 ? raw : `55${raw}`;
   return `https://wa.me/${digits}`;
+}
+
+/** Headers opcionais para fetch a APIs que leiam x-impersonate-user-id (o valor é o hash de 32 hex). */
+export function getAuthHeaders(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const v = localStorage.getItem("impersonateUserId")?.trim();
+    if (v && /^[0-9a-f]{32}$/i.test(v)) {
+      return { "x-impersonate-user-id": v.toLowerCase() };
+    }
+  } catch {
+    /* ignore */
+  }
+  return {};
+}
+
+/** Query opcional (?impersonate=) para fluxos onde o header não é enviado. */
+export function getImpersonateQuery(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const v = localStorage.getItem("impersonateUserId")?.trim();
+    if (v && /^[0-9a-f]{32}$/i.test(v)) {
+      return { impersonate: v.toLowerCase() };
+    }
+  } catch {
+    /* ignore */
+  }
+  return {};
 }
 
 export function slugify(text: string): string {

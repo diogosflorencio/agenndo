@@ -3,7 +3,12 @@
 import { createContext, useContext, type ReactNode } from "react";
 
 export type UserInfo = {
+  /** Perfil efetivo (dono dos dados exibidos); igual a profile.id após o load. */
   id: string;
+  /** Sempre o usuário real da sessão Supabase (JWT). */
+  realUserId: string;
+  /** true quando há sessão de impersonação (acesso compartilhado / outro perfil). */
+  isImpersonating: boolean;
   email?: string | null;
   user_metadata?: Record<string, unknown>;
 };
