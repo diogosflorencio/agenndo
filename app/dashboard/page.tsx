@@ -68,6 +68,7 @@ export default function DashboardHome() {
     setAppointments((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
   };
 
+  
   const runHomeFaltou = async (apt: AppointmentRow) => {
     if (!business?.id) return;
     setActionErr(null);
