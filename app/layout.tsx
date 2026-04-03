@@ -22,6 +22,26 @@ const titleDefault =
 const description =
   "Software completo de agendamento online (YWP / YourWebPlace): clientes marcam horário 24h por link ou QR Code; você gerencia agenda, equipe, financeiro e lembretes. Serve barbearias, salões, clínicas, estética, tatuadores, personal trainers, pet shops, consultórios e qualquer negócio por hora marcada — basta configurar serviços e disponibilidade.";
 
+const verificationMeta = (() => {
+  const google = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
+  const bing = process.env.NEXT_PUBLIC_BING_SITE_VERIFICATION?.trim();
+  if (!google && !bing) return undefined;
+  return {
+    ...(google ? { google } : {}),
+    ...(bing ? { other: { "msvalidate.01": bing } } : {}),
+  };
+})();
+
+const supabaseOrigin = (() => {
+  const u = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  if (!u) return null;
+  try {
+    return new URL(u).origin;
+  } catch {
+    return null;
+  }
+})();
+
 export const viewport: Viewport = {
   themeColor: "#13EC5B",
 };
@@ -56,10 +76,16 @@ export const metadata: Metadata = {
   creator: "YWP (YourWebPlace)",
   publisher: "YWP (YourWebPlace)",
   formatDetection: { email: false, address: false, telephone: false },
+  ...(verificationMeta ? { verification: verificationMeta } : {}),
   robots: {
     index: true,
     follow: true,
-    googleBot: { index: true, follow: true },
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
   manifest: "/manifest.json",
   appleWebApp: {
@@ -80,7 +106,7 @@ export const metadata: Metadata = {
     description,
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: titleDefault,
     description,
   },
@@ -100,6 +126,14 @@ const knowsAbout = [
   "Serviços por hora marcada",
 ];
 
+const featureList = [
+  "Página pública de agendamento por link e QR Code",
+  "Painel: agenda, disponibilidade, serviços e colaboradores",
+  "Lembretes e notificações para clientes",
+  "Financeiro e relatórios",
+  "Personalização de marca (logo, cores, banner)",
+];
+
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -109,6 +143,7 @@ const jsonLd = {
       name: "YWP (YourWebPlace)",
       alternateName: ["YWP", "YourWebPlace"],
       url: siteUrl,
+      logo: `${siteUrl}/icon.svg`,
       description:
         "Empresa por trás do Agenndo — software de agendamento online e gestão para prestadores de serviço.",
       brand: {
@@ -116,6 +151,26 @@ const jsonLd = {
         name: "Agenndo",
         description: "Plataforma de agendamento online para negócios por hora marcada.",
       },
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${siteUrl}/#website`,
+      name: "Agenndo",
+      url: siteUrl,
+      inLanguage: "pt-BR",
+      publisher: { "@id": `${siteUrl}/#organization` },
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": `${siteUrl}/#breadcrumb-home`,
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Início",
+          item: siteUrl,
+        },
+      ],
     },
     {
       "@type": "SoftwareApplication",
@@ -130,6 +185,13 @@ const jsonLd = {
       isAccessibleForFree: true,
       publisher: { "@id": `${siteUrl}/#organization` },
       knowsAbout,
+      featureList,
+      offers: {
+        "@type": "Offer",
+        priceCurrency: "BRL",
+        availability: "https://schema.org/InStock",
+        description: "Planos por perfil de uso; período de teste para novos cadastros.",
+      },
     },
   ],
 };
@@ -141,6 +203,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className="scroll-smooth">
+      <head>
+        {supabaseOrigin ? <link rel="dns-prefetch" href={supabaseOrigin} /> : null}
+      </head>
       <body
         className={`${inter.variable} font-sans antialiased bg-[#020403] text-white`}
       >

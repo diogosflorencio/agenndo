@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useDashboard } from "@/lib/dashboard-context";
@@ -14,6 +14,8 @@ import {
 import { hasFullServiceAccess } from "@/lib/billing-access";
 import { setAppointmentAttendance, centsToMoneyInput } from "@/lib/appointment-finance";
 import { AppointmentValueModal } from "@/components/appointment-value-modal";
+import { localISODate } from "@/lib/agenda-calendar-helpers";
+import { formatDate } from "@/lib/utils";
 
 type AppointmentRow = {
   id: string;
@@ -52,6 +54,7 @@ const defaultSetupSnapshot: SetupProgressSnapshot = {
   hasCollabServiceLink: false,
   hasOpenAvailabilityDay: false,
   hasPersonalizationExtras: false,
+  hasSubscriptionAccess: false,
 };
 
 export default function DashboardHome() {
@@ -60,6 +63,8 @@ export default function DashboardHome() {
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [setupSnapshot, setSetupSnapshot] = useState<SetupProgressSnapshot>(defaultSetupSnapshot);
   const [loading, setLoading] = useState(true);
+  /** Dia exibido na lista e no gráfico (clique na barra). */
+  const [selectedDate, setSelectedDate] = useState(() => localISODate(new Date()));
   const [moneyModal, setMoneyModal] = useState<AppointmentRow | null>(null);
   const [attBusyId, setAttBusyId] = useState<string | null>(null);
   const [actionErr, setActionErr] = useState<string | null>(null);
@@ -135,9 +140,9 @@ export default function DashboardHome() {
     const from = new Date();
     from.setDate(from.getDate() - 7);
     const to = new Date();
-    to.setDate(to.getDate() + 1);
-    const fromStr = from.toISOString().slice(0, 10);
-    const toStr = to.toISOString().slice(0, 10);
+    to.setDate(to.getDate() + 60);
+    const fromStr = localISODate(from);
+    const toStr = localISODate(to);
 
     Promise.all([
       supabase
@@ -204,37 +209,73 @@ export default function DashboardHome() {
           hasCollabServiceLink: csRes.data != null,
           hasOpenAvailabilityDay,
           hasPersonalizationExtras,
+          hasSubscriptionAccess: hasFullServiceAccess(business),
         });
         setLoading(false);
       }
     );
-  }, [business?.id, business?.segment, business?.phone, business?.city]);
+  }, [
+    business?.id,
+    business?.segment,
+    business?.phone,
+    business?.city,
+    business?.stripe_subscription_id,
+    business?.subscription_status,
+    business?.trial_ends_at,
+    business?.billing_issue_deadline,
+    business?.created_at,
+  ]);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = localISODate(new Date());
   const todayAppointments = appointments.filter((a) => a.date === todayStr);
+  const selectedDayAppointments = appointments.filter((a) => a.date === selectedDate);
   const yesterdayStr = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
   const pendingStatusCount = appointments.filter(
     (a) => a.date === yesterdayStr && a.status === "agendado"
   ).length;
 
-  const weekData = (() => {
-    const byDay: Record<string, { agendamentos: number; receita: number }> = {};
-    DAYS.forEach((d) => (byDay[d] = { agendamentos: 0, receita: 0 }));
+  const weekData = useMemo(() => {
     const start = new Date();
     start.setDate(start.getDate() - 6);
+    start.setHours(0, 0, 0, 0);
+    const out: {
+      dayLabel: string;
+      day: string;
+      dateStr: string;
+      agendamentos: number;
+      receita: number;
+    }[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(start);
-      d.setDate(d.getDate() + i);
+      d.setDate(start.getDate() + i);
+      const dateStr = localISODate(d);
       const dayName = DAYS[d.getDay()];
-      const dateStr = d.toISOString().slice(0, 10);
       const dayAppointments = appointments.filter((a) => a.date === dateStr);
-      byDay[dayName].agendamentos = dayAppointments.length;
-      byDay[dayName].receita = dayAppointments
-        .filter((a) => a.status === "compareceu")
-        .reduce((s, a) => s + (a.price_cents || 0), 0);
+      out.push({
+        dayLabel: `${dayName.slice(0, 3)} ${String(d.getDate()).padStart(2, "0")}`,
+        day: dayName,
+        dateStr,
+        agendamentos: dayAppointments.length,
+        receita: dayAppointments.filter((a) => a.status === "compareceu").reduce((s, a) => s + (a.price_cents || 0), 0),
+      });
     }
-    return DAYS.map((day) => ({ day, ...byDay[day] }));
-  })();
+    return out;
+  }, [appointments]);
+
+  const weekFromToday = useMemo(() => {
+    const mon = new Date();
+    const day = mon.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    mon.setDate(mon.getDate() + diff);
+    mon.setHours(0, 0, 0, 0);
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+    const fromStr = localISODate(mon);
+    const toStr = localISODate(sun);
+    const inWeek = appointments.filter((a) => a.date >= fromStr && a.date <= toStr);
+    const restAfterToday = inWeek.filter((a) => a.date > todayStr);
+    return { totalWeek: inWeek.length, restAfterToday: restAfterToday.length, fromStr, toStr };
+  }, [appointments, todayStr]);
 
   const compareceu = appointments.filter((a) => a.status === "compareceu").length;
   const totalWithStatus = appointments.filter((a) =>
@@ -293,7 +334,13 @@ export default function DashboardHome() {
 
   const metrics = [
     { label: "Hoje", value: todayAppointments.length.toString(), sub: "agendamentos", subColor: "text-gray-400", icon: "calendar_today" },
-    { label: "Esta semana", value: totalWeek.toString(), sub: "agendamentos", subColor: "text-gray-400", icon: "date_range" },
+    {
+      label: "Semana (seg–dom)",
+      value: String(weekFromToday.totalWeek),
+      sub: `${weekFromToday.restAfterToday} após hoje`,
+      subColor: "text-gray-400",
+      icon: "date_range",
+    },
     { label: "Comparecimento", value: `${taxaComparecimento}%`, sub: totalWithStatus > 0 ? `${compareceu}/${totalWithStatus}` : "—", subColor: "text-gray-400", icon: "calendar_month" },
     { label: "Receita semana", value: formatCurrency(receitaWeek / 100), sub: "últimos 7 dias", subColor: "text-gray-400", icon: "payments" },
   ];
@@ -362,6 +409,18 @@ export default function DashboardHome() {
         ))}
       </div>
 
+      <div className="mb-6 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-gray-800">
+        <p className="font-semibold text-gray-900 flex flex-wrap items-center gap-2">
+          <span className="material-symbols-outlined text-primary text-lg">info</span>
+          Resumo rápido
+        </p>
+        <p className="mt-1 text-gray-700">
+          <strong>Hoje</strong> você tem{" "}
+          <strong>{todayAppointments.length}</strong> agendamento{todayAppointments.length === 1 ? "" : "s"}. Nesta semana (segunda a domingo):{" "}
+          <strong>{weekFromToday.totalWeek}</strong> no total, sendo <strong>{weekFromToday.restAfterToday}</strong> nos dias seguintes.
+        </p>
+      </div>
+
       <DashboardSetupGuide snapshot={setupSnapshot} />
 
       {actionErr && (
@@ -372,23 +431,47 @@ export default function DashboardHome() {
 
       <div className="grid lg:grid-cols-5 gap-6">
         <div className="lg:col-span-3">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-gray-900">Hoje</h2>
-            <Link href="/dashboard/agendamentos" className="text-xs text-primary hover:underline flex items-center gap-1">
-              Ver todos <span className="material-symbols-outlined text-xs">chevron_right</span>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div>
+              <h2 className="text-base font-bold text-gray-900">
+                {selectedDate === todayStr ? "Hoje" : formatDate(new Date(selectedDate + "T12:00:00"))}
+              </h2>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {selectedDate !== todayStr ? (
+                  <>
+                    Visualizando outro dia.{" "}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(todayStr)}
+                      className="font-semibold text-primary hover:underline"
+                    >
+                      Voltar para hoje
+                    </button>
+                  </>
+                ) : (
+                  "Seus agendamentos do dia para gerenciar."
+                )}
+              </p>
+            </div>
+            <Link href="/dashboard/agendamentos" className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0">
+              Agenda completa <span className="material-symbols-outlined text-xs">chevron_right</span>
             </Link>
           </div>
 
           <div className="space-y-3">
-            {todayAppointments.length === 0 ? (
+            {selectedDayAppointments.length === 0 ? (
               <EmptyState
                 icon="calendar_today"
-                title="Nenhum agendamento hoje"
-                desc="Compartilhe sua página para receber agendamentos"
-                action={{ label: "Compartilhar página", href: "/dashboard/personalizacao" }}
+                title={selectedDate === todayStr ? "Nenhum agendamento hoje" : "Nenhum agendamento neste dia"}
+                desc={
+                  selectedDate === todayStr
+                    ? "Compartilhe sua página para receber agendamentos"
+                    : "Escolha outro dia no gráfico ou volte para hoje."
+                }
+                action={selectedDate === todayStr ? { label: "Compartilhar página", href: "/dashboard/personalizacao" } : undefined}
               />
             ) : (
-              todayAppointments.map((apt) => {
+              selectedDayAppointments.map((apt) => {
                 const statusConf = STATUS_CONFIG[apt.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.agendado;
                 const clientName = apt.clients?.name ?? apt.client_name_snapshot ?? "Cliente";
                 const serviceName = apt.services?.name ?? "Serviço";
@@ -449,24 +532,36 @@ export default function DashboardHome() {
         </div>
 
         <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-base font-bold text-gray-900">Últimos 7 dias</h2>
           </div>
+          <p className="text-xs text-gray-500 mb-3">
+            Clique em uma barra para carregar os agendamentos desse dia na lista ao lado.
+          </p>
 
           <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={weekData} barSize={20}>
-                <XAxis dataKey="day" tick={{ fill: "#6b7280", fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="dayLabel" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis hide />
                 <Tooltip
                   contentStyle={tooltipStyle}
                   labelStyle={tooltipLabelStyle}
                   itemStyle={{ color: "#13EC5B" }}
-                  formatter={(v: number) => [`${v} agend.`, ""]}
+                  formatter={(v: number) => [`${v} agend.`, "Agendamentos"]}
+                  labelFormatter={(_, payload) => {
+                    const p = payload?.[0]?.payload as { dateStr?: string; dayLabel?: string } | undefined;
+                    return p?.dateStr ? `${p.dayLabel ?? ""} · ${p.dateStr}` : "";
+                  }}
                 />
-                <Bar dataKey="agendamentos" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="agendamentos" radius={[4, 4, 0, 0]} cursor="pointer">
                   {weekData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.day === "Sáb" ? "#13EC5B" : "#d1d5db"} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={entry.dateStr === selectedDate ? "#13EC5B" : entry.day === "Sáb" ? "#86efac" : "#d1d5db"}
+                      className="cursor-pointer"
+                      onClick={() => setSelectedDate(entry.dateStr)}
+                    />
                   ))}
                 </Bar>
               </BarChart>
