@@ -14,6 +14,12 @@ export const metadata: Metadata = {
     url: `${base}/sobre`,
     locale: "pt_BR",
     type: "website",
+    siteName: "Agenndo",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Sobre | Agenndo · YWP",
+    description: "Agenndo e YWP (YourWebPlace): agendamento online para negócios por hora marcada.",
   },
 };
 

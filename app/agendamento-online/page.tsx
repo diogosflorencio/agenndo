@@ -34,6 +34,12 @@ export const metadata: Metadata = {
     locale: "pt_BR",
     type: "article",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Agenndo — Software de agendamento online (YWP)",
+    description:
+      "Sistema completo de agendamento para diversos tipos de serviço. Configure em minutos; clientes agendam 24h.",
+  },
 };
 
 const SEGMENTOS = [

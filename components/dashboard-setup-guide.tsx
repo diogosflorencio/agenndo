@@ -16,6 +16,8 @@ export type SetupProgressSnapshot = {
   hasCollabServiceLink: boolean;
   hasOpenAvailabilityDay: boolean;
   hasPersonalizationExtras: boolean;
+  /** Plano ativo, período de teste ou tolerância de pagamento (regra igual ao painel). */
+  hasSubscriptionAccess: boolean;
 };
 
 type Section = {
@@ -69,6 +71,18 @@ function buildSections(s: SetupProgressSnapshot): Section[] {
           label: "Personalize página (texto, banner ou redes)",
           done: s.hasPersonalizationExtras,
           href: "/dashboard/personalizacao",
+        },
+      ],
+    },
+    {
+      id: "plano",
+      title: "Assinatura",
+      tasks: [
+        {
+          id: "sub",
+          label: "Assine o plano para manter agendamentos online",
+          done: s.hasSubscriptionAccess,
+          href: "/dashboard/conta",
         },
       ],
     },

@@ -34,6 +34,12 @@ O mesmo software serve a qualquer negócio com hora marcada, desde que o usuári
 - /agendamento-online — descrição ampliada para SEO (software de agendamento)
 - /termos — termos de uso
 - /politicas — política de privacidade
+- /conta — área do cliente (agendamentos) quando aplicável
+
+## Sitemaps (URLs canônicas)
+- /sitemap.xml — URLs estáticas + páginas públicas por negócio (slug)
+- /sitemap_index.xml — índice que aponta para /sitemap.xml
+- /robots.txt — gerado pelo app; área logada (/dashboard/, /api/, /auth/, /setup) não deve ser indexada
 
 ## Páginas de clientes (dinâmicas)
 - /{slug} — página pública de um estabelecimento (agendar horário). Cada slug é um negócio diferente.
