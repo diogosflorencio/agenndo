@@ -63,7 +63,7 @@ export default function DashboardHome() {
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [setupSnapshot, setSetupSnapshot] = useState<SetupProgressSnapshot>(defaultSetupSnapshot);
   const [loading, setLoading] = useState(true);
-  /** Dia exibido na lista e no gráfico (clique na barra). */
+  /** Dia exibido na lista e no gráfico (clique na barra). */ 
   const [selectedDate, setSelectedDate] = useState(() => localISODate(new Date()));
   const [moneyModal, setMoneyModal] = useState<AppointmentRow | null>(null);
   const [attBusyId, setAttBusyId] = useState<string | null>(null);
