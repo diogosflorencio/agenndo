@@ -92,6 +92,17 @@ export async function stopImpersonation() {
   window.location.replace("/dashboard");
 }
 
+/** Devolve o token atual ou cria um (contas antigas / edge cases). Não invalida o token existente. */
+export async function ensureImpersonateToken(): Promise<string> {
+  const supabase = createClient();
+  const { data, error } = await supabase.rpc("ensure_impersonate_token");
+  if (error) throw new Error(error.message);
+  if (typeof data !== "string" || !/^[0-9a-f]{32}$/.test(data)) {
+    throw new Error("Resposta inválida ao carregar o token.");
+  }
+  return data;
+}
+
 export async function regenerateImpersonateToken(): Promise<string> {
   const supabase = createClient();
   const { data, error } = await supabase.rpc("regenerate_impersonate_token");

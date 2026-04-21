@@ -49,13 +49,14 @@ export default function NotificacoesPage() {
   const [templateTexts, setTemplateTexts] = useState(templates);
 
   return (
-    <div className="w-full">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Notificações</h1>
-        <p className="text-gray-600 text-sm mt-1">Configure alertas para você e lembretes para seus clientes</p>
-      </div>
+    <div className="relative w-full min-h-[min(70vh,520px)]">
+      <div className="pointer-events-none blur-[2px] select-none opacity-[0.72]" aria-hidden="true">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Notificações</h1>
+          <p className="text-gray-600 text-sm mt-1">Configure alertas para você e lembretes para seus clientes</p>
+        </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-5">
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
             <div className="flex items-center gap-3 p-4 border-b border-gray-200">
@@ -314,6 +315,17 @@ export default function NotificacoesPage() {
             </div>
           </div>
         </div>
+      </div>
+      </div>
+
+      <div
+        className="absolute inset-0 z-10 flex items-center justify-center bg-white/35 backdrop-blur-[3px] px-4"
+        role="status"
+        aria-live="polite"
+      >
+        <p className="rounded-xl border border-gray-200 bg-white/95 px-6 py-3 text-center text-base font-semibold text-gray-800 shadow-lg">
+          Em desenvolvimento
+        </p>
       </div>
     </div>
   );
