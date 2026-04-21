@@ -15,6 +15,7 @@ import {
 import { compressImageForUpload } from "@/lib/image-compress";
 import { useAppAlert } from "@/components/app-alert-provider";
 import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
+import { PersonalizationShareQr } from "@/components/personalization-share-qr";
 
 const PALETTE = [
   { value: "#13EC5B", label: "Verde" },
@@ -144,6 +145,11 @@ export default function PersonalizacaoPage() {
   const [previewServices, setPreviewServices] = useState<PreviewServiceRow[]>([]);
   /** Baseline serializado para `formDirty`; estado (não ref) para recalcular após salvar. */
   const [formBaseline, setFormBaseline] = useState<string | null>(null);
+  /** Alvo do portal da pré-visualização do QR na coluna lateral (desktop). */
+  const [qrPreviewHostEl, setQrPreviewHostEl] = useState<HTMLDivElement | null>(null);
+  const onQrPreviewHostRef = useCallback((el: HTMLDivElement | null) => {
+    setQrPreviewHostEl(el);
+  }, []);
 
   const loadData = useCallback(async () => {
     if (!business?.id) {
@@ -542,9 +548,9 @@ export default function PersonalizacaoPage() {
         {loadError && <p className="text-red-600 text-sm mt-2">{loadError}</p>}
       </div>
 
-      <div className="grid lg:grid-cols-5 gap-6">
-        <div className="lg:col-span-3">
-          <div className="flex gap-1 p-1 bg-white border border-gray-200 rounded-xl mb-5 shadow-sm">
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-5 lg:gap-6 lg:items-start">
+        <div className="order-1 min-w-0 lg:col-span-3">
+          <div className="mb-5 flex gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-white p-1 shadow-sm [-webkit-overflow-scrolling:touch]">
             {[
               { key: "aparencia", label: "Aparência", icon: "palette" },
               { key: "conteudo", label: "Conteúdo", icon: "edit" },
@@ -556,13 +562,12 @@ export default function PersonalizacaoPage() {
                 type="button"
                 onClick={() => setActiveTab(tab.key as typeof activeTab)}
                 className={cn(
-                  "flex-1 flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold transition-all",
-                  activeTab === tab.key ? "bg-primary text-black" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  "flex shrink-0 items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:px-3.5",
+                  activeTab === tab.key ? "bg-primary text-black" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 )}
               >
-                <span className="material-symbols-outlined text-sm hidden sm:block">{tab.icon}</span>
-                <span className="hidden sm:block">{tab.label}</span>
-                <span className="sm:hidden">{tab.label.slice(0, 3)}</span>
+                <span className="material-symbols-outlined text-sm shrink-0">{tab.icon}</span>
+                <span className="whitespace-nowrap">{tab.label}</span>
               </button>
             ))}
           </div>
@@ -879,29 +884,15 @@ export default function PersonalizacaoPage() {
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-3">QR Code</h3>
-                <div className="flex items-start gap-4">
-                  <div
-                    className="size-32 rounded-xl flex-shrink-0 flex items-center justify-center border-2"
-                    style={{ borderColor: form.primaryColor + "40", backgroundColor: form.primaryColor + "10" }}
-                  >
-                    <QRCodePlaceholder color={form.primaryColor} />
-                  </div>
-                  <div className="flex-1 space-y-2">
-                    <p className="text-xs text-gray-500 leading-relaxed">
-                      Gere na página de QR Code a partir do slug do seu negócio.
-                    </p>
-                    <a
-                      href="/dashboard/qrcode"
-                      className="w-full py-2.5 bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-sm">qr_code_2</span>
-                      Gerar e imprimir QR Code
-                    </a>
-                  </div>
-                </div>
-              </div>
+              <PersonalizationShareQr
+                publicUrl={publicUrl}
+                slug={business.slug ?? ""}
+                businessName={form.businessName || business.name || "Negócio"}
+                tagline={form.tagline.trim() || null}
+                logoUrl={form.logoUrl}
+                primaryColor={form.primaryColor}
+                desktopPreviewHost={qrPreviewHostEl}
+              />
 
               <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-start gap-3">
                 <span className="material-symbols-outlined text-primary text-xl flex-shrink-0 mt-0.5">tips_and_updates</span>
@@ -933,12 +924,31 @@ export default function PersonalizacaoPage() {
           </button>
         </div>
 
-        <div className="hidden lg:block lg:col-span-2">
-          <div className="sticky top-6">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Preview da página pública</p>
-            <PagePreview form={form} services={previewServices} />
-          </div>
-        </div>
+        <aside
+          className={cn(
+            "order-2 w-full min-w-0 lg:col-span-2 lg:sticky lg:top-6",
+            activeTab === "compartilhar" && business.slug ? "hidden lg:block" : ""
+          )}
+        >
+          {activeTab === "compartilhar" && business.slug ? (
+            <>
+              <p className="mb-3 hidden text-xs font-bold uppercase tracking-wider text-gray-500 lg:block">
+                Pré-visualização do QR Code
+              </p>
+              <div
+                ref={onQrPreviewHostRef}
+                className="hidden min-h-[120px] w-full justify-center lg:flex"
+              />
+            </>
+          ) : (
+            <>
+              <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
+                Preview da página pública
+              </p>
+              <PagePreview form={form} services={previewServices} />
+            </>
+          )}
+        </aside>
       </div>
 
       {uploading && (
@@ -1139,23 +1149,3 @@ function PagePreview({ form, services }: { form: PreviewForm; services: PreviewS
   );
 }
 
-function QRCodePlaceholder({ color }: { color: string }) {
-  return (
-    <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
-      <rect x="4" y="4" width="24" height="24" rx="3" fill={color} opacity="0.3" />
-      <rect x="8" y="8" width="16" height="16" rx="2" fill={color} opacity="0.5" />
-      <rect x="12" y="12" width="8" height="8" rx="1" fill={color} />
-      <rect x="52" y="4" width="24" height="24" rx="3" fill={color} opacity="0.3" />
-      <rect x="56" y="8" width="16" height="16" rx="2" fill={color} opacity="0.5" />
-      <rect x="60" y="12" width="8" height="8" rx="1" fill={color} />
-      <rect x="4" y="52" width="24" height="24" rx="3" fill={color} opacity="0.3" />
-      <rect x="8" y="56" width="16" height="16" rx="2" fill={color} opacity="0.5" />
-      <rect x="12" y="60" width="8" height="8" rx="1" fill={color} />
-      <rect x="34" y="4" width="4" height="4" rx="1" fill={color} opacity="0.8" />
-      <rect x="42" y="4" width="4" height="4" rx="1" fill={color} opacity="0.6" />
-      <rect x="34" y="34" width="4" height="4" rx="1" fill={color} opacity="0.9" />
-      <rect x="40" y="34" width="4" height="4" rx="1" fill={color} opacity="0.5" />
-      <rect x="46" y="34" width="4" height="4" rx="1" fill={color} opacity="0.7" />
-    </svg>
-  );
-}

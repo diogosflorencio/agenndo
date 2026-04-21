@@ -24,6 +24,7 @@ import { useAppAlert } from "@/components/app-alert-provider";
 import { BillingDocumentForm, hasBillingDocument } from "@/components/billing-fiscal-form";
 import {
   clearImpersonationSession,
+  ensureImpersonateToken,
   regenerateImpersonateToken,
   startImpersonation,
 } from "@/lib/auth/impersonation-client";
@@ -82,6 +83,7 @@ export default function ContaPage() {
   const [countdownTick, setCountdownTick] = useState(0);
   const [stripePlanPricing, setStripePlanPricing] = useState<StripePlanPricing>("loading");
   const [shareToken, setShareToken] = useState<string | null>(null);
+  const [shareTokenLoading, setShareTokenLoading] = useState(false);
   const [shareBusy, setShareBusy] = useState(false);
   const [impersonateInput, setImpersonateInput] = useState("");
   const [impersonateBusy, setImpersonateBusy] = useState(false);
@@ -176,7 +178,17 @@ export default function ContaPage() {
           setLastSignInLabel(null);
         }
       });
-  }, [tab, loadImpersonationSessions]);
+    if (user?.isImpersonating) return;
+    setShareTokenLoading(true);
+    void ensureImpersonateToken()
+      .then((t) => setShareToken(t))
+      .catch((e) =>
+        showAlert(e instanceof Error ? e.message : "Não foi possível carregar o token de acesso.", {
+          title: "Token",
+        })
+      )
+      .finally(() => setShareTokenLoading(false));
+  }, [tab, loadImpersonationSessions, user?.isImpersonating]);
 
   void countdownTick;
 
@@ -588,9 +600,9 @@ export default function ContaPage() {
             <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-3">
               <h3 className="text-sm font-bold text-gray-900">Acesso compartilhado ao dashboard</h3>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Esta funcionalidade permite que mais pessoas administrem sua conta. Basta compartilhar seu token de acesso
-                com quem você autorizar. Gerar um novo token invalida o anterior para novas entradas; quem já estiver com o
-                painel aberto na sua conta continua até a sessão expirar (até 8 horas) ou até sair.
+                Cada conta já possui um token fixo na base de dados; você pode copiá-lo para quem autorizar ou para
+                suporte. Gerar um novo substitui o valor (o anterior deixa de valer para novas entradas); quem já estiver
+                com o painel aberto na sua conta continua até a sessão expirar (até 8 horas) ou até sair.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
                 <label className="text-xs font-medium text-gray-600 sm:pt-0.5 sm:flex-1 sm:min-w-0">
@@ -600,6 +612,7 @@ export default function ContaPage() {
                   type="button"
                   disabled={
                     shareBusy ||
+                    shareTokenLoading ||
                     (tokenCooldownUntil != null && Date.now() < tokenCooldownUntil)
                   }
                   onClick={() => {
@@ -624,12 +637,12 @@ export default function ContaPage() {
                     ? "Gerando…"
                     : tokenCooldownSec > 0
                       ? `Aguarde ${tokenCooldownSec}s`
-                      : shareToken
-                        ? "Gerar novo token (invalida o anterior)"
-                        : "Gerar token de acesso"}
+                      : "Gerar novo token (invalida o anterior)"}
                 </button>
               </div>
-              {shareToken ? (
+              {shareTokenLoading ? (
+                <p className="text-xs text-gray-500">Carregando token…</p>
+              ) : shareToken ? (
                 <div className="space-y-1.5">
                   <div className="flex flex-col sm:flex-row gap-2 sm:items-stretch">
                     <input
