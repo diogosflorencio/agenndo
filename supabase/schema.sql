@@ -80,6 +80,7 @@ CREATE TABLE IF NOT EXISTS public.services (
   duration_minutes INT NOT NULL DEFAULT 30,
   price_cents INT NOT NULL DEFAULT 0,
   emoji TEXT DEFAULT '✂️',
+  image_url TEXT,
   active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -250,6 +251,16 @@ CREATE POLICY "services_own" ON public.services FOR ALL USING (
 CREATE POLICY "collaborator_services_own" ON public.collaborator_services FOR ALL USING (
   collaborator_id IN (SELECT id FROM public.collaborators WHERE business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid()))
 );
+-- Página pública: quem faz cada serviço (anon)
+DROP POLICY IF EXISTS "collaborator_services_public_read" ON public.collaborator_services;
+CREATE POLICY "collaborator_services_public_read" ON public.collaborator_services
+  FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.services s
+      WHERE s.id = collaborator_services.service_id AND s.active = true
+    )
+  );
 CREATE POLICY "availability_own" ON public.availability FOR ALL USING (
   business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
 );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTheme } from "@/lib/theme-context";
 import { SwitchToggle } from "@/components/switch-toggle";
+import { cn } from "@/lib/utils";
 
 type NotifConfig = {
   newAppointmentEmail: boolean;
@@ -48,24 +49,50 @@ export default function NotificacoesPage() {
 
   const [templateTexts, setTemplateTexts] = useState(templates);
 
+  const card = cn(
+    "rounded-xl overflow-hidden shadow-sm border",
+    isDark ? "bg-[#111318] border-white/[0.08]" : "bg-white border-gray-200"
+  );
+  const cardHeadBorder = isDark ? "border-white/[0.08]" : "border-gray-200";
+  const pageTitle = isDark ? "text-white" : "text-gray-900";
+  const pageSub = isDark ? "text-gray-400" : "text-gray-600";
+  const itemTitle = isDark ? "text-white" : "text-gray-900";
+  const itemDesc = isDark ? "text-gray-400" : "text-gray-500";
+  const iconMuted = isDark ? "text-gray-500" : "text-gray-400";
+  const inputSurface = isDark
+    ? "bg-black/25 border-white/[0.08] text-white placeholder:text-gray-500"
+    : "bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400";
+  const chipBtn = isDark
+    ? "bg-white/[0.06] hover:bg-white/10 text-gray-300 border-white/[0.08] hover:border-primary/30"
+    : "bg-gray-100 hover:bg-primary/20 text-gray-600 border-gray-200 hover:border-primary/30";
+  const ghostBtn = isDark
+    ? "bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.1] text-gray-200"
+    : "bg-white hover:bg-gray-50 border-gray-200 text-gray-700";
+
   return (
     <div className="relative w-full min-h-[min(70vh,520px)]">
-      <div className="pointer-events-none blur-[2px] select-none opacity-[0.72]" aria-hidden="true">
+      <div
+        className={cn(
+          "pointer-events-none select-none",
+          isDark ? "opacity-[0.38]" : "opacity-[0.68] blur-[1px]"
+        )}
+        aria-hidden="true"
+      >
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Notificações</h1>
-          <p className="text-gray-600 text-sm mt-1">Configure alertas para você e lembretes para seus clientes</p>
+          <h1 className={cn("text-2xl font-bold", pageTitle)}>Notificações</h1>
+          <p className={cn("text-sm mt-1", pageSub)}>Configure alertas para você e lembretes para seus clientes</p>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-5">
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="flex items-center gap-3 p-4 border-b border-gray-200">
+          <div className={card}>
+            <div className={cn("flex items-center gap-3 p-4 border-b", cardHeadBorder)}>
               <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center">
                 <span className="material-symbols-outlined text-primary text-base">store</span>
               </div>
               <div>
-                <h2 className="text-sm font-bold text-gray-900">Suas notificações</h2>
-                <p className="text-xs text-gray-500">Alertas para o prestador</p>
+                <h2 className={cn("text-sm font-bold", itemTitle)}>Suas notificações</h2>
+                <p className={cn("text-xs", itemDesc)}>Alertas para o prestador</p>
               </div>
             </div>
 
@@ -102,10 +129,10 @@ export default function NotificacoesPage() {
               ].map((item) => (
                 <div key={item.key} className="flex items-center justify-between p-4">
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-gray-400 text-base">{item.icon}</span>
+                    <span className={cn("material-symbols-outlined text-base", iconMuted)}>{item.icon}</span>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{item.label}</p>
-                      <p className="text-xs text-gray-500">{item.desc}</p>
+                      <p className={cn("text-sm font-medium", itemTitle)}>{item.label}</p>
+                      <p className={cn("text-xs", itemDesc)}>{item.desc}</p>
                     </div>
                   </div>
                   <SwitchToggle
@@ -119,14 +146,14 @@ export default function NotificacoesPage() {
           </div>
 
           {/* Client notifications */}
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="flex items-center gap-3 p-4 border-b border-gray-200">
+          <div className={card}>
+            <div className={cn("flex items-center gap-3 p-4 border-b", cardHeadBorder)}>
               <div className="size-9 rounded-lg bg-blue-400/10 flex items-center justify-center">
                 <span className="material-symbols-outlined text-blue-400 text-base">group</span>
               </div>
               <div>
-                <h2 className="text-sm font-bold text-gray-900">Notificações dos clientes</h2>
-                <p className="text-xs text-gray-500">Mensagens automáticas enviadas</p>
+                <h2 className={cn("text-sm font-bold", itemTitle)}>Notificações dos clientes</h2>
+                <p className={cn("text-xs", itemDesc)}>Mensagens automáticas enviadas</p>
               </div>
             </div>
 
@@ -176,14 +203,14 @@ export default function NotificacoesPage() {
                   <div className="flex items-center gap-3">
                     <span className={`material-symbols-outlined text-base ${item.color}`}>{item.icon}</span>
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{item.label}</p>
-                      <p className="text-xs text-gray-500">{item.desc}</p>
+                      <p className={cn("text-sm font-medium", itemTitle)}>{item.label}</p>
+                      <p className={cn("text-xs", itemDesc)}>{item.desc}</p>
                     </div>
                   </div>
                   <SwitchToggle
                     checked={config[item.key] as boolean}
                     onChange={() => setConfig({ ...config, [item.key]: !config[item.key] })}
-                    trackOffClassName={isDark ? "bg-gray-500" : "bg-gray-300"}
+                    trackOffClassName={isDark ? "bg-gray-600" : "bg-gray-300"}
                   />
                 </div>
               ))}
@@ -224,9 +251,9 @@ export default function NotificacoesPage() {
 
         {/* Right: Templates */}
         <div>
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-sm font-bold text-gray-900 mb-3">Templates de mensagem</h2>
+          <div className={card}>
+            <div className={cn("p-4 border-b", cardHeadBorder)}>
+              <h2 className={cn("text-sm font-bold mb-3", itemTitle)}>Templates de mensagem</h2>
               <div
                 className={`flex gap-1 p-1 rounded-lg ${
                   isDark ? "bg-white/[0.06]" : "bg-gray-100"
@@ -263,11 +290,14 @@ export default function NotificacoesPage() {
                   setTemplateTexts({ ...templateTexts, [activeTemplate]: e.target.value })
                 }
                 rows={7}
-                className="w-full bg-gray-50 border border-gray-200 focus:border-primary rounded-xl px-4 py-3 text-gray-900 text-sm outline-none transition-colors resize-none font-mono leading-relaxed"
+                className={cn(
+                  "w-full border focus:border-primary rounded-xl px-4 py-3 text-sm outline-none transition-colors resize-none font-mono leading-relaxed",
+                  inputSurface
+                )}
               />
 
               <div className="mt-3">
-                <p className="text-xs text-gray-500 mb-2">Variáveis disponíveis:</p>
+                <p className={cn("text-xs mb-2", itemDesc)}>Variáveis disponíveis:</p>
                 <div className="flex flex-wrap gap-1.5">
                   {TEMPLATE_VARS.map((v) => (
                     <button
@@ -278,7 +308,10 @@ export default function NotificacoesPage() {
                           [activeTemplate]: templateTexts[activeTemplate] + v,
                         })
                       }
-                      className="px-2 py-1 bg-gray-100 hover:bg-primary/20 hover:text-primary text-gray-600 text-xs rounded-lg border border-gray-200 hover:border-primary/30 transition-all font-mono"
+                      className={cn(
+                        "px-2 py-1 hover:bg-primary/20 hover:text-primary text-xs rounded-lg border transition-all font-mono",
+                        chipBtn
+                      )}
                     >
                       {v}
                     </button>
@@ -287,15 +320,21 @@ export default function NotificacoesPage() {
               </div>
 
               {/* Preview */}
-              <div className="mt-4 bg-gray-50 border border-gray-200 rounded-xl p-3">
-                <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+              <div
+                className={cn(
+                  "mt-4 rounded-xl border p-3",
+                  isDark ? "bg-black/20 border-white/[0.08]" : "bg-gray-50 border-gray-200"
+                )}
+              >
+                <p className={cn("text-xs mb-2 flex items-center gap-1", itemDesc)}>
                   <span className="material-symbols-outlined text-xs">preview</span>
                   Preview (com dados reais)
                 </p>
                 <p
-                  className={`text-xs whitespace-pre-line leading-relaxed ${
-                    isDark ? "text-white/75" : "text-gray-700"
-                  }`}
+                  className={cn(
+                    "text-xs whitespace-pre-line leading-relaxed",
+                    isDark ? "text-gray-200" : "text-gray-700"
+                  )}
                 >
                   {templateTexts[activeTemplate]
                     .replace("{nome}", "João Silva")
@@ -308,7 +347,13 @@ export default function NotificacoesPage() {
                 </p>
               </div>
 
-              <button className="w-full mt-3 py-2.5 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2">
+              <button
+                type="button"
+                className={cn(
+                  "w-full mt-3 py-2.5 border text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2",
+                  ghostBtn
+                )}
+              >
                 <span className="material-symbols-outlined text-sm">restore</span>
                 Restaurar padrão
               </button>
@@ -319,13 +364,28 @@ export default function NotificacoesPage() {
       </div>
 
       <div
-        className="absolute inset-0 z-10 flex items-center justify-center bg-white/35 backdrop-blur-[3px] px-4"
+        className={cn(
+          "absolute inset-0 z-10 flex items-center justify-center px-4 py-10",
+          isDark ? "bg-black/50 backdrop-blur-xl" : "bg-slate-900/[0.12] backdrop-blur-md"
+        )}
         role="status"
         aria-live="polite"
       >
-        <p className="rounded-xl border border-gray-200 bg-white/95 px-6 py-3 text-center text-base font-semibold text-gray-800 shadow-lg">
-          Em desenvolvimento
-        </p>
+        <div
+          className={cn(
+            "max-w-md w-full rounded-2xl border px-6 py-6 text-center shadow-2xl",
+            isDark ? "border-white/[0.1] bg-[#151921]/95 text-white" : "border-gray-200/90 bg-white/95 text-gray-900"
+          )}
+        >
+          <span className="material-symbols-outlined text-4xl text-primary mb-3 block" aria-hidden>
+            hourglass_top
+          </span>
+          <p className="font-bold text-lg tracking-tight">Em breve</p>
+          <p className={cn("text-sm mt-2 leading-relaxed", isDark ? "text-gray-300" : "text-gray-600")}>
+            Estamos finalizando envio automático, templates e preferências. Em breve você configura tudo por aqui, com
+            a mesma experiência no tema claro e escuro.
+          </p>
+        </div>
       </div>
     </div>
   );

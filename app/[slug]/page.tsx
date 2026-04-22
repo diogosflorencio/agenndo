@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useCallback, useMemo, Suspense, type CSSProperties } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { cn, formatCurrency, rgbaFromHex } from "@/lib/utils";
+import { cn, formatBrazilPhoneFromDigits, formatCurrency, rgbaFromHex } from "@/lib/utils";
 import { recordPublicPageVisit } from "@/lib/visited-public-pages";
 import {
   collectAvailableStartMinutes,
@@ -79,9 +79,10 @@ type ServiceRow = {
   duration_minutes: number;
   price_cents: number;
   emoji: string | null;
+  image_url: string | null;
   collaborator_services: { collaborator_id: string }[];
 };
-type CollabRow = { id: string; name: string; role: string | null; color: string | null };
+type CollabRow = { id: string; name: string; role: string | null; color: string | null; avatar_url: string | null };
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -159,10 +160,10 @@ function PublicPageInner() {
         const [sRes, cRes, pRes] = await Promise.all([
           supabase
             .from("services")
-            .select("id, name, duration_minutes, price_cents, emoji, collaborator_services(collaborator_id)")
+            .select("id, name, duration_minutes, price_cents, emoji, image_url, collaborator_services(collaborator_id)")
             .eq("business_id", bid)
             .eq("active", true),
-          supabase.from("collaborators").select("id, name, role, color").eq("business_id", bid).eq("active", true),
+          supabase.from("collaborators").select("id, name, role, color, avatar_url").eq("business_id", bid).eq("active", true),
           supabase
             .from("personalization")
             .select(
@@ -692,7 +693,7 @@ function PublicPageInner() {
                     {business.phone && (
                       <span className="inline-flex items-center gap-1.5 shrink-0">
                         <span className="material-symbols-outlined text-base">call</span>
-                        {business.phone}
+                        {formatBrazilPhoneFromDigits(business.phone) || business.phone}
                       </span>
                     )}
                   </div>
@@ -778,10 +779,18 @@ function PublicPageInner() {
                   return (
                     <div key={c.id} className={cn("flex-shrink-0 flex items-center gap-3 p-3 rounded-xl border min-w-[160px]", cardCls)}>
                       <div
-                        className="size-10 rounded-full flex items-center justify-center text-sm font-bold"
-                        style={{ backgroundColor: `${col}35`, color: col }}
+                        className="size-10 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold shrink-0 border border-white/10"
+                        style={
+                          c.avatar_url
+                            ? undefined
+                            : { backgroundColor: `${col}35`, color: col }
+                        }
                       >
-                        {c.name[0]?.toUpperCase()}
+                        {c.avatar_url ? (
+                          <Image src={c.avatar_url} alt="" width={40} height={40} className="size-full object-cover" unoptimized />
+                        ) : (
+                          c.name[0]?.toUpperCase()
+                        )}
                       </div>
                       <div className="min-w-0">
                         <p className={cn("text-sm font-semibold truncate", titleCls)}>{c.name}</p>
@@ -814,11 +823,13 @@ function PublicPageInner() {
                   >
                     <div
                       className={cn(
-                        "size-12 rounded-xl flex items-center justify-center text-2xl shrink-0",
+                        "size-12 rounded-xl overflow-hidden flex items-center justify-center text-2xl shrink-0 border border-black/5",
                         isDark ? "bg-[#213428]" : "bg-gray-100"
                       )}
                     >
-                      {service.emoji ? (
+                      {service.image_url ? (
+                        <Image src={service.image_url} alt="" width={48} height={48} className="size-full object-cover" unoptimized />
+                      ) : service.emoji ? (
                         <span className="leading-none">{service.emoji}</span>
                       ) : (
                         <span className="material-symbols-outlined text-gray-500 text-[26px]">category</span>
@@ -987,11 +998,13 @@ function PublicPageInner() {
                 >
                   <div
                     className={cn(
-                      "size-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0",
+                      "size-12 rounded-xl overflow-hidden flex items-center justify-center text-2xl flex-shrink-0 border border-black/5",
                       isDark ? "bg-[#213428]" : "bg-gray-100"
                     )}
                   >
-                    {service.emoji ? (
+                    {service.image_url ? (
+                      <Image src={service.image_url} alt="" width={48} height={48} className="size-full object-cover" unoptimized />
+                    ) : service.emoji ? (
                       <span className="leading-none">{service.emoji}</span>
                     ) : (
                       <span className="material-symbols-outlined text-gray-500 text-[26px]">category</span>
@@ -1064,10 +1077,18 @@ function PublicPageInner() {
                     )}
                   >
                     <div
-                      className="size-12 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0"
-                      style={{ backgroundColor: `${color}30`, border: `2px solid ${color}40` }}
+                      className="size-12 rounded-xl overflow-hidden flex items-center justify-center font-bold text-lg flex-shrink-0 border-2"
+                      style={
+                        collab.avatar_url
+                          ? { borderColor: `${color}55` }
+                          : { backgroundColor: `${color}30`, borderColor: `${color}40` }
+                      }
                     >
-                      <span style={{ color }}>{collab.name[0]}</span>
+                      {collab.avatar_url ? (
+                        <Image src={collab.avatar_url} alt="" width={48} height={48} className="size-full object-cover" unoptimized />
+                      ) : (
+                        <span style={{ color }}>{collab.name[0]}</span>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={cn("font-semibold", bookUi.title)}>{collab.name}</p>
@@ -1304,11 +1325,20 @@ function PublicPageInner() {
                       <div className="flex gap-4 mb-6">
                         <div
                           className={cn(
-                            "size-16 xl:size-[4.5rem] rounded-2xl flex items-center justify-center text-3xl shrink-0",
+                            "size-16 xl:size-[4.5rem] rounded-2xl overflow-hidden flex items-center justify-center text-3xl shrink-0 border border-black/5",
                             isDark ? "bg-[#213428]" : "bg-gray-100"
                           )}
                         >
-                          {selectedService.emoji ? (
+                          {selectedService.image_url ? (
+                            <Image
+                              src={selectedService.image_url}
+                              alt=""
+                              width={72}
+                              height={72}
+                              className="size-full object-cover"
+                              unoptimized
+                            />
+                          ) : selectedService.emoji ? (
                             <span className="leading-none">{selectedService.emoji}</span>
                           ) : (
                             <span className="material-symbols-outlined text-gray-500 text-3xl">category</span>
@@ -1332,13 +1362,25 @@ function PublicPageInner() {
                         <p className={cn("text-[11px] font-semibold uppercase tracking-wide mb-1.5", bookUi.muted)}>
                           Profissional
                         </p>
-                        <p className={cn("text-sm font-semibold", bookUi.title)}>
-                          {selectedCollab === "any"
-                            ? "Primeiro disponível na equipe"
-                            : selectedCollab
-                              ? selectedCollab.name
-                              : "—"}
-                        </p>
+                        <div className="flex items-center gap-3">
+                          {selectedCollab && selectedCollab !== "any" && selectedCollab.avatar_url ? (
+                            <Image
+                              src={selectedCollab.avatar_url}
+                              alt=""
+                              width={40}
+                              height={40}
+                              className="size-10 rounded-full object-cover border border-white/10 shrink-0"
+                              unoptimized
+                            />
+                          ) : null}
+                          <p className={cn("text-sm font-semibold min-w-0", bookUi.title)}>
+                            {selectedCollab === "any"
+                              ? "Primeiro disponível na equipe"
+                              : selectedCollab
+                                ? selectedCollab.name
+                                : "—"}
+                          </p>
+                        </div>
                       </div>
                       <p className={cn("text-xs leading-relaxed mt-6", bookUi.muted)}>
                         No calendário ao lado, os dias em destaque estão livres para agendar. Passe o cursor sobre um

@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
 import { SwitchToggle } from "@/components/switch-toggle";
+import { EntityPhotoControl } from "@/components/dashboard/entity-photo-control";
 import { formatBrazilPhoneFromDigits, maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
 
 const COLORS = [
@@ -19,6 +20,7 @@ type Row = {
   role: string | null;
   phone: string | null;
   color: string | null;
+  avatar_url: string | null;
   active: boolean;
 };
 
@@ -39,6 +41,7 @@ export default function EditarColaboradorPage() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id || !business?.id) {
@@ -49,7 +52,7 @@ export default function EditarColaboradorPage() {
     const supabase = createClient();
     const { data, error: qErr } = await supabase
       .from("collaborators")
-      .select("id, name, role, phone, color, active")
+      .select("id, name, role, phone, color, avatar_url, active")
       .eq("id", id)
       .eq("business_id", business.id)
       .maybeSingle();
@@ -67,6 +70,7 @@ export default function EditarColaboradorPage() {
       color: row.color ?? "#3B82F6",
       active: row.active,
     });
+    setAvatarUrl(row.avatar_url ?? null);
     setNotFound(false);
   }, [id, business?.id]);
 
@@ -139,18 +143,32 @@ export default function EditarColaboradorPage() {
       )}
 
       <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <div className="flex justify-center mb-6">
-          <div
-            className="size-20 rounded-2xl flex items-center justify-center text-gray-900 font-bold text-3xl"
-            style={{ backgroundColor: form.color + "30", border: `2px solid ${form.color}50` }}
-          >
-            {form.name ? (
-              <span style={{ color: form.color }}>{form.name[0].toUpperCase()}</span>
-            ) : (
-              <span className="material-symbols-outlined text-gray-500 text-3xl">person</span>
-            )}
+        {business?.id ? (
+          <div className="flex justify-center mb-6">
+            <EntityPhotoControl
+              businessId={business.id}
+              kind="collaborator"
+              entityId={id}
+              imageUrl={avatarUrl}
+              onPersist={async (url) => {
+                const supabase = createClient();
+                const { error: pErr } = await supabase.from("collaborators").update({ avatar_url: url }).eq("id", id);
+                if (pErr) throw new Error(pErr.message);
+                setAvatarUrl(url);
+              }}
+              accentColor={form.color}
+              fallback={
+                form.name ? (
+                  <span className="text-3xl font-bold" style={{ color: form.color }}>
+                    {form.name[0].toUpperCase()}
+                  </span>
+                ) : (
+                  <span className="material-symbols-outlined text-gray-500 text-3xl">person</span>
+                )
+              }
+            />
           </div>
-        </div>
+        ) : null}
 
         <div className="space-y-5">
           <div>
