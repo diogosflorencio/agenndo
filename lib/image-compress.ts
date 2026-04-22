@@ -1,10 +1,20 @@
 /**
- * Compressão no cliente antes do upload: imagens muito pequenas quase intactas;
- * médias com redimensionamento leve; grandes (≥1 MB) mais agressivas.
- * GIF não é reprocessado (preserva animação).
+ * Compressão no cliente antes do upload (canvas → JPEG).
+ *
+ * Metas aproximadas do arquivo final:
+ * - ~3 MB → ~500 KB
+ * - ~5–12 MB → ~1 MB
+ * - GIFs grandes (> ~900 KB) viram JPEG (primeiro quadro) para caber no bucket.
  */
 
-const MAX_INPUT_BYTES = 5 * 1024 * 1024;
+const MB = 1024 * 1024;
+const KB = 1024;
+
+/** Tamanho máximo do arquivo que o usuário pode escolher (antes de processar). */
+const MAX_INPUT_BYTES = 12 * MB;
+
+/** Teto do arquivo enviado ao storage (após compressão). */
+export const MAX_COMPRESSED_OUTPUT_BYTES = Math.floor(1.25 * MB);
 
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -41,77 +51,138 @@ function baseName(file: File): string {
 }
 
 /**
- * @returns File pronto para upload (JPEG na maioria dos casos; GIF original).
+ * Meta de tamanho (bytes) para o JPEG final, a partir do arquivo original.
+ */
+function targetOutputBytes(inputSize: number): number {
+  if (inputSize <= 100 * KB) return Math.min(inputSize, 90 * KB);
+  if (inputSize <= 220 * KB) return 200 * KB;
+  if (inputSize <= 450 * KB) return 320 * KB;
+  if (inputSize < 900 * KB) return 380 * KB;
+  if (inputSize < 2.2 * MB) return 480 * KB;
+  if (inputSize < 4.5 * MB) return 560 * KB;
+  return MB;
+}
+
+const QUALITIES_DESC = [0.82, 0.76, 0.7, 0.64, 0.58, 0.52, 0.48, 0.44, 0.4, 0.36, 0.34];
+
+/**
+ * Redimensiona + reencode JPEG até ficar ≤ targetMax (e ≤ MAX_COMPRESSED_OUTPUT_BYTES).
+ */
+async function rasterToJpegUnderTarget(img: HTMLImageElement, file: File, targetMax: number): Promise<File> {
+  const w0 = img.naturalWidth || img.width;
+  const h0 = img.naturalHeight || img.height;
+  if (!w0 || !h0) throw new Error("Dimensões inválidas.");
+
+  const hardCap = Math.min(targetMax, MAX_COMPRESSED_OUTPUT_BYTES);
+  let bestBlob: Blob | null = null;
+  let bestSize = Infinity;
+
+  let maxLong = Math.min(2048, Math.max(w0, h0));
+
+  while (maxLong >= 360) {
+    const scale = Math.min(1, maxLong / Math.max(w0, h0));
+    const tw = Math.max(1, Math.round(w0 * scale));
+    const th = Math.max(1, Math.round(h0 * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = tw;
+    canvas.height = th;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas indisponível.");
+    ctx.drawImage(img, 0, 0, tw, th);
+
+    for (const q of QUALITIES_DESC) {
+      const blob = await canvasToJpegBlob(canvas, q);
+      if (blob.size < bestSize) {
+        bestSize = blob.size;
+        bestBlob = blob;
+      }
+      if (blob.size <= hardCap) {
+        return new File([blob], `${baseName(file)}.jpg`, { type: "image/jpeg" });
+      }
+    }
+
+    maxLong = Math.round(maxLong * 0.85);
+  }
+
+  if (!bestBlob) throw new Error("Falha ao comprimir a imagem.");
+
+  const squeeze = async (longEdge: number, qs: number[]) => {
+    const scale = Math.min(1, longEdge / Math.max(w0, h0));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(w0 * scale));
+    canvas.height = Math.max(1, Math.round(h0 * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas indisponível.");
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    let smallest = bestBlob!;
+    for (const q of qs) {
+      const blob = await canvasToJpegBlob(canvas, q);
+      if (blob.size <= MAX_COMPRESSED_OUTPUT_BYTES) {
+        return blob;
+      }
+      if (blob.size < smallest.size) smallest = blob;
+    }
+    return smallest;
+  };
+
+  if (bestBlob.size > MAX_COMPRESSED_OUTPUT_BYTES) {
+    const b320 = await squeeze(320, [0.4, 0.34, 0.3]);
+    if (b320.size <= MAX_COMPRESSED_OUTPUT_BYTES) {
+      return new File([b320], `${baseName(file)}.jpg`, { type: "image/jpeg" });
+    }
+    bestBlob = b320;
+  }
+
+  if (bestBlob.size > MAX_COMPRESSED_OUTPUT_BYTES) {
+    const b256 = await squeeze(256, [0.34, 0.28, 0.24]);
+    if (b256.size <= MAX_COMPRESSED_OUTPUT_BYTES) {
+      return new File([b256], `${baseName(file)}.jpg`, { type: "image/jpeg" });
+    }
+    bestBlob = b256;
+  }
+
+  return new File([bestBlob], `${baseName(file)}.jpg`, { type: "image/jpeg" });
+}
+
+/**
+ * @returns File pronto para upload (JPEG na maioria dos casos; GIF pequeno intacto).
  */
 export async function compressImageForUpload(file: File): Promise<File> {
   if (!file.type.startsWith("image/")) {
     throw new Error("Arquivo não é imagem.");
   }
   if (file.size > MAX_INPUT_BYTES) {
-    throw new Error("Arquivo muito grande (máx. 5 MB).");
+    throw new Error("Arquivo muito grande (máx. 12 MB).");
   }
+
   if (file.type === "image/gif") {
+    if (file.size <= 900 * KB) {
+      return file;
+    }
+    const img = await loadImageFromFile(file);
+    const target = targetOutputBytes(file.size);
+    return rasterToJpegUnderTarget(img, file, target);
+  }
+
+  if (file.size <= 72 * KB && file.type === "image/jpeg") {
     return file;
   }
 
-  // Já leve: evita reencode desnecessário
-  if (file.size <= 90 * 1024) {
-    return file;
+  const img = await loadImageFromFile(file);
+  const target = targetOutputBytes(file.size);
+
+  if (file.size <= 120 * KB) {
+    try {
+      const out = await rasterToJpegUnderTarget(img, file, Math.min(target, file.size));
+      if (out.size >= file.size * 0.94) {
+        return file;
+      }
+      return out;
+    } catch {
+      return file;
+    }
   }
 
-  let img: HTMLImageElement;
-  try {
-    img = await loadImageFromFile(file);
-  } catch {
-    return file;
-  }
-
-  const w = img.naturalWidth || img.width;
-  const h = img.naturalHeight || img.height;
-  if (!w || !h) return file;
-
-  let maxDim = 1920;
-  let quality = 0.88;
-
-  if (file.size >= 1024 * 1024) {
-    maxDim = 1280;
-    quality = 0.7;
-  } else if (file.size >= 350 * 1024) {
-    maxDim = 1680;
-    quality = 0.8;
-  } else {
-    // ~90 KB – 350 KB: leve
-    maxDim = 1920;
-    quality = 0.9;
-  }
-
-  const scale = Math.min(1, maxDim / Math.max(w, h));
-  const tw = Math.max(1, Math.round(w * scale));
-  const th = Math.max(1, Math.round(h * scale));
-
-  const canvas = document.createElement("canvas");
-  canvas.width = tw;
-  canvas.height = th;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return file;
-
-  ctx.drawImage(img, 0, 0, tw, th);
-
-  let blob: Blob;
-  try {
-    blob = await canvasToJpegBlob(canvas, quality);
-  } catch {
-    return file;
-  }
-
-  if (blob.size >= file.size * 0.95 && file.size < 400 * 1024) {
-    return file;
-  }
-
-  const out = new File([blob], `${baseName(file)}.jpg`, { type: "image/jpeg" });
-  if (out.size > MAX_INPUT_BYTES) {
-    const blob2 = await canvasToJpegBlob(canvas, Math.max(0.5, quality - 0.15));
-    return new File([blob2], `${baseName(file)}.jpg`, { type: "image/jpeg" });
-  }
-  return out;
+  return rasterToJpegUnderTarget(img, file, target);
 }

@@ -1,12 +1,16 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { MAX_COMPRESSED_OUTPUT_BYTES } from "@/lib/image-compress";
 
 export const BUSINESS_ASSETS_BUCKET = "business-assets";
 
-const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
+/** Limite do arquivo que sobe ao bucket (já deve vir comprimido pelo cliente). */
 export function assertImageFile(file: File) {
-  if (file.size > MAX_BYTES) throw new Error("Arquivo muito grande (máx. 5 MB).");
+  if (file.size > MAX_COMPRESSED_OUTPUT_BYTES) {
+    const maxMb = Math.round(MAX_COMPRESSED_OUTPUT_BYTES / (1024 * 1024));
+    throw new Error(`Imagem ainda grande demais após compressão (máx. ${maxMb} MB no envio).`);
+  }
   if (!ALLOWED.has(file.type)) throw new Error("Use JPG, PNG, WebP ou GIF.");
 }
 

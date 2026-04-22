@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
@@ -10,6 +11,7 @@ type CollabRow = {
   name: string;
   role: string | null;
   color: string | null;
+  avatar_url: string | null;
   active: boolean;
 };
 
@@ -32,7 +34,7 @@ export default function ColaboradoresPage() {
 
     supabase
       .from("collaborators")
-      .select("id, name, role, color, active")
+      .select("id, name, role, color, avatar_url, active")
       .eq("business_id", business.id)
       .order("name")
       .then(({ data: collabs, error }) => {
@@ -128,8 +130,12 @@ export default function ColaboradoresPage() {
               <div className="p-5">
                 <div className="flex items-start gap-4 mb-4">
                   <div className="relative">
-                    <div className="size-14 rounded-xl flex items-center justify-center text-gray-900 font-bold text-xl" style={{ backgroundColor: `${color}40`, border: `2px solid ${color}40` }}>
-                      <span style={{ color }}>{collab.name[0]}</span>
+                    <div className="size-14 rounded-xl overflow-hidden flex items-center justify-center text-gray-900 font-bold text-xl border-2 border-white/10 shadow-sm" style={{ backgroundColor: collab.avatar_url ? undefined : `${color}40`, borderColor: collab.avatar_url ? `${color}55` : `${color}40` }}>
+                      {collab.avatar_url ? (
+                        <Image src={collab.avatar_url} alt="" width={56} height={56} className="size-full object-cover" unoptimized />
+                      ) : (
+                        <span style={{ color }}>{collab.name[0]}</span>
+                      )}
                     </div>
                     <div className={`absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-white ${collab.active ? "bg-primary" : "bg-gray-500"}`} />
                   </div>

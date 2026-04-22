@@ -634,7 +634,7 @@ export default function PersonalizacaoPage() {
                         </button>
                       ) : null}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1.5">PNG, JPG ou WebP até 5 MB.</p>
+                    <p className="text-xs text-gray-500 mt-1.5">PNG, JPG ou WebP até 12 MB (comprimimos antes do envio).</p>
                   </div>
                 </div>
               </div>
@@ -643,7 +643,7 @@ export default function PersonalizacaoPage() {
                 <h3 className="text-sm font-bold text-gray-900 mb-1">Foto de capa</h3>
                 <p className="text-xs text-gray-500 mb-4">
                   Recomendado: imagem larga, por exemplo <strong className="font-medium text-gray-600">1920 × 640 px</strong> (ou
-                  proporção parecida); JPG ou WebP até 5 MB.
+                  proporção parecida); JPG ou WebP até 12 MB (comprimidos no envio).
                 </p>
                 <input ref={bannerInputRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="hidden" onChange={onPickBanner} />
                 {form.bannerUrl ? (

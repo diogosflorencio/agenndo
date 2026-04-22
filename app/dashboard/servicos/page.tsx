@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import Image from "next/image";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
 import { SwitchToggle } from "@/components/switch-toggle";
+import { EntityPhotoControl } from "@/components/dashboard/entity-photo-control";
+import { compressImageForUpload } from "@/lib/image-compress";
+import { uploadBusinessImage } from "@/lib/business-assets-storage";
 import { formatCurrency } from "@/lib/utils";
 
 type ServiceRow = {
@@ -12,14 +16,15 @@ type ServiceRow = {
   duration_minutes: number;
   price_cents: number;
   emoji: string | null;
+  image_url: string | null;
   active: boolean;
   collaborator_services: {
     collaborator_id: string;
-    collaborators: { id: string; name: string; color: string | null } | null;
+    collaborators: { id: string; name: string; color: string | null; avatar_url: string | null } | null;
   }[];
 };
 
-type CollaboratorOption = { id: string; name: string; color: string | null };
+type CollaboratorOption = { id: string; name: string; color: string | null; avatar_url: string | null };
 
 export default function ServicosPage() {
   const { business } = useDashboard();
@@ -35,7 +40,9 @@ export default function ServicosPage() {
     const supabase = createClient();
     supabase
       .from("services")
-      .select("id, name, duration_minutes, price_cents, emoji, active, collaborator_services(collaborator_id, collaborators(id, name, color))")
+      .select(
+        "id, name, duration_minutes, price_cents, emoji, image_url, active, collaborator_services(collaborator_id, collaborators(id, name, color, avatar_url))"
+      )
       .eq("business_id", business.id)
       .order("name")
       .then(({ data, error }) => {
@@ -156,8 +163,10 @@ export default function ServicosPage() {
               <div className="p-3.5 flex-1">
                 <div className="flex items-start justify-between gap-2 mb-2.5">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="size-9 rounded-lg bg-gray-100 flex items-center justify-center text-lg shrink-0">
-                      {service.emoji ? (
+                    <div className="size-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center text-lg shrink-0 border border-gray-200/80">
+                      {service.image_url ? (
+                        <Image src={service.image_url} alt="" width={36} height={36} className="size-full object-cover" unoptimized />
+                      ) : service.emoji ? (
                         <span className="leading-none select-none" aria-hidden>
                           {service.emoji}
                         </span>
@@ -186,14 +195,20 @@ export default function ServicosPage() {
                 </div>
                 <div className="flex items-center gap-1.5 min-h-[22px]">
                   <div className="flex -space-x-1">
-                    {(anyProf ? [{ id: "all", name: "Todos", color: null }] : collabs).slice(0, 4).map((c) => (
+                    {(anyProf ? [{ id: "all", name: "Todos", color: null, avatar_url: null }] : collabs).slice(0, 4).map((c) => (
                       <div
                         key={c.id}
-                        className="size-5 rounded-full border border-white flex items-center justify-center text-[8px] font-bold text-gray-900"
-                        style={{ backgroundColor: c.color ?? "#94a3b8" }}
+                        className="size-5 rounded-full border border-white overflow-hidden flex items-center justify-center text-[8px] font-bold text-gray-900 shrink-0"
+                        style={{ backgroundColor: c.avatar_url ? undefined : c.color ?? "#94a3b8" }}
                         title={anyProf ? "Qualquer profissional" : c.name}
                       >
-                        {anyProf ? "∗" : c.name[0]}
+                        {anyProf ? (
+                          "∗"
+                        ) : c.avatar_url ? (
+                          <Image src={c.avatar_url} alt="" width={20} height={20} className="size-full object-cover" unoptimized />
+                        ) : (
+                          c.name[0]
+                        )}
                       </div>
                     ))}
                   </div>
@@ -254,6 +269,7 @@ export default function ServicosPage() {
 
       {showModal && (
         <ServiceModal
+          key={editService?.id ?? "new-service"}
           businessId={business!.id}
           service={editService}
           onClose={() => setShowModal(false)}
@@ -265,6 +281,13 @@ export default function ServicosPage() {
       )}
     </div>
   );
+}
+
+function extFromFile(f: File): string {
+  if (f.type === "image/png") return "png";
+  if (f.type === "image/webp") return "webp";
+  if (f.type === "image/gif") return "gif";
+  return "jpg";
 }
 
 function ServiceModal({
@@ -293,12 +316,26 @@ function ServiceModal({
   const [linkedIds, setLinkedIds] = useState<string[]>(initialLinked);
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(service?.image_url ?? null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingPreview, setPendingPreview] = useState<string | null>(null);
+  const newPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!pendingFile) {
+      setPendingPreview(null);
+      return;
+    }
+    const u = URL.createObjectURL(pendingFile);
+    setPendingPreview(u);
+    return () => URL.revokeObjectURL(u);
+  }, [pendingFile]);
 
   useEffect(() => {
     const supabase = createClient();
     supabase
       .from("collaborators")
-      .select("id, name, color")
+      .select("id, name, color, avatar_url")
       .eq("business_id", businessId)
       .eq("active", true)
       .order("name")
@@ -352,7 +389,19 @@ function ServiceModal({
       } else {
         const { data: inserted, error: iErr } = await supabase.from("services").insert(row).select("id").single();
         if (iErr || !inserted?.id) throw new Error(iErr?.message ?? "Falha ao criar serviço");
-        await syncLinks(supabase, inserted.id as string);
+        const newId = inserted.id as string;
+        await syncLinks(supabase, newId);
+        if (pendingFile) {
+          try {
+            const prepared = await compressImageForUpload(pendingFile);
+            const ext = extFromFile(prepared);
+            const publicUrl = await uploadBusinessImage(supabase, businessId, `services/${newId}.${ext}`, prepared);
+            await supabase.from("services").update({ image_url: publicUrl }).eq("id", newId);
+          } catch {
+            /* serviço já foi criado; usuário pode enviar foto depois em Editar */
+          }
+          setPendingFile(null);
+        }
       }
       setSaving(false);
       onSaved();
@@ -376,6 +425,80 @@ function ServiceModal({
           <div className="mx-5 mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{modalError}</div>
         )}
         <div className="p-5 space-y-5">
+          {service ? (
+            <div className="flex justify-center pb-1">
+              <EntityPhotoControl
+                businessId={businessId}
+                kind="service"
+                entityId={service.id}
+                imageUrl={imageUrl}
+                onPersist={async (url) => {
+                  const sb = createClient();
+                  const { error: pErr } = await sb.from("services").update({ image_url: url }).eq("id", service.id);
+                  if (pErr) throw new Error(pErr.message);
+                  setImageUrl(url);
+                }}
+                size="md"
+                fallback={
+                  form.emoji?.trim() ? (
+                    <span className="text-4xl leading-none select-none">{form.emoji}</span>
+                  ) : (
+                    <span className="material-symbols-outlined text-gray-400 text-4xl">category</span>
+                  )
+                }
+              />
+            </div>
+          ) : (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-5 flex flex-col items-center">
+              <p className="text-xs font-semibold text-gray-700 mb-1">Foto na página pública (opcional)</p>
+              <p className="text-[11px] text-gray-500 text-center mb-3 max-w-sm leading-relaxed">
+                Sem foto, usamos o ícone ou emoji abaixo. Você pode enviar agora ou depois em Editar.
+              </p>
+              <div className="relative">
+                <div className="size-24 rounded-2xl overflow-hidden border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                  {pendingPreview ? (
+                    <Image src={pendingPreview} alt="" width={96} height={96} className="size-full object-cover" unoptimized />
+                  ) : form.emoji?.trim() ? (
+                    <span className="text-4xl leading-none select-none">{form.emoji}</span>
+                  ) : (
+                    <span className="material-symbols-outlined text-gray-400 text-4xl">category</span>
+                  )}
+                </div>
+                <div className="absolute -bottom-1 -right-1 flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => newPhotoInputRef.current?.click()}
+                    title="Adicionar foto"
+                    className="size-9 rounded-xl bg-primary text-black shadow-lg border-2 border-white flex items-center justify-center hover:brightness-95 transition-transform hover:scale-105 active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-lg">add_a_photo</span>
+                  </button>
+                  {pendingPreview ? (
+                    <button
+                      type="button"
+                      onClick={() => setPendingFile(null)}
+                      title="Remover seleção"
+                      className="size-9 rounded-xl bg-white text-red-600 shadow-lg border-2 border-gray-200 flex items-center justify-center hover:bg-red-50 transition-transform hover:scale-105 active:scale-95"
+                    >
+                      <span className="material-symbols-outlined text-lg">delete</span>
+                    </button>
+                  ) : null}
+                </div>
+                <input
+                  ref={newPhotoInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    e.target.value = "";
+                    if (f) setPendingFile(f);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="text-sm font-medium text-gray-600 block mb-2">Ícone (opcional)</label>
             <p className="text-xs text-gray-500 mb-3">
@@ -471,10 +594,14 @@ function ServiceModal({
                         <label className="flex items-center gap-3 cursor-pointer rounded-lg border border-gray-100 hover:bg-gray-50 px-2 py-2">
                           <input type="checkbox" checked={on} onChange={() => toggleCollab(c.id)} className="size-4 rounded border-gray-300 text-primary focus:ring-primary" />
                           <span
-                            className="size-7 rounded-lg flex items-center justify-center text-[11px] font-bold text-gray-900 shrink-0"
-                            style={{ backgroundColor: c.color ? `${c.color}40` : "#e5e7eb" }}
+                            className="size-7 rounded-lg overflow-hidden flex items-center justify-center text-[11px] font-bold text-gray-900 shrink-0"
+                            style={{ backgroundColor: c.avatar_url ? undefined : c.color ? `${c.color}40` : "#e5e7eb" }}
                           >
-                            {c.name[0]}
+                            {c.avatar_url ? (
+                              <Image src={c.avatar_url} alt="" width={28} height={28} className="size-full object-cover" unoptimized />
+                            ) : (
+                              c.name[0]
+                            )}
                           </span>
                           <span className="text-sm text-gray-800 truncate">{c.name}</span>
                         </label>
