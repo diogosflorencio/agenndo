@@ -52,7 +52,7 @@ export type PersonalizationShareQrProps = {
   businessName: string;
   tagline: string | null;
   logoUrl: string | null;
-  /** Cor da marca — usada como sugestão inicial da paleta “Marca” e cor do QR ao carregar */
+  /** Cor da marca: sugestão inicial da paleta “Marca” e cor do QR ao carregar */
   primaryColor: string;
   /** Em `lg`, a pré-visualização do cartão/QR é renderizada neste elemento (coluna lateral). Em telas menores, fica inline. */
   desktopPreviewHost?: HTMLElement | null;
@@ -386,7 +386,7 @@ export function PersonalizationShareQr({
       const w = window.open("", "_blank");
       if (!w) return;
       w.document.write(`<!DOCTYPE html><html><head>
-        <title>QR Code — ${businessName || "Agenndo"}</title>
+        <title>QR Code · ${businessName || "Agenndo"}</title>
         <style>
           @page { size: A4; margin: 20mm; }
           * { box-sizing: border-box; margin: 0; padding: 0; }

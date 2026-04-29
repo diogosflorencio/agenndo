@@ -226,10 +226,10 @@ export default function ContaPage() {
       return "Assinatura ativa. A renovação ocorre automaticamente na data ao lado.";
     }
     if (st === "past_due" || st === "unpaid") {
-      return "Houve falha na cobrança. Você tem até 5 dias para corrigir o cartão no portal — depois disso, agendamentos pela página pública e novas ações críticas ficam bloqueados.";
+      return "Houve falha na cobrança. Você tem até 5 dias para corrigir o cartão no portal. Depois disso, agendamentos pela página pública e novas ações críticas ficam bloqueados.";
     }
     if (!business?.stripe_subscription_id || !st) {
-      return "Teste grátis de 7 dias desde a criação do negócio. Depois, é preciso assinar para manter agendamentos online e o painel liberados.";
+      return "Teste grátis (geralmente 7 dias) desde a criação do negócio; você pode pedir ao suporte extensão por até 1 mês em casos combinados. Depois, é preciso assinar para manter agendamentos online e o painel liberados.";
     }
     return subUi.detail;
   })();
@@ -387,7 +387,7 @@ export default function ContaPage() {
                   {paidActive
                     ? "Assinatura em dia. Detalhes no portal Stripe."
                     : safePlan === "free"
-                      ? "Teste grátis ou plano sem cobrança ativa — assine para manter tudo liberado após o período."
+                      ? "Teste grátis ou plano sem cobrança ativa: assine para manter tudo liberado após o período."
                       : "Conclua ou regularize a assinatura para não perder agendamentos online."}
                 </p>
                 <p className="text-2xl font-extrabold text-gray-900">
@@ -460,11 +460,12 @@ export default function ContaPage() {
             <div className="space-y-2">
               <div className="flex justify-between gap-3 text-xs">
                 <span className="text-gray-600 shrink-0">{periodRowLabel}</span>
-                <span className="text-gray-900 font-semibold text-right">{periodEnd ?? "—"}</span>
+                <span className="text-gray-900 font-semibold text-right">{periodEnd ?? "-"}</span>
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
-                Cobrança via Stripe. O valor no checkout é o mesmo mensal (BRL) do plano acima. O teste de 7 dias é só o
-                do app; não há trial adicional na assinatura Stripe.
+                Cobrança via Stripe. O valor no checkout é o mesmo mensal (BRL) do plano indicado acima. O período de teste é
+                gerido pelo app (costuma ser 7 dias; extensão pode ser combinada com o suporte). Na assinatura Stripe não há
+                segundo trial automático.
               </p>
             </div>
 
@@ -480,7 +481,7 @@ export default function ContaPage() {
                   {checkoutLoading
                     ? "Redirecionando…"
                     : typeof checkoutPlanInfo.price === "number"
-                      ? `Assinar — ${formatPrice(checkoutPlanInfo.price)}/mês`
+                      ? `Assinar por ${formatPrice(checkoutPlanInfo.price)}/mês`
                       : "Assinar"}
                 </button>
               )}
@@ -569,7 +570,7 @@ export default function ContaPage() {
             </div>
             <div className="divide-y divide-gray-100">
               {INVOICES.length === 0 && (
-                <p className="p-4 text-sm text-gray-500">Nenhuma fatura local — veja no portal Stripe.</p>
+                <p className="p-4 text-sm text-gray-500">Nenhuma fatura local; veja no portal Stripe.</p>
               )}
               {INVOICES.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between p-4">
@@ -738,7 +739,7 @@ export default function ContaPage() {
                   Acesso compartilhado (conta de outro usuário)
                 </p>
                 <p className={`mt-1 ${isLight ? "text-amber-950" : "text-amber-100/95"}`}>
-                  Painel do negócio: <strong>{business?.name}</strong> — {profile?.email}
+                  Painel do negócio: <strong>{business?.name}</strong> · {profile?.email}
                 </p>
                 <p className={`mt-1 ${isLight ? "text-amber-900/95" : "text-amber-200/90"}`}>
                   Sessão na conta (Google): {user.email ?? user.realUserId}

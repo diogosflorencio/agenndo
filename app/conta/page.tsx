@@ -45,9 +45,9 @@ function bizSlug(b: ClientLink["businesses"]) {
 }
 
 function embedName(embed: { name: string } | { name: string }[] | null | undefined) {
-  if (!embed) return "—";
-  if (Array.isArray(embed)) return embed[0]?.name ?? "—";
-  return embed.name ?? "—";
+  if (!embed) return "-";
+  if (Array.isArray(embed)) return embed[0]?.name ?? "-";
+  return embed.name ?? "-";
 }
 
 export default function ContaClientePage() {
@@ -357,7 +357,7 @@ export default function ContaClientePage() {
                     <div>
                       <p className="text-white font-medium">{embedName(a.services)}</p>
                       <p className="text-xs text-gray-500">
-                        {link ? bizLabel(link.businesses) : "—"} ·{" "}
+                        {link ? bizLabel(link.businesses) : "-"} ·{" "}
                         {new Date(a.date + "T12:00:00").toLocaleDateString("pt-BR")} ·{" "}
                         {String(a.time_start).slice(0, 5)}
                       </p>

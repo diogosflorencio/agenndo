@@ -1,26 +1,26 @@
 export const MOCK_USER = {
   id: "1",
   name: "Marcos Oliveira",
-  email: "marcos@barbeariaelite.com.br",
-  businessName: "Barbearia Elite",
+  email: "marcos@espacoverdi.com.br",
+  businessName: "Espaço Verdi",
   phone: "(11) 99999-8888",
   slug: "barbearia-elite",
   plan: "paid_04" as const,
   avatar: null,
   city: "São Paulo",
-  segment: "Barbearia",
+  segment: "Salão e estética",
 };
 
 export const MOCK_COLLABORATORS = [
-  { id: "1", name: "Carlos Barbeiro", role: "Barbeiro Senior", color: "#3B82F6", services: ["1", "2", "3"], appointments: 23, active: true, avatar: null },
-  { id: "2", name: "Lucas Pereira", role: "Barbeiro", color: "#8B5CF6", services: ["1", "2"], appointments: 18, active: true, avatar: null },
+  { id: "1", name: "Carlos Mendes", role: "Especialista", color: "#3B82F6", services: ["1", "2", "3"], appointments: 23, active: true, avatar: null },
+  { id: "2", name: "Lucas Pereira", role: "Colorista", color: "#8B5CF6", services: ["1", "2"], appointments: 18, active: true, avatar: null },
   { id: "3", name: "Ana Lima", role: "Manicure", color: "#EC4899", services: ["4", "5"], appointments: 15, active: true, avatar: null },
 ];
 
 export const MOCK_SERVICES = [
-  { id: "1", name: "Corte Masculino", category: "Cabelo", duration: 30, price: 45, active: true, emoji: "✂️", collaborators: ["1", "2"] },
-  { id: "2", name: "Corte + Barba", category: "Combo", duration: 60, price: 80, active: true, emoji: "💈", collaborators: ["1", "2"] },
-  { id: "3", name: "Barba Tradicional", category: "Barba", duration: 30, price: 40, active: true, emoji: "🪒", collaborators: ["1"] },
+  { id: "1", name: "Consulta inicial", category: "Atendimento", duration: 30, price: 45, active: true, emoji: "📋", collaborators: ["1", "2"] },
+  { id: "2", name: "Pacote completo", category: "Combo", duration: 60, price: 80, active: true, emoji: "✨", collaborators: ["1", "2"] },
+  { id: "3", name: "Sessão express", category: "Express", duration: 30, price: 40, active: true, emoji: "⚡", collaborators: ["1"] },
   { id: "4", name: "Manicure", category: "Unhas", duration: 45, price: 50, active: true, emoji: "💅", collaborators: ["3"] },
   { id: "5", name: "Pedicure", category: "Unhas", duration: 60, price: 60, active: true, emoji: "🦶", collaborators: ["3"] },
 ];
@@ -34,22 +34,22 @@ export const MOCK_CLIENTS = [
 ];
 
 export const MOCK_APPOINTMENTS = [
-  { id: "1", clientName: "João Silva", clientId: "1", service: "Corte + Barba", serviceId: "2", collaborator: "Carlos", collaboratorId: "1", date: "2024-01-24", time: "09:00", endTime: "10:00", price: 80, status: "agendado" as const },
-  { id: "2", clientName: "Pedro Costa", clientId: "2", service: "Corte Masculino", serviceId: "1", collaborator: "Lucas", collaboratorId: "2", date: "2024-01-24", time: "10:00", endTime: "10:30", price: 45, status: "compareceu" as const },
-  { id: "3", clientName: "Rafael Almeida", clientId: "3", service: "Barba Tradicional", serviceId: "3", collaborator: "Carlos", collaboratorId: "1", date: "2024-01-24", time: "11:00", endTime: "11:30", price: 40, status: "agendado" as const },
-  { id: "4", clientName: "Bruno Santos", clientId: "4", service: "Corte Masculino", serviceId: "1", collaborator: "Lucas", collaboratorId: "2", date: "2024-01-24", time: "14:00", endTime: "14:30", price: 45, status: "cancelado" as const },
-  { id: "5", clientName: "Thiago Ferreira", clientId: "5", service: "Corte + Barba", serviceId: "2", collaborator: "Carlos", collaboratorId: "1", date: "2024-01-24", time: "15:00", endTime: "16:00", price: 80, status: "faltou" as const },
-  { id: "6", clientName: "João Silva", clientId: "1", service: "Corte Masculino", serviceId: "1", collaborator: "Carlos", collaboratorId: "1", date: "2024-01-25", time: "09:00", endTime: "09:30", price: 45, status: "agendado" as const },
+  { id: "1", clientName: "João Silva", clientId: "1", service: "Pacote completo", serviceId: "2", collaborator: "Carlos", collaboratorId: "1", date: "2024-01-24", time: "09:00", endTime: "10:00", price: 80, status: "agendado" as const },
+  { id: "2", clientName: "Pedro Costa", clientId: "2", service: "Consulta inicial", serviceId: "1", collaborator: "Lucas", collaboratorId: "2", date: "2024-01-24", time: "10:00", endTime: "10:30", price: 45, status: "compareceu" as const },
+  { id: "3", clientName: "Rafael Almeida", clientId: "3", service: "Sessão express", serviceId: "3", collaborator: "Carlos", collaboratorId: "1", date: "2024-01-24", time: "11:00", endTime: "11:30", price: 40, status: "agendado" as const },
+  { id: "4", clientName: "Bruno Santos", clientId: "4", service: "Consulta inicial", serviceId: "1", collaborator: "Lucas", collaboratorId: "2", date: "2024-01-24", time: "14:00", endTime: "14:30", price: 45, status: "cancelado" as const },
+  { id: "5", clientName: "Thiago Ferreira", clientId: "5", service: "Pacote completo", serviceId: "2", collaborator: "Carlos", collaboratorId: "1", date: "2024-01-24", time: "15:00", endTime: "16:00", price: 80, status: "faltou" as const },
+  { id: "6", clientName: "João Silva", clientId: "1", service: "Consulta inicial", serviceId: "1", collaborator: "Carlos", collaboratorId: "1", date: "2024-01-25", time: "09:00", endTime: "09:30", price: 45, status: "agendado" as const },
 ];
 
 export const MOCK_FINANCIAL_RECORDS = [
-  { id: "1", date: "2024-01-24", client: "João Silva", service: "Corte + Barba", collaborator: "Carlos", amount: 80, paid: true },
-  { id: "2", date: "2024-01-24", client: "Pedro Costa", service: "Corte Masculino", collaborator: "Lucas", amount: 45, paid: true },
-  { id: "3", date: "2024-01-24", client: "Rafael Almeida", service: "Barba Tradicional", collaborator: "Carlos", amount: 40, paid: true },
-  { id: "4", date: "2024-01-23", client: "João Silva", service: "Corte Masculino", collaborator: "Carlos", amount: 45, paid: true },
-  { id: "5", date: "2024-01-23", client: "Pedro Costa", service: "Corte + Barba", collaborator: "Lucas", amount: 80, paid: false },
-  { id: "6", date: "2024-01-22", client: "Bruno Santos", service: "Corte Masculino", collaborator: "Carlos", amount: 45, paid: true },
-  { id: "7", date: "2024-01-22", client: "Thiago Ferreira", service: "Barba Tradicional", collaborator: "Lucas", amount: 40, paid: true },
+  { id: "1", date: "2024-01-24", client: "João Silva", service: "Pacote completo", collaborator: "Carlos", amount: 80, paid: true },
+  { id: "2", date: "2024-01-24", client: "Pedro Costa", service: "Consulta inicial", collaborator: "Lucas", amount: 45, paid: true },
+  { id: "3", date: "2024-01-24", client: "Rafael Almeida", service: "Sessão express", collaborator: "Carlos", amount: 40, paid: true },
+  { id: "4", date: "2024-01-23", client: "João Silva", service: "Consulta inicial", collaborator: "Carlos", amount: 45, paid: true },
+  { id: "5", date: "2024-01-23", client: "Pedro Costa", service: "Pacote completo", collaborator: "Lucas", amount: 80, paid: false },
+  { id: "6", date: "2024-01-22", client: "Bruno Santos", service: "Consulta inicial", collaborator: "Carlos", amount: 45, paid: true },
+  { id: "7", date: "2024-01-22", client: "Thiago Ferreira", service: "Sessão express", collaborator: "Lucas", amount: 40, paid: true },
 ];
 
 export const WEEKLY_CHART_DATA = [

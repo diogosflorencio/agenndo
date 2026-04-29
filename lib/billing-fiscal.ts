@@ -1,5 +1,5 @@
 /**
- * CPF/CNPJ para nota fiscal — nome e endereço ficam no Stripe (checkout/portal).
+ * CPF/CNPJ para nota fiscal; nome e endereço ficam no Stripe (checkout/portal).
  */
 
 export type BillingFiscalFields = {

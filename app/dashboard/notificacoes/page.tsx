@@ -340,7 +340,7 @@ export default function NotificacoesPage() {
                     .replace("{nome}", "João Silva")
                     .replace("{data}", "24/01/2024")
                     .replace("{hora}", "14:00")
-                    .replace("{servico}", "Corte + Barba")
+                    .replace("{servico}", "Nome do serviço")
                     .replace("{colaborador}", "Carlos")
                     .replace("{endereco}", "Rua das Flores, 123")
                     .replace("{link}", "agenndo.com.br/cancel/abc123")}

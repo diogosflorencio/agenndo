@@ -28,15 +28,17 @@ export type PlanId = "free" | "plan_enterprise" | PaidPlanId;
 
 export const PLANO_LABEL = "Plano";
 
-/** Plano sugerido no checkout quando ainda não há tier definido (entrada Solo). */
-export const DEFAULT_CHECKOUT_PLAN: PaidPlanId = "paid_02";
+/** Plano sugerido no checkout quando ainda não há tier definido (piso do catálogo). */
+export const DEFAULT_CHECKOUT_PLAN: PaidPlanId = "paid_01";
 
 /**
- * Valores mensais (BRL) por degrau — espelho dos 20 preços recorrentes no Stripe (paid_01 = menor … paid_20 = maior).
+ * Valores mensais (BRL) por degrau (espelho dos 20 preços recorrentes no Stripe; paid_01 = menor … paid_20 = maior).
+ * Piso pensado para micro negócio (perfil de referência no planCalculator). Atualize os Price IDs
+ * no Stripe / env quando mudar estes valores.
  */
 const LADDER_PRICES: readonly number[] = [
-  29.9, 49.9, 69.9, 89.9, 109.9, 129.9, 149.9, 169.9, 189.9, 209.9, 229.9, 249.9, 289.9, 329.9, 369.9, 409.9,
-  449.9, 489.9, 529.9, 569.9,
+  30, 42, 54, 68, 84, 100, 118, 138, 158, 182,
+  208, 236, 268, 302, 340, 382, 428, 478, 532, 585,
 ];
 
 if (LADDER_PRICES.length !== PAID_PLAN_IDS.length) {
@@ -44,7 +46,7 @@ if (LADDER_PRICES.length !== PAID_PLAN_IDS.length) {
 }
 
 /**
- * Itens de “O que está incluído” — iguais em qualquer plano (grátis, degraus pagos ou enterprise).
+ * Itens de “O que está incluído”, iguais em qualquer plano (grátis, degraus pagos ou enterprise).
  * O preço varia pelo perfil; o escopo de produto não é limitado por “1 colaborador / 5 serviços” etc.
  */
 export const UNIVERSAL_PLAN_INCLUSION: readonly string[] = [

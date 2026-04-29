@@ -9,6 +9,13 @@ import { EntityPhotoControl } from "@/components/dashboard/entity-photo-control"
 import { compressImageForUpload } from "@/lib/image-compress";
 import { uploadBusinessImage } from "@/lib/business-assets-storage";
 import { formatCurrency } from "@/lib/utils";
+import { ServiceVariantGalleryEditor } from "@/components/dashboard/service-variant-gallery-editor";
+import { useAppAlert } from "@/components/app-alert-provider";
+import {
+  emptyVariantSlot,
+  normalizeVariantGallery,
+  type ServiceVariantItem,
+} from "@/lib/service-variants";
 
 type ServiceRow = {
   id: string;
@@ -17,7 +24,10 @@ type ServiceRow = {
   price_cents: number;
   emoji: string | null;
   image_url: string | null;
+  description_public: string | null;
+  variant_gallery: unknown;
   active: boolean;
+  archived_at: string | null;
   collaborator_services: {
     collaborator_id: string;
     collaborators: { id: string; name: string; color: string | null; avatar_url: string | null } | null;
@@ -28,31 +38,37 @@ type CollaboratorOption = { id: string; name: string; color: string | null; avat
 
 export default function ServicosPage() {
   const { business } = useDashboard();
+  const { showConfirm } = useAppAlert();
   const [services, setServices] = useState<ServiceRow[]>([]);
+  const [archivedServices, setArchivedServices] = useState<ServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editService, setEditService] = useState<ServiceRow | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
 
+  const selectServices =
+    "id, name, duration_minutes, price_cents, emoji, image_url, description_public, variant_gallery, active, archived_at, collaborator_services(collaborator_id, collaborators(id, name, color, avatar_url))";
+
   const load = useCallback(() => {
     if (!business?.id) return;
     const supabase = createClient();
-    supabase
-      .from("services")
-      .select(
-        "id, name, duration_minutes, price_cents, emoji, image_url, active, collaborator_services(collaborator_id, collaborators(id, name, color, avatar_url))"
-      )
-      .eq("business_id", business.id)
-      .order("name")
-      .then(({ data, error }) => {
-        if (error) {
-          setListError(error.message);
-          return;
-        }
-        setListError(null);
-        setServices((data as unknown as ServiceRow[]) ?? []);
-      });
+    Promise.all([
+      supabase.from("services").select(selectServices).eq("business_id", business.id).is("archived_at", null).order("name"),
+      supabase.from("services").select(selectServices).eq("business_id", business.id).not("archived_at", "is", null).order("name"),
+    ]).then(([activeRes, archRes]) => {
+      if (activeRes.error) {
+        setListError(activeRes.error.message);
+        return;
+      }
+      if (archRes.error) {
+        setListError(archRes.error.message);
+        return;
+      }
+      setListError(null);
+      setServices((activeRes.data as unknown as ServiceRow[]) ?? []);
+      setArchivedServices((archRes.data as unknown as ServiceRow[]) ?? []);
+    });
   }, [business?.id]);
 
   useEffect(() => {
@@ -62,6 +78,7 @@ export default function ServicosPage() {
   }, [business?.id, load]);
 
   const toggleActive = async (s: ServiceRow) => {
+    if (s.archived_at) return;
     setListError(null);
     setBusyId(s.id);
     const supabase = createClient();
@@ -92,6 +109,10 @@ export default function ServicosPage() {
         price_cents: s.price_cents,
         emoji: s.emoji,
         active: s.active,
+        description_public: s.description_public,
+        variant_gallery: s.variant_gallery ?? [],
+        image_url: s.image_url,
+        archived_at: null,
       })
       .select("id")
       .single();
@@ -119,6 +140,43 @@ export default function ServicosPage() {
     load();
   };
 
+  const archiveService = async (s: ServiceRow) => {
+    const ok = await showConfirm({
+      title: "Arquivar este serviço?",
+      message:
+        "Ele deixa de aparecer na página pública e na lista de serviços ativos. Os agendamentos já feitos continuam no histórico (o registro não é apagado por causa desses vínculos).",
+      confirmLabel: "Arquivar",
+      variant: "danger",
+    });
+    if (!ok) return;
+    setListError(null);
+    setBusyId(s.id);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("services")
+      .update({ archived_at: new Date().toISOString(), active: false })
+      .eq("id", s.id);
+    setBusyId(null);
+    if (error) {
+      setListError(error.message);
+      return;
+    }
+    load();
+  };
+
+  const restoreService = async (s: ServiceRow) => {
+    setListError(null);
+    setBusyId(s.id);
+    const supabase = createClient();
+    const { error } = await supabase.from("services").update({ archived_at: null }).eq("id", s.id);
+    setBusyId(null);
+    if (error) {
+      setListError(error.message);
+      return;
+    }
+    load();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -138,7 +196,12 @@ export default function ServicosPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Serviços</h1>
-          <p className="text-gray-400 text-sm mt-1">{services.length} serviços cadastrados</p>
+          <p className="text-gray-400 text-sm mt-1">
+            {services.length} ativo{services.length !== 1 ? "s" : ""}
+            {archivedServices.length > 0
+              ? ` · ${archivedServices.length} arquivado${archivedServices.length !== 1 ? "s" : ""}`
+              : ""}
+          </p>
         </div>
         <button
           onClick={() => {
@@ -248,6 +311,15 @@ export default function ServicosPage() {
                   {service.active ? "Off" : "On"}
                 </button>
               </div>
+              <button
+                type="button"
+                disabled={busyId === service.id}
+                onClick={() => void archiveService(service)}
+                className="w-full bg-white hover:bg-red-50 disabled:opacity-50 text-[10px] font-semibold text-red-600 py-2.5 border-t border-gray-200 transition-colors flex items-center justify-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">inventory_2</span>
+                Arquivar
+              </button>
             </div>
           );
         })}
@@ -266,6 +338,39 @@ export default function ServicosPage() {
           <p className="text-gray-500 group-hover:text-primary text-xs font-semibold transition-colors">Adicionar serviço</p>
         </button>
       </div>
+
+      {archivedServices.length > 0 && (
+        <div className="mt-10 pt-8 border-t border-gray-200">
+          <h2 className="text-lg font-bold text-gray-900 mb-1">Arquivados</h2>
+          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+            Serviços que você removeu da oferta. Continuam no banco para manter o histórico de agendamentos; não aparecem na
+            página pública. Você pode restaurar quando quiser.
+          </p>
+          <div className="space-y-2">
+            {archivedServices.map((s) => (
+              <div
+                key={s.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
+                  <p className="text-[11px] text-gray-500">
+                    {s.duration_minutes} min · {formatCurrency(s.price_cents / 100)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={busyId === s.id}
+                  onClick={() => void restoreService(s)}
+                  className="shrink-0 text-xs font-bold px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-primary/10 hover:border-primary/40 text-gray-800 disabled:opacity-50 transition-colors"
+                >
+                  Restaurar
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {showModal && (
         <ServiceModal
@@ -290,6 +395,13 @@ function extFromFile(f: File): string {
   return "jpg";
 }
 
+function padVariantSlots(raw: unknown): ServiceVariantItem[] {
+  const n = normalizeVariantGallery(raw);
+  const p = [...n];
+  while (p.length < 3) p.push(emptyVariantSlot());
+  return p.slice(0, 3);
+}
+
 function ServiceModal({
   businessId,
   service,
@@ -301,6 +413,7 @@ function ServiceModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { showAlert } = useAppAlert();
   const initialLinked = (service?.collaborator_services ?? [])
     .map((cs) => cs.collaborator_id || cs.collaborators?.id)
     .filter((id): id is string => Boolean(id));
@@ -316,6 +429,8 @@ function ServiceModal({
   const [linkedIds, setLinkedIds] = useState<string[]>(initialLinked);
   const [saving, setSaving] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
+  const [descriptionPublic, setDescriptionPublic] = useState(service?.description_public ?? "");
+  const [variantSlots, setVariantSlots] = useState<ServiceVariantItem[]>(() => padVariantSlots(service?.variant_gallery));
   const [imageUrl, setImageUrl] = useState<string | null>(service?.image_url ?? null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [pendingPreview, setPendingPreview] = useState<string | null>(null);
@@ -344,7 +459,7 @@ function ServiceModal({
       });
   }, [businessId]);
 
-  /** Atalhos — o usuário pode usar qualquer emoji no campo abaixo ou deixar vazio */
+  /** Atalhos: o usuário pode usar qualquer emoji no campo abaixo ou deixar vazio */
   const emojiPresets = [
     "✂️", "💈", "🪒", "💅", "🦶", "💆", "🏋️", "📷", "🐾", "🦷", "💊", "🎯",
     "💇", "✨", "🧴", "🪮", "🧼", "☕", "🍰", "🚗", "🏠", "💻", "📱", "🎨", "🎵",
@@ -373,6 +488,24 @@ function ServiceModal({
     setModalError(null);
     const supabase = createClient();
     const emojiVal = form.emoji?.trim() ? form.emoji.trim() : null;
+    const variantPayload = variantSlots
+      .filter((v) => v.url.trim())
+      .map((v) => {
+        const row: {
+          url: string;
+          title: string | null;
+          description: string | null;
+          price_cents?: number;
+        } = {
+          url: v.url.trim(),
+          title: v.title.trim() || null,
+          description: v.description.trim() || null,
+        };
+        if (v.price_cents != null && Number.isFinite(v.price_cents) && v.price_cents >= 0) {
+          row.price_cents = Math.round(v.price_cents);
+        }
+        return row;
+      });
     const row = {
       business_id: businessId,
       name: form.name.trim(),
@@ -380,6 +513,8 @@ function ServiceModal({
       price_cents: Math.round(form.price * 100),
       emoji: emojiVal,
       active: form.active,
+      description_public: descriptionPublic.trim() || null,
+      variant_gallery: variantPayload,
     };
     try {
       if (service) {
@@ -393,12 +528,22 @@ function ServiceModal({
         await syncLinks(supabase, newId);
         if (pendingFile) {
           try {
-            const prepared = await compressImageForUpload(pendingFile);
+            const prepared = await compressImageForUpload(pendingFile, { maxLongEdge: 1680 });
             const ext = extFromFile(prepared);
-            const publicUrl = await uploadBusinessImage(supabase, businessId, `services/${newId}.${ext}`, prepared);
+            const publicUrl = await uploadBusinessImage(
+              supabase,
+              businessId,
+              `services/${newId}/${crypto.randomUUID()}.${ext}`,
+              prepared
+            );
             await supabase.from("services").update({ image_url: publicUrl }).eq("id", newId);
-          } catch {
-            /* serviço já foi criado; usuário pode enviar foto depois em Editar */
+          } catch (photoErr) {
+            showAlert(
+              photoErr instanceof Error
+                ? `${photoErr.message} Você pode enviar a foto editando o serviço.`
+                : "Foto não enviada. Edite o serviço para tentar novamente.",
+              { title: "Serviço criado" }
+            );
           }
           setPendingFile(null);
         }
@@ -548,7 +693,19 @@ function ServiceModal({
           </div>
           <div>
             <label className="text-sm font-medium text-gray-600 block mb-1.5">Nome do serviço *</label>
-            <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex: Corte Masculino" className="w-full h-11 bg-white border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm" />
+            <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex.: nome do serviço" className="w-full h-11 bg-white border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm" />
+          </div>
+          <div>
+            <label className="text-sm font-medium text-gray-600 block mb-1.5">Descrição para o cliente (opcional)</label>
+            <textarea
+              value={descriptionPublic}
+              onChange={(e) => setDescriptionPublic(e.target.value)}
+              placeholder="Detalhes que aparecem na página pública ao escolher este serviço…"
+              rows={3}
+              maxLength={1200}
+              className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm resize-none"
+            />
+            <p className="text-[11px] text-gray-400 mt-1 text-right">{descriptionPublic.length}/1200</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -564,6 +721,22 @@ function ServiceModal({
             <SwitchToggle checked={form.active} onChange={() => setForm({ ...form, active: !form.active })} />
             <span className="text-sm text-gray-600">Serviço ativo (visível na página pública)</span>
           </div>
+
+          {service ? (
+            <ServiceVariantGalleryEditor
+              businessId={businessId}
+              serviceId={service.id}
+              basePriceReais={form.price}
+              slots={variantSlots}
+              onSlotsChange={setVariantSlots}
+              disabled={saving}
+            />
+          ) : (
+            <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
+              Depois de criar o serviço, abra <strong>Editar</strong> para adicionar até 3 fotos de variações (com título e
+              texto curto) opcionais.
+            </p>
+          )}
 
           <div className="rounded-xl border border-gray-200 bg-white p-4">
             <div className="flex items-start justify-between gap-2 mb-2">

@@ -789,7 +789,7 @@ export default function DisponibilidadePage() {
   const horariosSubtitle = useMemo(() => {
     switch (scope) {
       case "padrao":
-        return "Padrão para todas as semanas — um dia da semana por linha";
+        return "Padrão para todas as semanas: um dia da semana por linha";
       case "dia":
         return "Horário apenas para o dia escolhido";
       case "semana":
@@ -847,7 +847,7 @@ export default function DisponibilidadePage() {
     else updateYearWeekday(row.key, s);
   };
 
-  // Determine selected display label for period card — must be before any conditional return
+  // Label do período selecionado (antes de qualquer return condicional)
   const periodLabel = useMemo(() => {
     if (scope === "padrao") return "Todas as semanas";
     if (scope === "dia") return format(parseISO(selDay), "d 'de' MMMM yyyy", { locale: ptBR });

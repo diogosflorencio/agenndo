@@ -19,6 +19,10 @@ import {
 import { PublicBookingDayTimeline, type PublicDayTimelinePayload } from "@/components/public-booking-day-timeline";
 import { PublicPwaInstallPrompt } from "@/components/public-pwa-install-prompt";
 import { minutesToTime, timeToMinutes, type DaySchedule } from "@/lib/disponibilidade";
+import { PUBLIC_GALLERY_MAX_IMAGES } from "@/lib/public-gallery";
+import { normalizeVariantGallery, variantEffectivePriceCents, type ServiceVariantItem } from "@/lib/service-variants";
+import { formatSocialDisplay, mergePersonalizationSocialLinks, socialProfileUrl } from "@/lib/social-links";
+import { SocialBrandIcon, socialBrandAccent } from "@/components/social-brand-icon";
 
 function initialSliderStartMin(payload: PublicDayTimelinePayload): number {
   const now = new Date();
@@ -64,6 +68,7 @@ type BusinessRow = {
 type PersonalizationRow = {
   banner_url: string | null;
   gallery_urls: string[] | null;
+  social_links?: unknown;
   instagram_url: string | null;
   facebook_url: string | null;
   whatsapp_number: string | null;
@@ -80,6 +85,8 @@ type ServiceRow = {
   price_cents: number;
   emoji: string | null;
   image_url: string | null;
+  description_public: string | null;
+  variant_gallery: unknown;
   collaborator_services: { collaborator_id: string }[];
 };
 type CollabRow = { id: string; name: string; role: string | null; color: string | null; avatar_url: string | null };
@@ -133,6 +140,8 @@ function PublicPageInner() {
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const [bookError, setBookError] = useState<string | null>(null);
   const [bookedCollabName, setBookedCollabName] = useState<string | null>(null);
+  const [servicePickPhase, setServicePickPhase] = useState<"list" | "detail">("list");
+  const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
   const today = new Date();
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calYear, setCalYear] = useState(today.getFullYear());
@@ -160,14 +169,17 @@ function PublicPageInner() {
         const [sRes, cRes, pRes] = await Promise.all([
           supabase
             .from("services")
-            .select("id, name, duration_minutes, price_cents, emoji, image_url, collaborator_services(collaborator_id)")
+            .select(
+              "id, name, duration_minutes, price_cents, emoji, image_url, description_public, variant_gallery, collaborator_services(collaborator_id)"
+            )
             .eq("business_id", bid)
-            .eq("active", true),
+            .eq("active", true)
+            .is("archived_at", null),
           supabase.from("collaborators").select("id, name, role, color, avatar_url").eq("business_id", bid).eq("active", true),
           supabase
             .from("personalization")
             .select(
-              "banner_url, gallery_urls, instagram_url, facebook_url, whatsapp_number, tagline, about, public_theme, show_whatsapp_fab, address_line"
+              "banner_url, gallery_urls, social_links, instagram_url, facebook_url, whatsapp_number, tagline, about, public_theme, show_whatsapp_fab, address_line"
             )
             .eq("business_id", bid)
             .maybeSingle(),
@@ -343,6 +355,8 @@ function PublicPageInner() {
     setNotes("");
     setClientName("");
     setBookError(null);
+    setServicePickPhase("list");
+    setSelectedVariantIndex(null);
     setSlotTimeline([]);
     setDayTimeline(null);
     setSliderStartMin(9 * 60);
@@ -372,7 +386,14 @@ function PublicPageInner() {
       setView("booking");
       if (prefillService) {
         setSelectedService(prefillService);
-        setStep(2);
+        const v = normalizeVariantGallery(prefillService.variant_gallery);
+        const desc = prefillService.description_public?.trim();
+        if (v.length > 0 || desc) {
+          setServicePickPhase("detail");
+          setSelectedVariantIndex(null);
+        } else {
+          setStep(2);
+        }
       }
     },
     [resetBookingForm, bookingMeta?.publicBookingLocked]
@@ -436,6 +457,7 @@ function PublicPageInner() {
           timeStart: selectedTime,
           clientName: clientName.trim(),
           notes,
+          serviceVariantIndex: selectedVariantIndex,
         }),
       });
       const j = await res.json();
@@ -459,12 +481,33 @@ function PublicPageInner() {
       })()
     : collaborators;
 
+  const selectedBookingPriceCents = useMemo(() => {
+    if (!selectedService) return 0;
+    const base = selectedService.price_cents;
+    const vars = normalizeVariantGallery(selectedService.variant_gallery);
+    const opt = selectedVariantIndex != null ? vars[selectedVariantIndex] : undefined;
+    return variantEffectivePriceCents(opt, base);
+  }, [selectedService, selectedVariantIndex]);
+
   const accent = business?.primary_color?.trim() || "#13EC5B";
   const phoneDigits = (business?.phone ?? personalization?.whatsapp_number ?? "").replace(/\D/g, "") || "";
   const waHref = phoneDigits ? `https://wa.me/55${phoneDigits}` : "#";
   const isDark = personalization?.public_theme !== "light";
   const showWhatsappFab = personalization?.show_whatsapp_fab !== false;
-  const galleryList = Array.isArray(personalization?.gallery_urls) ? personalization.gallery_urls : [];
+  const galleryList = (
+    Array.isArray(personalization?.gallery_urls) ? personalization.gallery_urls : []
+  )
+    .filter((u): u is string => typeof u === "string" && u.length > 0)
+    .slice(0, PUBLIC_GALLERY_MAX_IMAGES);
+  const publicSocialLinks = useMemo(
+    () =>
+      mergePersonalizationSocialLinks(
+        personalization?.social_links,
+        personalization?.instagram_url ?? null,
+        personalization?.facebook_url ?? null
+      ),
+    [personalization]
+  );
   const displayAddress = personalization?.address_line?.trim() || business?.city || "";
 
   const bookUi = {
@@ -510,6 +553,7 @@ function PublicPageInner() {
     return (
       <SuccessScreen
         service={selectedService}
+        bookedPriceCents={selectedBookingPriceCents}
         collab={selectedCollab}
         date={selectedDate}
         time={selectedTime}
@@ -698,34 +742,36 @@ function PublicPageInner() {
                     )}
                   </div>
                 )}
-                {(personalization?.instagram_url || personalization?.facebook_url) && (
+                {publicSocialLinks.length > 0 && (
                   <div className="flex flex-wrap gap-2 pt-1">
-                    {personalization.instagram_url && (
-                      <a
-                        href={personalization.instagram_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={cn(
-                          "text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl border transition-colors",
-                          isDark ? "border-white/15 hover:bg-white/5" : "border-gray-200 hover:bg-gray-100"
-                        )}
-                      >
-                        Instagram
-                      </a>
-                    )}
-                    {personalization.facebook_url && (
-                      <a
-                        href={personalization.facebook_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={cn(
-                          "text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-xl border transition-colors",
-                          isDark ? "border-white/15 hover:bg-white/5" : "border-gray-200 hover:bg-gray-100"
-                        )}
-                      >
-                        Facebook
-                      </a>
-                    )}
+                    {publicSocialLinks.map((link, i) => {
+                      const href = socialProfileUrl(link);
+                      if (!href) return null;
+                      const iconColor =
+                        isDark && (link.platform === "x" || link.platform === "tiktok")
+                          ? "#f3f4f6"
+                          : socialBrandAccent(link.platform);
+                      return (
+                        <a
+                          key={`${link.platform}-${i}`}
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={cn(
+                            "inline-flex items-center gap-2.5 text-xs sm:text-sm font-semibold px-3.5 py-2.5 rounded-xl border transition-colors",
+                            isDark ? "border-white/15 hover:bg-white/5" : "border-gray-200 hover:bg-gray-100"
+                          )}
+                        >
+                          <SocialBrandIcon
+                            platform={link.platform}
+                            size={20}
+                            className="shrink-0"
+                            style={{ color: iconColor }}
+                          />
+                          <span className={isDark ? "text-gray-200" : "text-gray-800"}>{formatSocialDisplay(link)}</span>
+                        </a>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -754,19 +800,6 @@ function PublicPageInner() {
             <section className="mb-10">
               <h2 className={cn("text-sm font-bold uppercase tracking-wider mb-3", subCls)}>Sobre</h2>
               <p className={cn("text-sm leading-relaxed rounded-2xl p-4", cardCls)}>{personalization.about.trim()}</p>
-            </section>
-          )}
-
-          {galleryList.length > 0 && (
-            <section className="mb-10">
-              <h2 className={cn("text-sm font-bold uppercase tracking-wider mb-3", subCls)}>Galeria</h2>
-              <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
-                {galleryList.map((src: string) => (
-                  <div key={src} className="relative shrink-0 w-36 h-36 rounded-xl overflow-hidden border border-gray-200/20">
-                    <Image src={src} alt="" fill className="object-cover" unoptimized />
-                  </div>
-                ))}
-              </div>
             </section>
           )}
 
@@ -836,10 +869,15 @@ function PublicPageInner() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={cn("font-semibold truncate", titleCls)}>{service.name}</p>
+                      <p className={cn("font-semibold line-clamp-2", titleCls)}>{service.name}</p>
                       <p className={cn("text-xs mt-0.5", subCls)}>
                         {service.duration_minutes} min · {formatCurrency(service.price_cents / 100)}
                       </p>
+                      {service.description_public?.trim() ? (
+                        <p className={cn("text-[11px] mt-1.5 line-clamp-2 leading-snug", mutedCls)}>
+                          {service.description_public.trim()}
+                        </p>
+                      ) : null}
                     </div>
                     <span className="material-symbols-outlined text-gray-500 text-lg shrink-0">calendar_add_on</span>
                   </button>
@@ -847,6 +885,29 @@ function PublicPageInner() {
               </div>
             )}
           </section>
+
+          {galleryList.length > 0 && (
+            <section className="mb-10 mt-2">
+              <h2 className={cn("text-sm font-bold uppercase tracking-wider mb-3", subCls)}>Galeria</h2>
+              <div className="columns-2 gap-x-2 sm:gap-x-3 [column-fill:_balance]">
+                {galleryList.map((src, gi) => (
+                  <div key={`${gi}-${src.slice(-40)}`} className="mb-2 sm:mb-3 break-inside-avoid">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- dimensões intrínsecas no mosaico */}
+                    <img
+                      src={src}
+                      alt=""
+                      className={cn(
+                        "w-full h-auto rounded-xl border block",
+                        isDark ? "border-white/10" : "border-gray-200/80"
+                      )}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </main>
 
         {showWhatsappFab && phoneDigits && (
@@ -865,7 +926,7 @@ function PublicPageInner() {
     );
   }
 
-  /* ——— visão agendamento (fluxo em etapas) ——— */
+  /* visão agendamento (fluxo em etapas) */
   return (
     <div
       className={bookUi.page}
@@ -963,7 +1024,7 @@ function PublicPageInner() {
       </div>
 
       <main className="relative z-10 max-w-4xl lg:max-w-5xl mx-auto px-4 sm:px-6 py-6 pb-32">
-        {step === 1 && (
+        {step === 1 && servicePickPhase === "list" && (
           <div>
             <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Escolha o serviço</h2>
             <p className={cn("text-sm mb-5", bookUi.subtitle)}>Selecione o serviço que deseja agendar</p>
@@ -987,10 +1048,17 @@ function PublicPageInner() {
                   type="button"
                   onClick={() => {
                     setSelectedService(service);
-                    setStep(2);
+                    const v = normalizeVariantGallery(service.variant_gallery);
+                    const desc = service.description_public?.trim();
+                    if (v.length > 0 || desc) {
+                      setServicePickPhase("detail");
+                      setSelectedVariantIndex(null);
+                    } else {
+                      setStep(2);
+                    }
                   }}
                   className={cn(
-                    "flex items-center gap-4 p-4 rounded-xl border text-left transition-all hover:-translate-y-0.5",
+                    "flex items-start gap-4 p-4 rounded-xl border text-left transition-all hover:-translate-y-0.5",
                     selectedService?.id === service.id
                       ? "border-[var(--public-accent)] bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)]"
                       : cn(bookUi.card, bookUi.cardHover)
@@ -1011,14 +1079,113 @@ function PublicPageInner() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={cn("font-semibold truncate", bookUi.title)}>{service.name}</p>
+                    <p className={cn("font-semibold line-clamp-2", bookUi.title)}>{service.name}</p>
                     <p className={cn("text-xs mt-0.5", bookUi.subtitle)}>
                       {service.duration_minutes}min · {formatCurrency(service.price_cents / 100)}
                     </p>
+                    {service.description_public?.trim() ? (
+                      <p className={cn("text-[11px] mt-1.5 line-clamp-2 leading-snug", bookUi.muted)}>
+                        {service.description_public.trim()}
+                      </p>
+                    ) : null}
                   </div>
                 </button>
               ))}
             </div>
+          </div>
+        )}
+
+        {step === 1 && servicePickPhase === "detail" && selectedService && (
+          <div className="space-y-6">
+            <button
+              type="button"
+              onClick={() => {
+                setServicePickPhase("list");
+                setSelectedService(null);
+                setSelectedVariantIndex(null);
+              }}
+              className={cn("inline-flex items-center gap-1.5 text-sm font-semibold -mt-1", bookUi.subtitle)}
+            >
+              <span className="material-symbols-outlined text-lg">arrow_back</span>
+              Todos os serviços
+            </button>
+            <div>
+              <h2 className={cn("text-xl sm:text-2xl font-bold mb-2", bookUi.title)}>{selectedService.name}</h2>
+              <p className={cn("text-sm", bookUi.subtitle)}>
+                {selectedService.duration_minutes} min · {formatCurrency(selectedBookingPriceCents / 100)}
+              </p>
+            </div>
+            {selectedService.description_public?.trim() ? (
+              <p className={cn("text-sm leading-relaxed rounded-xl p-4 border", bookUi.card)}>
+                {selectedService.description_public.trim()}
+              </p>
+            ) : null}
+            {normalizeVariantGallery(selectedService.variant_gallery).length > 0 ? (
+              <div className="space-y-3">
+                <p className={cn("text-sm font-semibold", bookUi.title)}>Opções do serviço (opcional)</p>
+                <p className={cn("text-xs leading-snug -mt-1", bookUi.muted)}>
+                  Escolha uma variação para ver o valor atualizado, ou continue com o serviço padrão.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedVariantIndex(null)}
+                  className={cn(
+                    "w-full rounded-xl border px-4 py-3 text-left text-sm font-semibold transition-all",
+                    selectedVariantIndex === null
+                      ? "border-[var(--public-accent)] ring-2 ring-[color-mix(in_srgb,var(--public-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--public-accent)_8%,transparent)]"
+                      : cn(bookUi.card, bookUi.cardHover)
+                  )}
+                >
+                  <span className={cn("block", bookUi.title)}>Serviço padrão</span>
+                  <span className={cn("text-xs font-normal mt-0.5", bookUi.muted)}>
+                    Sem opção específica · {formatCurrency(selectedService.price_cents / 100)}
+                  </span>
+                </button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {normalizeVariantGallery(selectedService.variant_gallery).map((opt: ServiceVariantItem, i: number) => {
+                    const optPrice = variantEffectivePriceCents(opt, selectedService.price_cents);
+                    return (
+                      <button
+                        key={`${i}-${opt.url.slice(-24)}`}
+                        type="button"
+                        onClick={() => setSelectedVariantIndex(i)}
+                        className={cn(
+                          "rounded-xl border text-left overflow-hidden transition-all flex flex-col",
+                          selectedVariantIndex === i
+                            ? "border-[var(--public-accent)] ring-2 ring-[color-mix(in_srgb,var(--public-accent)_35%,transparent)]"
+                            : cn(bookUi.card, bookUi.cardHover)
+                        )}
+                      >
+                        <div className="aspect-square relative bg-black/10 w-full shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={opt.url} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                        </div>
+                        <div className="p-3 space-y-1 flex-1 flex flex-col">
+                          {opt.title ? <p className={cn("text-sm font-bold", bookUi.title)}>{opt.title}</p> : null}
+                          <p className={cn("text-xs font-semibold tabular-nums", bookUi.subtitle)}>
+                            {formatCurrency(optPrice / 100)}
+                          </p>
+                          {opt.description ? (
+                            <p className={cn("text-xs leading-snug line-clamp-3 mt-0.5", bookUi.muted)}>{opt.description}</p>
+                          ) : null}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => {
+                setStep(2);
+                setServicePickPhase("list");
+              }}
+              className="w-full py-3.5 rounded-xl font-bold text-black transition-transform hover:scale-[1.01] active:scale-[0.99]"
+              style={{ backgroundColor: accent, boxShadow: `0 0 24px ${rgbaFromHex(accent, 0.3)}` }}
+            >
+              Continuar para profissional e data
+            </button>
           </div>
         )}
 
@@ -1092,7 +1259,7 @@ function PublicPageInner() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={cn("font-semibold", bookUi.title)}>{collab.name}</p>
-                      <p className={cn("text-xs mt-0.5", bookUi.subtitle)}>{collab.role ?? "—"}</p>
+                      <p className={cn("text-xs mt-0.5", bookUi.subtitle)}>{collab.role ?? "-"}</p>
                     </div>
                     <span className="material-symbols-outlined text-gray-500 text-base flex-shrink-0">chevron_right</span>
                   </button>
@@ -1195,12 +1362,12 @@ function PublicPageInner() {
                   const maxDays = bookingMeta?.maxFutureDays ?? maxFutureDays;
                   const dayTitle =
                     disableKind === "past"
-                      ? "Dia já passou — não é possível agendar"
+                      ? "Dia já passou. Não é possível agendar"
                       : disableKind === "tooFar"
                         ? `Fora do período permitido (máx. ${maxDays} dias à frente)`
                         : disableKind === "closed"
                           ? "Sem atendimento neste dia (fechado ou folga no calendário do negócio)"
-                          : `Dia ${day} — toque para agendar`;
+                          : `Dia ${day}: toque para agendar`;
                   const isSelected = selectedDate === dateStr;
                   return (
                     <button
@@ -1329,27 +1496,35 @@ function PublicPageInner() {
                             isDark ? "bg-[#213428]" : "bg-gray-100"
                           )}
                         >
-                          {selectedService.image_url ? (
-                            <Image
-                              src={selectedService.image_url}
-                              alt=""
-                              width={72}
-                              height={72}
-                              className="size-full object-cover"
-                              unoptimized
-                            />
-                          ) : selectedService.emoji ? (
-                            <span className="leading-none">{selectedService.emoji}</span>
-                          ) : (
-                            <span className="material-symbols-outlined text-gray-500 text-3xl">category</span>
-                          )}
+                          {(() => {
+                            const vars = normalizeVariantGallery(selectedService.variant_gallery);
+                            const pv =
+                              selectedVariantIndex != null ? vars[selectedVariantIndex] : undefined;
+                            const thumb = pv?.url || selectedService.image_url;
+                            if (thumb) {
+                              return (
+                                <Image src={thumb} alt="" width={72} height={72} className="size-full object-cover" unoptimized />
+                              );
+                            }
+                            if (selectedService.emoji) {
+                              return <span className="leading-none">{selectedService.emoji}</span>;
+                            }
+                            return <span className="material-symbols-outlined text-gray-500 text-3xl">category</span>;
+                          })()}
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className={cn("font-bold text-lg xl:text-xl leading-snug", bookUi.title)}>
                             {selectedService.name}
                           </p>
+                          {selectedVariantIndex != null &&
+                            normalizeVariantGallery(selectedService.variant_gallery)[selectedVariantIndex] && (
+                              <p className={cn("text-xs font-semibold mt-1.5", bookUi.subtitle)}>
+                                {normalizeVariantGallery(selectedService.variant_gallery)[selectedVariantIndex]?.title?.trim() ||
+                                  `Opção ${selectedVariantIndex + 1}`}
+                              </p>
+                            )}
                           <p className={cn("text-sm mt-2", bookUi.subtitle)}>
-                            {selectedService.duration_minutes} min · {formatCurrency(selectedService.price_cents / 100)}
+                            {selectedService.duration_minutes} min · {formatCurrency(selectedBookingPriceCents / 100)}
                           </p>
                         </div>
                       </div>
@@ -1378,7 +1553,7 @@ function PublicPageInner() {
                               ? "Primeiro disponível na equipe"
                               : selectedCollab
                                 ? selectedCollab.name
-                                : "—"}
+                                : "-"}
                           </p>
                         </div>
                       </div>
@@ -1562,6 +1737,17 @@ function PublicPageInner() {
                 <div className="space-y-3">
                   {[
                     { icon: "content_cut", label: "Serviço", value: selectedService?.name ?? "" },
+                    ...(selectedService && selectedVariantIndex != null
+                      ? [
+                          {
+                            icon: "photo_library",
+                            label: "Opção",
+                            value:
+                              normalizeVariantGallery(selectedService.variant_gallery)[selectedVariantIndex]?.title?.trim() ||
+                              `Opção ${selectedVariantIndex + 1}`,
+                          },
+                        ]
+                      : []),
                     {
                       icon: "person",
                       label: "Profissional",
@@ -1586,7 +1772,7 @@ function PublicPageInner() {
                     {
                       icon: "payments",
                       label: "Valor",
-                      value: formatCurrency((selectedService?.price_cents ?? 0) / 100),
+                      value: formatCurrency(selectedBookingPriceCents / 100),
                       highlight: true,
                     },
                   ].map((item) => (
@@ -1630,7 +1816,7 @@ function PublicPageInner() {
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Ex: Prefiro deixar um pouco mais comprido nas laterais..."
+                    placeholder="Ex.: acessibilidade, acompanhante, detalhes do serviço ou do atendimento..."
                     rows={3}
                     className={cn(
                       "w-full border focus:border-[var(--public-accent)] rounded-xl px-4 py-3 outline-none transition-colors text-sm resize-none",
@@ -1647,7 +1833,7 @@ function PublicPageInner() {
                       isDark ? "text-amber-200" : "text-amber-900"
                     )}
                   >
-                    Você pode agendar sem criar conta — basta informar seu nome. Com conta de cliente você acompanha
+                    Você pode agendar sem criar conta: basta informar seu nome. Com conta de cliente você acompanha
                     histórico e cancelamentos em{" "}
                     <Link href="/conta" className="font-semibold text-[var(--public-accent)] hover:underline">
                       Minha conta
@@ -1710,7 +1896,15 @@ function PublicPageInner() {
           <div className="max-w-4xl lg:max-w-5xl mx-auto flex gap-3">
             <button
               type="button"
-              onClick={() => setStep((step - 1) as Step)}
+              onClick={() => {
+                if (step === 2) {
+                  setStep(1);
+                  setServicePickPhase("list");
+                  setSelectedVariantIndex(null);
+                  return;
+                }
+                setStep((step - 1) as Step);
+              }}
               className={cn(
                 "flex items-center gap-2 px-5 py-3 border font-semibold rounded-xl text-sm transition-all",
                 isDark
@@ -1766,6 +1960,7 @@ export default function PublicPage() {
 
 function SuccessScreen({
   service,
+  bookedPriceCents,
   collab,
   date,
   time,
@@ -1775,6 +1970,7 @@ function SuccessScreen({
   accentColor,
 }: {
   service: ServiceRow | null;
+  bookedPriceCents: number;
   collab: CollabRow | "any" | null;
   date: string | null;
   time: string | null;
@@ -1815,7 +2011,7 @@ function SuccessScreen({
                   value: date ? new Date(date + "T12:00:00").toLocaleDateString("pt-BR") : "",
                 },
                 { label: "Horário", value: time ?? "" },
-                { label: "Valor", value: formatCurrency((service?.price_cents ?? 0) / 100), highlight: true },
+                { label: "Valor", value: formatCurrency(bookedPriceCents / 100), highlight: true },
               ].map((item) => (
                 <div key={item.label} className="flex justify-between items-center">
                   <span className="text-gray-400 text-sm">{item.label}</span>

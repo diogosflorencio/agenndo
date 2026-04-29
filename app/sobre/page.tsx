@@ -22,7 +22,7 @@ export default function SobrePage() {
       <main className="relative z-10 max-w-3xl mx-auto px-6 py-16">
         <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">Sobre nós</h1>
         <p className="text-gray-400 text-lg leading-relaxed mb-8">
-          O <strong className="text-white">Agenndo</strong> nasceu da necessidade de oferecer uma solução simples e acessível de agendamento online para prestadores de serviços — barbearias, salões, clínicas, consultórios e muito mais.
+          O <strong className="text-white">Agenndo</strong> nasceu da necessidade de oferecer uma solução simples e acessível de agendamento online para prestadores de serviços: salões, clínicas, consultórios, estética e muito mais.
         </p>
         <div className="space-y-6 text-gray-400 leading-relaxed">
           <p>

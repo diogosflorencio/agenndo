@@ -16,7 +16,7 @@ export function describeSubscriptionStatus(
     if (plan === "plan_enterprise") {
       return {
         badge: "Enterprise",
-        detail: "Plano sob consulta — combine proposta, SLA e integrações com a equipe comercial.",
+        detail: "Plano sob consulta: combine proposta, SLA e integrações com a equipe comercial.",
         isPaidActive: false,
       };
     }

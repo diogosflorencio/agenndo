@@ -27,7 +27,7 @@ export function isYwpSupportActorEmail(email: string | null | undefined): boolea
 }
 
 /**
- * Acesso compartilhado genérico (ex.: token entre utilizadores — não é necessariamente suporte YWP).
+ * Acesso compartilhado genérico (ex.: token entre utilizadores; não é necessariamente suporte YWP).
  * Reforça que não é a conta pessoal de quem está a navegar.
  */
 export const SHARED_ACCESS_UNRECOGNIZED_MESSAGE =

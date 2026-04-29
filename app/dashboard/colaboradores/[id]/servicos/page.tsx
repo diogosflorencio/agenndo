@@ -58,6 +58,7 @@ export default function ColaboradorServicosPage() {
         .from("services")
         .select("id, name, duration_minutes, price_cents, emoji, active")
         .eq("business_id", business.id)
+        .is("archived_at", null)
         .order("name"),
       supabase.from("collaborator_services").select("service_id").eq("collaborator_id", id),
     ]);
@@ -152,7 +153,7 @@ export default function ColaboradorServicosPage() {
         </div>
         <div>
           <p className="text-gray-900 font-bold">{collaborator.name}</p>
-          <p className="text-gray-500 text-sm">{collaborator.role ?? "—"}</p>
+          <p className="text-gray-500 text-sm">{collaborator.role ?? "-"}</p>
         </div>
         <div className="ml-auto size-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
       </div>

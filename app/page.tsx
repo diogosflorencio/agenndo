@@ -5,10 +5,9 @@ import { getSiteUrl } from "@/lib/site-url";
 
 const siteUrl = getSiteUrl();
 
-const titleDefault =
-  "Agenndo — Sistema de agendamento online para prestadores de serviço";
+const titleDefault = "Agenndo - Sistema de agendamento online para prestadores de serviço";
 const description =
-  "Software completo de agendamento online (YWP / YourWebPlace): clientes marcam horário 24h por link ou QR Code; você gerencia agenda, equipe, financeiro e lembretes. Serve barbearias, salões, clínicas, estética, tatuadores, personal trainers, pet shops, consultórios e qualquer negócio por hora marcada — basta configurar serviços e disponibilidade.";
+  "Software completo de agendamento online (YWP / YourWebPlace): clientes marcam horário 24h por link ou QR Code; você gerencia agenda, equipe, financeiro e lembretes. Atende salões, clínicas, estética, barbearias, consultórios, personal trainers, pet shops e qualquer negócio por hora marcada. Basta configurar serviços e disponibilidade.";
 
 export const metadata: Metadata = {
   title: { absolute: titleDefault },

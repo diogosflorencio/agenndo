@@ -1,4 +1,4 @@
-/** FAQ da landing — fonte única para UI e JSON-LD (FAQPage). */
+/** FAQ da landing: fonte única para UI e JSON-LD (FAQPage). */
 export const HOME_FAQS = [
   {
     q: "Preciso saber programar?",
@@ -18,7 +18,7 @@ export const HOME_FAQS = [
   },
   {
     q: "Quais tipos de negócio podem usar?",
-    a: "Barbearias, salões de beleza, clínicas de estética, consultórios, estúdios de tatuagem, personal trainers, fotógrafos, pet shops e muito mais — qualquer serviço com hora marcada.",
+    a: "Funciona para salões, clínicas, consultórios, estética, barbearias, estúdios, personal trainers, fotógrafos, pet shops e qualquer negócio em que o cliente escolha data e horário.",
   },
   {
     q: "Como cancelar minha assinatura?",

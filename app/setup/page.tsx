@@ -15,7 +15,7 @@ import { formatBrazilPhoneFromDigits, phoneDigitsOnly, slugify } from "@/lib/uti
 import { createClient } from "@/lib/supabase/client";
 
 const SEGMENTS = [
-  "Barbearia", "Salão de Beleza", "Manicure / Pedicure", "Clínica de Estética",
+  "Salão de Beleza", "Clínica de Estética", "Manicure / Pedicure", "Barbearia",
   "Estúdio de Tatuagem", "Personal Trainer", "Fisioterapia", "Psicologia",
   "Nutrição", "Fotografia", "Pet Shop", "Consultório Médico",
   "Odontologia", "Coach", "Professor Particular", "Outro",
@@ -61,8 +61,8 @@ export default function SetupPage() {
     phone: "",
     slug: "",
     teamSize: "1" as "1" | "2-5" | "6-15" | "16+",
-    dailyAppointments: 10,
-    averageTicket: 70,
+    dailyAppointments: 8,
+    averageTicket: 30,
     primaryColor: "#13EC5B",
     logo: null as File | null,
   });
@@ -236,7 +236,7 @@ export default function SetupPage() {
 
   return (
     <div className="min-h-screen bg-[#102216] text-white flex flex-col lg:flex-row">
-      {/* Painel visual — desktop: lateral esquerda; mobile: oculto */}
+      {/* Painel visual: desktop lateral esquerda; mobile oculto */}
       <aside className="hidden lg:flex lg:w-[42%] xl:w-[45%] lg:min-h-screen flex-col relative overflow-hidden bg-gradient-to-br from-[#0d2818] via-[#102216] to-[#0a1f12]">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_20%,rgba(19,236,91,0.12),transparent)]" />
         <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-[#13ec5b]/10 blur-[80px]" />
@@ -264,10 +264,10 @@ export default function SetupPage() {
 
       {/* Coluna do formulário */}
       <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 lg:flex lg:items-center lg:justify-center lg:py-8 bg-[#020403]">
-        {/* Background glow — só na coluna do form */}
+        {/* Background glow: só na coluna do form */}
         <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/8 blur-[140px] rounded-full pointer-events-none lg:left-[58%]" />
 
-        {/* Header — mobile */}
+        {/* Header mobile */}
         <header className="relative z-10 py-5 px-6 border-b border-white/5 lg:border-0 lg:absolute lg:top-0 lg:left-0 lg:right-0">
           <div className="max-w-2xl mx-auto flex items-center justify-between">
             <Link href="/" className="flex items-center gap-2">
@@ -288,7 +288,7 @@ export default function SetupPage() {
         {/* Content */}
         <main className="flex-1 flex items-center justify-center px-6 py-12 relative z-10 w-full">
           <div className="w-full max-w-lg lg:max-w-[420px] lg:mx-auto lg:shadow-xl lg:rounded-2xl lg:border lg:border-white/10 lg:bg-[#0d2316] lg:p-6 lg:max-h-[90vh] lg:overflow-y-auto">
-            {/* Step indicator — estilo alinhado ao que você pediu */}
+            {/* Step indicator */}
             <div className="flex items-center justify-center gap-2 mb-10">
               {Array.from({ length: totalSteps }, (_, i) => (
                 <div
@@ -374,7 +374,7 @@ function Step1({ data, update, segments }: { data: SetupFormData; update: (f: st
             type="text"
             value={data.businessName}
             onChange={(e) => update("businessName", e.target.value)}
-            placeholder="Ex: Barbearia Elite"
+            placeholder="Ex.: nome do seu negócio"
             className="w-full h-12 bg-[#14221A] border border-[#213428] focus:border-primary rounded-xl px-4 text-white placeholder-gray-600 outline-none transition-colors text-sm"
           />
           {data.businessName && (
@@ -465,7 +465,11 @@ function Step3({ data, update }: { data: { dailyAppointments: number; averageTic
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white mb-2">Volume de trabalho</h1>
-        <p className="text-gray-400 text-sm">Isso nos ajuda a recomendar o plano ideal</p>
+        <p className="text-gray-400 text-sm leading-relaxed">
+          Estes números definem o <span className="text-primary font-medium">valor mensal</span> que você
+          verá no último passo. O ticket médio pesa mais do que só a quantidade de atendimentos: muitos
+          horários no dia nem sempre significam o mesmo faturamento.
+        </p>
       </div>
 
       <div className="space-y-8">
@@ -608,10 +612,12 @@ function Step5({
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-2">Plano</h1>
-        <p className="text-gray-400 text-sm">
-          Para seguir com <span className="text-primary font-semibold">{data.businessName || "seu negócio"}</span>, o valor
-          da assinatura é o abaixo. Condições gerais estão nos Termos de Uso.
+        <h1 className="text-2xl font-bold text-white mb-2">Plano e investimento</h1>
+        <p className="text-gray-400 text-sm leading-relaxed">
+          Você <span className="text-white font-medium">já sabe o preço</span> que passará a pagar após o período de
+          teste: é o valor abaixo, calculado com base no que informou (equipe, atendimentos por dia e ticket
+          médio) para <span className="text-primary font-semibold">{data.businessName || "seu negócio"}</span>. Condições
+          gerais estão nos Termos de Uso.
         </p>
         {pricingPinnedNotice && (
           <p className="mt-3 text-xs text-amber-200/90 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2 leading-relaxed">
@@ -652,9 +658,9 @@ function Step5({
             </p>
           </div>
           <div className="text-right">
-            <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-2">
-              <p className="text-xs font-bold text-primary">7 dias grátis</p>
-              <p className="text-[10px] text-gray-400">cobrança no cartão após o trial</p>
+            <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-2 max-w-[11rem]">
+              <p className="text-xs font-bold text-primary">Teste grátis (7+ dias)</p>
+              <p className="text-[10px] text-gray-400">Cobrança no cartão só após o fim do trial, no valor acima</p>
             </div>
           </div>
         </div>
@@ -664,7 +670,7 @@ function Step5({
         onClick={() => onFinish(dynamicPlan.tier)}
         className="w-full py-4 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)] flex items-center justify-center gap-2"
       >
-        Começar agora com  uma assinatura
+        Começar agora com assinatura
         <span className="material-symbols-outlined text-base">arrow_forward</span>
       </button>
       <button
@@ -672,10 +678,13 @@ function Step5({
         onClick={onFree}
         className="w-full mt-3 py-3 text-sm text-gray-400 hover:text-gray-300 transition-colors"
       >
-        Continuar sem assinar — 7 dias grátis
+        Continuar sem assinar o plano pago (período de teste)
       </button>
-      <p className="text-xs text-gray-500 text-center mt-4">
-        7 dias de trial com acesso completo. Depois, cobrança em cartão (Stripe) no valor contratado. Outros meios podem ser
+      <p className="text-xs text-gray-500 text-center mt-4 leading-relaxed">
+        O acesso completo no teste costuma ser de <span className="text-gray-400">7 dias</span> ou mais, sem cobrança
+        enquanto o trial estiver ativo. Se precisar de mais tempo para decidir, <span className="text-gray-400">fale com o
+        suporte</span> e peça extensão do teste por até <span className="text-gray-400">1 mês</span>, conforme combinação.
+        Depois do trial, a cobrança recorrente segue o valor exibido acima (cartão via Stripe). Outros meios podem ser
         adicionados depois.
       </p>
     </div>

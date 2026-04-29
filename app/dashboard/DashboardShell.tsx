@@ -154,7 +154,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         >
           <p className="text-center leading-snug max-w-[min(100%,52rem)]">
             <strong>Acesso compartilhado ao dashboard:</strong> você está no painel de{" "}
-            <strong>{business?.name ?? "—"}</strong>
+            <strong>{business?.name ?? "-"}</strong>
             {profile?.email ? (
               <>
                 {" "}

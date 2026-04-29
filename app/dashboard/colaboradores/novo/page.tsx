@@ -101,7 +101,7 @@ export default function NovoColaboradorPage() {
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              placeholder="Ex: Carlos Barbeiro"
+              placeholder="Ex.: nome do profissional"
               className="w-full h-11 bg-gray-50 border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm"
             />
           </div>
@@ -112,7 +112,7 @@ export default function NovoColaboradorPage() {
               type="text"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value })}
-              placeholder="Ex: Barbeiro, Manicure..."
+              placeholder="Ex.: função ou especialidade"
               className="w-full h-11 bg-gray-50 border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm"
             />
           </div>

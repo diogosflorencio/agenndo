@@ -142,7 +142,7 @@ export default function FinanceiroPage() {
 
   const byCollab: Record<string, number> = {};
   records.forEach((r) => {
-    const name = r.collaborator_name ?? "—";
+    const name = r.collaborator_name ?? "-";
     byCollab[name] = (byCollab[name] ?? 0) + Number(r.amount_cents);
   });
   const COLLAB_REVENUE = Object.entries(byCollab).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
@@ -446,14 +446,14 @@ export default function FinanceiroPage() {
               >
                 <div className="flex-1 min-w-0 basis-[min(100%,12rem)]">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-gray-900 text-sm font-medium truncate">{record.client_name ?? "—"}</p>
+                    <p className="text-gray-900 text-sm font-medium truncate">{record.client_name ?? "-"}</p>
                     {record.appointment_id && (
                       <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                         Agendamento
                       </span>
                     )}
                   </div>
-                  <p className="text-gray-500 text-xs mt-0.5">{record.service_name ?? "—"} · {record.collaborator_name ?? "—"}</p>
+                  <p className="text-gray-500 text-xs mt-0.5">{record.service_name ?? "-"} · {record.collaborator_name ?? "-"}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-xs text-gray-500">{new Date(record.date).toLocaleDateString("pt-BR")}</p>
@@ -600,7 +600,7 @@ export default function FinanceiroPage() {
                   }}
                   className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
                 >
-                  <option value="">— Nenhum —</option>
+                  <option value="">(nenhum)</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -779,7 +779,7 @@ export default function FinanceiroPage() {
                   }}
                   className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
                 >
-                  <option value="">— Nenhum —</option>
+                  <option value="">(nenhum)</option>
                   {clients.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}

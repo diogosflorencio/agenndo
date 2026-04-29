@@ -7,13 +7,13 @@ const siteUrl = getSiteUrl();
 export const metadata: Metadata = {
   title: "Software de agendamento online para prestadores de serviço",
   description:
-    "Agenndo: sistema completo de agendamento online — página pública por link, agenda, equipe, lembretes e painel. Serve barbearias, salões, clínicas, estética, tatuadores, personal trainers, pet shops, consultórios e qualquer negócio por hora marcada. Serviço YWP (YourWebPlace).",
+    "Agenndo: sistema completo de agendamento online com página pública por link, agenda, equipe, lembretes e painel. Atende salões, clínicas, estética, consultórios, personal trainers, pet shops e qualquer negócio por hora marcada. Serviço YWP (YourWebPlace).",
   keywords: [
     "software agendamento online",
     "sistema de agendamento",
     "site para agendar horário",
     "marcar horário online",
-    "agenda para barbearia",
+    "agenda online prestador",
     "agenda para salão de beleza",
     "agendamento clínica estética",
     "software para prestador de serviço",
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: `${siteUrl}/agendamento-online` },
   openGraph: {
-    title: "Agenndo — Software de agendamento online (YWP)",
+    title: "Agenndo - Software de agendamento online (YWP)",
     description:
       "Sistema completo de agendamento para diversos tipos de serviço. Configure em minutos; clientes agendam 24h.",
     url: `${siteUrl}/agendamento-online`,
@@ -36,14 +36,14 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Agenndo — Software de agendamento online (YWP)",
+    title: "Agenndo - Software de agendamento online (YWP)",
     description:
       "Sistema completo de agendamento para diversos tipos de serviço. Configure em minutos; clientes agendam 24h.",
   },
 };
 
 const SEGMENTOS = [
-  "Barbearia e corte masculino",
+  "Salão, barbearia e cuidados capilares",
   "Salão de beleza, coloração e tratamentos",
   "Manicure, pedicure e nail design",
   "Clínica de estética, depilação e massagem",
@@ -105,7 +105,7 @@ export default function AgendamentoOnlinePage() {
           <strong className="text-white">página pública</strong> para o cliente marcar horário a qualquer hora; você
           gerencia <strong className="text-white">agenda, disponibilidade, serviços, equipe, clientes e financeiro</strong>{" "}
           em um painel único. O mesmo produto serve a{" "}
-          <strong className="text-white">qualquer prestador que trabalhe com hora marcada</strong> — basta configurar
+          <strong className="text-white">qualquer prestador que trabalhe com hora marcada</strong>. Basta configurar
           serviços e horários de acordo com a sua operação.
         </p>
 

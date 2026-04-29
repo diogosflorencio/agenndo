@@ -17,10 +17,9 @@ try {
   metadataBase = new URL("http://localhost:3000");
 }
 
-const titleDefault =
-  "Agenndo — Sistema de agendamento online para prestadores de serviço";
+const titleDefault = "Agenndo - Sistema de agendamento online para prestadores de serviço";
 const description =
-  "Software completo de agendamento online (YWP / YourWebPlace): clientes marcam horário 24h por link ou QR Code; você gerencia agenda, equipe, financeiro e lembretes. Serve barbearias, salões, clínicas, estética, tatuadores, personal trainers, pet shops, consultórios e qualquer negócio por hora marcada — basta configurar serviços e disponibilidade.";
+  "Software completo de agendamento online (YWP / YourWebPlace): clientes marcam horário 24h por link ou QR Code; você gerencia agenda, equipe, financeiro e lembretes. Atende salões, clínicas, estética, barbearias, consultórios, personal trainers, pet shops e qualquer negócio por hora marcada. Basta configurar serviços e disponibilidade.";
 
 const verificationMeta = (() => {
   const google = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
@@ -61,7 +60,7 @@ export const metadata: Metadata = {
     "site para agendar horário",
     "marcar horário online",
     "plataforma de agendamento",
-    "agenda para barbearia",
+    "agenda online para prestador",
     "agenda para salão",
     "agendamento clínica estética",
     "software para prestador",
@@ -90,7 +89,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    title: "Agenndo — Agendamento online",
+    title: "Agenndo - Agendamento online",
     statusBarStyle: "black-translucent",
   },
   icons: {
@@ -116,10 +115,10 @@ export const metadata: Metadata = {
 const knowsAbout = [
   "Agendamento online",
   "Gestão de agenda para prestadores",
-  "Barbearia",
   "Salão de beleza",
   "Clínica de estética",
   "Consultório",
+  "Barbearia",
   "Personal trainer",
   "Pet shop",
   "Estúdio de tatuagem",
@@ -145,7 +144,7 @@ const jsonLd = {
       url: siteUrl,
       logo: `${siteUrl}/icon.svg`,
       description:
-        "Empresa por trás do Agenndo — software de agendamento online e gestão para prestadores de serviço.",
+        "Empresa por trás do Agenndo: software de agendamento online e gestão para prestadores de serviço.",
       brand: {
         "@type": "Brand",
         name: "Agenndo",

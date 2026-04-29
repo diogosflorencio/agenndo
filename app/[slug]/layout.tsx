@@ -10,11 +10,11 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
   let title = "Agendar horário online";
   let description =
-    "Marque seu horário online com segurança. Página de agendamento Agenndo — software completo para prestadores (YWP / YourWebPlace).";
+    "Marque seu horário online com segurança. Página de agendamento Agenndo, software completo para prestadores (YWP / YourWebPlace).";
 
   if (business?.name) {
     const cityPart = business.city ? ` (${business.city})` : "";
-    title = `${business.name} — agendar online${cityPart}`;
+    title = `${business.name} · agendar online${cityPart}`;
     const tag = personalization?.tagline?.trim();
     description = tag
       ? `${tag} Agende em ${business.name}${cityPart}. Link oficial de agendamento; plataforma Agenndo (YWP).`

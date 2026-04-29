@@ -141,7 +141,7 @@ export default function ColaboradoresPage() {
                   </div>
                   <div className="flex-1">
                     <h3 className="text-gray-900 font-bold">{collab.name}</h3>
-                    <p className="text-gray-500 text-xs mt-0.5">{collab.role ?? "—"}</p>
+                    <p className="text-gray-500 text-xs mt-0.5">{collab.role ?? "-"}</p>
                     <div className="flex items-center gap-1 mt-1.5">
                       <span className={`size-1.5 rounded-full ${collab.active ? "bg-primary" : "bg-gray-500"}`} />
                       <span className={`text-xs font-medium ${collab.active ? "text-primary" : "text-gray-500"}`}>

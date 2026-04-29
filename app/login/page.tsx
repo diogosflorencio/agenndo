@@ -187,10 +187,12 @@ function LoginContent() {
           <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-xl text-center">
             <div className="flex items-center justify-center gap-2 mb-2">
               <span className="material-symbols-outlined text-primary text-base">rocket_launch</span>
-              <span className="text-sm font-bold text-primary">7 dias grátis, sem cartão</span>
+              <span className="text-sm font-bold text-primary">Teste grátis (7 dias ou mais)</span>
             </div>
-            <p className="text-xs text-gray-400">
-              Novos usuários têm acesso completo por 7 dias. O preço do plano aparece em Conta após o teste.
+            <p className="text-xs text-gray-400 leading-relaxed">
+              No cadastro você já vê quanto vai pagar por mês após o teste. Use tudo sem cobrança enquanto o trial estiver
+              ativo; se precisar de mais tempo, <span className="text-gray-300">peça ao suporte</span> extensão por até{" "}
+              <span className="text-gray-300">1 mês</span> em casos combinados.
             </p>
           </div>
         </main>

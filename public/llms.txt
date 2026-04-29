@@ -1,4 +1,4 @@
-# Agenndo — agendamento online (YWP / YourWebPlace)
+# Agenndo: agendamento online (YWP / YourWebPlace)
 
 > O Agenndo é um sistema completo de agendamento online para prestadores de serviço. Quem usa a plataforma configura horários, serviços, equipe e uma página pública; clientes marcam horário 24h por dia por link ou QR Code.
 
@@ -16,8 +16,8 @@
 
 ## Segmentos e tipos de serviço (exemplos)
 O mesmo software serve a qualquer negócio com hora marcada, desde que o usuário configure serviços e agenda. Exemplos comuns:
-- Barbearia e barba
-- Salão de beleza, cabeleireiro, manicure, pedicure
+- Salão de beleza, estética, cabeleireiro, manicure, pedicure
+- Barbearia
 - Clínica de estética, depilação, massagem
 - Consultório (fisioterapia, nutrição, psicologia, etc.)
 - Estúdio de tatuagem ou piercing
@@ -26,28 +26,28 @@ O mesmo software serve a qualquer negócio com hora marcada, desde que o usuári
 - Fotógrafo, videomaker por sessão
 - Oficina mecânica (agendamento de vaga)
 - Coworking, sala de reunião
-- Qualquer outro serviço por agendamento — a lógica é a mesma
+- Qualquer outro serviço por agendamento (a lógica é a mesma)
 
 ## Páginas úteis para indexação
-- / — página inicial do produto
-- /sobre — sobre o Agenndo e a YWP
-- /agendamento-online — descrição ampliada para SEO (software de agendamento)
-- /termos — termos de uso
-- /politicas — política de privacidade
-- /conta — área do cliente (agendamentos) quando aplicável
+- / (raiz): página inicial do produto
+- /sobre: sobre o Agenndo e a YWP
+- /agendamento-online: descrição ampliada para SEO (software de agendamento)
+- /termos: termos de uso
+- /politicas: política de privacidade
+- /conta: área do cliente (agendamentos) quando aplicável
 
 ## Sitemaps (URLs canônicas)
-- /sitemap.xml — URLs estáticas + páginas públicas por negócio (slug)
-- /sitemap_index.xml — índice que aponta para /sitemap.xml
-- /robots.txt — gerado pelo app; área logada (/dashboard/, /api/, /auth/, /setup) não deve ser indexada
+- /sitemap.xml: URLs estáticas + páginas públicas por negócio (slug)
+- /sitemap_index.xml: índice que aponta para /sitemap.xml
+- /robots.txt: gerado pelo app; área logada (/dashboard/, /api/, /auth/, /setup) não deve ser indexada
 
 ## Páginas de clientes (dinâmicas)
-- /{slug} — página pública de um estabelecimento (agendar horário). Cada slug é um negócio diferente.
+- /{slug}: página pública de um estabelecimento (agendar horário). Cada slug é um negócio diferente.
 
 ## Não indexar (área logada)
-- /dashboard/* — painel do prestador
-- /setup — onboarding
-- /auth/* — autenticação
+- /dashboard/*: painel do prestador
+- /setup: onboarding
+- /auth/*: autenticação
 
 ## Contato / marca
 - Agenndo é um serviço da YWP (YourWebPlace).

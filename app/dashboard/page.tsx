@@ -12,6 +12,7 @@ import {
   type SetupProgressSnapshot,
 } from "@/components/dashboard-setup-guide";
 import { hasFullServiceAccess } from "@/lib/billing-access";
+import { mergePersonalizationSocialLinks } from "@/lib/social-links";
 import { setAppointmentAttendance, centsToMoneyInput } from "@/lib/appointment-finance";
 import { AppointmentValueModal } from "@/components/appointment-value-modal";
 import { localISODate } from "@/lib/agenda-calendar-helpers";
@@ -164,7 +165,8 @@ export default function DashboardHome() {
         .from("services")
         .select("id", { count: "exact", head: true })
         .eq("business_id", business.id)
-        .eq("active", true),
+        .eq("active", true)
+        .is("archived_at", null),
       supabase
         .from("collaborators")
         .select("id", { count: "exact", head: true })
@@ -174,7 +176,7 @@ export default function DashboardHome() {
       supabase.from("collaborator_services").select("service_id").limit(1).maybeSingle(),
       supabase
         .from("personalization")
-        .select("tagline, banner_url, about, instagram_url, facebook_url, whatsapp_number")
+        .select("tagline, banner_url, about, social_links, instagram_url, facebook_url, whatsapp_number")
         .eq("business_id", business.id)
         .maybeSingle(),
     ]).then(
@@ -189,16 +191,19 @@ export default function DashboardHome() {
           tagline?: string | null;
           banner_url?: string | null;
           about?: string | null;
+          social_links?: unknown;
           instagram_url?: string | null;
           facebook_url?: string | null;
           whatsapp_number?: string | null;
         } | null;
+        const hasSocialLinks =
+          mergePersonalizationSocialLinks(per?.social_links, per?.instagram_url ?? null, per?.facebook_url ?? null)
+            .length > 0;
         const hasPersonalizationExtras = !!(
           per?.tagline?.trim() ||
           per?.banner_url?.trim() ||
           per?.about?.trim() ||
-          per?.instagram_url?.trim() ||
-          per?.facebook_url?.trim() ||
+          hasSocialLinks ||
           per?.whatsapp_number?.trim()
         );
         setSetupSnapshot({
@@ -290,7 +295,7 @@ export default function DashboardHome() {
   if (maxDay && maxDay.agendamentos > 15) {
     insights.push({
       icon: "lightbulb",
-      text: `${maxDay.day} é seu dia mais cheio (${maxDay.agendamentos} agend.) — considere abrir mais horários.`,
+      text: `${maxDay.day} é seu dia mais cheio (${maxDay.agendamentos} agend.); considere abrir mais horários.`,
       color: "text-amber-600",
     });
   }
@@ -341,7 +346,7 @@ export default function DashboardHome() {
       subColor: "text-gray-400",
       icon: "date_range",
     },
-    { label: "Comparecimento", value: `${taxaComparecimento}%`, sub: totalWithStatus > 0 ? `${compareceu}/${totalWithStatus}` : "—", subColor: "text-gray-400", icon: "calendar_month" },
+    { label: "Comparecimento", value: `${taxaComparecimento}%`, sub: totalWithStatus > 0 ? `${compareceu}/${totalWithStatus}` : "-", subColor: "text-gray-400", icon: "calendar_month" },
     { label: "Receita semana", value: formatCurrency(receitaWeek / 100), sub: "últimos 7 dias", subColor: "text-gray-400", icon: "payments" },
   ];
 
@@ -475,7 +480,7 @@ export default function DashboardHome() {
                 const statusConf = STATUS_CONFIG[apt.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.agendado;
                 const clientName = apt.clients?.name ?? apt.client_name_snapshot ?? "Cliente";
                 const serviceName = apt.services?.name ?? "Serviço";
-                const collabName = apt.collaborators?.name ?? "—";
+                const collabName = apt.collaborators?.name ?? "-";
                 return (
                   <div key={apt.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors shadow-sm">
                     <div className="p-4 flex gap-3 items-start">

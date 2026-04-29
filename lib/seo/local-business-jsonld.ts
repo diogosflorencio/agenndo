@@ -11,7 +11,7 @@ export function buildLocalBusinessJsonLd(seo: PublicSlugSeo, canonical: string, 
   const desc =
     personalization?.about?.trim() ||
     personalization?.tagline?.trim() ||
-    `Agendamento online em ${business.name}${business.city ? ` — ${business.city}` : ""}.`;
+    `Agendamento online em ${business.name}${business.city ? ` (${business.city})` : ""}.`;
 
   return {
     "@context": "https://schema.org",

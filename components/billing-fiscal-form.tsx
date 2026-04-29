@@ -11,7 +11,7 @@ type Props = {
   business: BillingFiscalFields;
 };
 
-/** CPF/CNPJ para NF — preencher após assinar (nome/endereço vêm do Stripe). */
+/** CPF/CNPJ para NF; preencher após assinar (nome/endereço vêm do Stripe). */
 export function BillingDocumentForm({ businessId, business }: Props) {
   const router = useRouter();
   const { showAlert } = useAppAlert();

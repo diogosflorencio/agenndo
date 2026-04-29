@@ -6,7 +6,7 @@ const base = getSiteUrl();
 export const metadata: Metadata = {
   title: "Termos de uso",
   description:
-    "Termos de uso do Agenndo — sistema de agendamento online (YWP / YourWebPlace). Condições de uso do serviço para prestadores e clientes.",
+    "Termos de uso do Agenndo (sistema de agendamento online YWP / YourWebPlace). Condições de uso do serviço para prestadores e clientes.",
   alternates: { canonical: `${base}/termos` },
   robots: { index: true, follow: true },
   openGraph: {

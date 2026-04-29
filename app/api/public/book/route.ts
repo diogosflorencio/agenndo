@@ -17,6 +17,7 @@ import {
   BOOKING_TZ,
 } from "@/lib/public-booking";
 import { hasFullServiceAccess } from "@/lib/billing-access";
+import { normalizeVariantGallery, variantEffectivePriceCents } from "@/lib/service-variants";
 
 export const runtime = "nodejs";
 
@@ -60,6 +61,7 @@ export async function POST(req: Request) {
   const timeStartRaw = typeof b.timeStart === "string" ? b.timeStart.trim() : "";
   const clientName = typeof b.clientName === "string" ? b.clientName.trim() : "";
   const notes = typeof b.notes === "string" ? b.notes.slice(0, 2000) : "";
+  const serviceVariantIndexRaw = b.serviceVariantIndex;
   const collaboratorIdParam =
     typeof b.collaboratorId === "string" && b.collaboratorId.trim() ? b.collaboratorId.trim() : null;
 
@@ -101,14 +103,38 @@ export async function POST(req: Request) {
 
   const { data: svc, error: svcErr } = await admin
     .from("services")
-    .select("id, business_id, duration_minutes, price_cents, active")
+    .select("id, business_id, duration_minutes, price_cents, active, archived_at, variant_gallery")
     .eq("id", serviceId)
     .maybeSingle();
-  if (svcErr || !svc?.id || svc.business_id !== bid || !svc.active) {
-    return NextResponse.json({ error: "Serviço inválido" }, { status: 400 });
+  if (svcErr || !svc?.id || svc.business_id !== bid || !svc.active || svc.archived_at != null) {
+    return NextResponse.json({ error: "Serviço inválido ou indisponível" }, { status: 400 });
   }
   const durationMinutes = Number(svc.duration_minutes) || 30;
-  const priceCents = Number(svc.price_cents) || 0;
+  const priceCentsBase = Number(svc.price_cents) || 0;
+
+  const variantOptions = normalizeVariantGallery(svc.variant_gallery);
+  let serviceVariantIndex: number | null = null;
+  let serviceVariantLabel: string | null = null;
+  let priceCents = priceCentsBase;
+
+  if (variantOptions.length > 0) {
+    const idx =
+      typeof serviceVariantIndexRaw === "number" && Number.isInteger(serviceVariantIndexRaw)
+        ? serviceVariantIndexRaw
+        : null;
+    if (idx !== null && (idx < 0 || idx >= variantOptions.length)) {
+      return NextResponse.json({ error: "Variação inválida para este serviço" }, { status: 400 });
+    }
+    if (idx !== null) {
+      serviceVariantIndex = idx;
+      const picked = variantOptions[idx]!;
+      const t = picked.title?.trim();
+      serviceVariantLabel = t && t.length > 0 ? t.slice(0, 120) : `Opção ${idx + 1}`;
+      priceCents = variantEffectivePriceCents(picked, priceCentsBase);
+    }
+  } else if (serviceVariantIndexRaw !== undefined && serviceVariantIndexRaw !== null) {
+    return NextResponse.json({ error: "Variação inválida para este serviço" }, { status: 400 });
+  }
 
   const { data: links } = await admin
     .from("collaborator_services")
@@ -298,6 +324,8 @@ export async function POST(req: Request) {
       price_cents: priceCents,
       status: "agendado",
       notes: notes || null,
+      service_variant_index: serviceVariantIndex,
+      service_variant_label: serviceVariantLabel,
     })
     .select("id")
     .single();

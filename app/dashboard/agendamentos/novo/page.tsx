@@ -65,6 +65,7 @@ export default function NovoAgendamentoPage() {
           "id, name, duration_minutes, price_cents, emoji, active, collaborator_services(collaborator_id, collaborators(id, name, color))"
         )
         .eq("business_id", business.id)
+        .is("archived_at", null)
         .order("name"),
       supabase
         .from("collaborators")
