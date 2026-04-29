@@ -9,7 +9,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login?next=/dashboard");
 
-  /** Mesmo critério do RLS (effective_user_id): não usar profile.id !== user.id — perfis legados podem ter id ≠ auth.users.id. */
+  /** Mesmo critério do RLS (effective_user_id): não usar profile.id !== user.id; perfis legados podem ter id ≠ auth.users.id. */
   const { data: effRaw, error: effError } = await supabase.rpc("get_effective_user_id");
   const effectiveUserId =
     !effError && typeof effRaw === "string" && effRaw.length > 0 ? effRaw : user.id;

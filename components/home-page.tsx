@@ -69,7 +69,7 @@ export default function HomePage() {
           <div className="text-center lg:text-left space-y-8 z-10 order-2 lg:order-1">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider">
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              Agenndo — A solução definitiva de agendamento
+              Agenndo · a solução completa de agendamento
             </div>
 
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.1]">
@@ -80,7 +80,7 @@ export default function HomePage() {
             </h1>
 
             <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-              Para <strong className="text-white">barbearias, salões, clínicas, estúdios de tatuagem</strong> e muito mais. Seus clientes agendam 24h por dia, você foca no que sabe fazer.
+              Para <strong className="text-white">clínicas, salões, consultórios, estúdios e prestadores de serviço</strong> em geral. Seus clientes agendam 24h por dia; você foca no que sabe fazer.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
@@ -275,8 +275,8 @@ export default function HomePage() {
                     PB
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white">Pedro Barber</p>
-                    <p className="text-xs text-gray-500">Fundador, Barbearia Vintage</p>
+                    <p className="text-sm font-bold text-white">Pedro Mendes</p>
+                    <p className="text-xs text-gray-500">Proprietário, Studio Verdi</p>
                   </div>
                 </div>
               </div>
@@ -323,7 +323,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Preço sob medida — CTA */}
+      {/* Preço sob medida (CTA) */}
       <section className="py-24 bg-[#080c0a] border-t border-white/5">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
@@ -534,7 +534,7 @@ function PhoneMockup({ large = false }: { large?: boolean }) {
                     <h4 className="font-bold text-white text-sm">João Silva</h4>
                     <span className="text-primary font-bold text-xs">14:00</span>
                   </div>
-                  <p className="text-gray-400 text-xs mt-0.5">Corte + Barba</p>
+                  <p className="text-gray-400 text-xs mt-0.5">Consulta de retorno</p>
                   <div className="flex items-center gap-1 mt-1.5">
                     <div className="size-3.5 rounded-full bg-gray-700 flex items-center justify-center text-[9px] text-white">L</div>
                     <span className="text-[9px] text-gray-500">Lucas</span>
@@ -554,7 +554,7 @@ function PhoneMockup({ large = false }: { large?: boolean }) {
                   <h4 className="font-bold text-white text-sm">Pedro Costa</h4>
                   <span className="text-primary font-bold text-xs">15:30</span>
                 </div>
-                <p className="text-gray-400 text-xs mt-0.5">Corte Masculino</p>
+                <p className="text-gray-400 text-xs mt-0.5">Avaliação completa</p>
               </div>
             </div>
           </main>
@@ -565,7 +565,7 @@ function PhoneMockup({ large = false }: { large?: boolean }) {
           {[
             { icon: "grid_view", label: "Início", active: true },
             { icon: "calendar_month", label: "Agenda", active: false },
-            { icon: "content_cut", label: "Serviços", active: false },
+            { icon: "list_alt", label: "Serviços", active: false },
             { icon: "groups", label: "Equipe", active: false },
             { icon: "person", label: "Conta", active: false },
           ].map((item) => (

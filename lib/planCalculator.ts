@@ -1,10 +1,4 @@
-import {
-  type PlanId,
-  type PaidPlanId,
-  isPaidPlanId,
-  PAID_PLAN_IDS,
-  getPaidTierPrice,
-} from "./plans";
+import { type PlanId, type PaidPlanId, PAID_PLAN_IDS, getPaidTierPrice } from "./plans";
 
 type TeamSize = "1" | "2-5" | "6-15" | "16+";
 
@@ -15,50 +9,70 @@ interface RecommendationInput {
 }
 
 /**
- * Referência do paid_01 (R$ 29,90): ~1 trabalhador, ~5 atendimentos/dia, ticket médio ~R$ 30.
- * Volume diário de referência = 5 × 30. Os outros degraus sobem conforme esse múltiplo e o tamanho da equipe.
+ * Perfil de referência para o degrau mais acessível (paid_01 ≈ R$ 30):
+ * 1 pessoa na equipe, ~8 atendimentos/dia, ticket médio ~R$ 30.
+ *
+ * O “volume econômico” não é só daily × ticket com peso igual: o ticket médio tem expoente
+ * maior (impacto no faturamento típico); atendimentos/dia têm expoente menor (volume alto nem
+ * sempre significa margem alta).
  */
-const REF_DAILY_APPOINTMENTS = 5;
+const REF_DAILY_APPOINTMENTS = 8;
 const REF_AVERAGE_TICKET = 30;
-const REF_DAILY_VOLUME = REF_DAILY_APPOINTMENTS * REF_AVERAGE_TICKET;
+/** Expoentes: ticket > daily para refletir peso maior do valor do serviço. */
+const DAILY_EXP = 0.62;
+const TICKET_EXP = 1.22;
 
-/** Índice 0…7 dentro do “bloco” de volume (múltiplos da referência 5×30). */
-function volumeStepsFromBaseline(dailyAppointments: number, averageTicket: number): number {
-  const daily = Math.max(0, Number(dailyAppointments) || 0);
-  const ticket = Math.max(0, Number(averageTicket) || 0);
-  const volume = daily * ticket;
-  const v = volume <= 0 ? 0 : volume / REF_DAILY_VOLUME;
+function economicSignal(dailyAppointments: number, averageTicket: number): number {
+  const d = Math.max(1, Number(dailyAppointments) || 0);
+  const t = Math.max(1, Number(averageTicket) || 0);
+  return Math.pow(d, DAILY_EXP) * Math.pow(t, TICKET_EXP);
+}
 
-  if (v <= 1.12) return 0;
-  if (v <= 1.45) return 1;
-  if (v <= 1.95) return 2;
-  if (v <= 2.65) return 3;
-  if (v <= 3.6) return 4;
-  if (v <= 5) return 5;
-  if (v <= 7.5) return 6;
+const REF_SIGNAL = economicSignal(REF_DAILY_APPOINTMENTS, REF_AVERAGE_TICKET);
+
+/** Razão do sinal econômico em relação ao perfil de referência (1 ≈ ancoragem paid_01). */
+function volumeRatio(dailyAppointments: number, averageTicket: number): number {
+  const num = economicSignal(dailyAppointments, averageTicket);
+  return REF_SIGNAL > 0 ? num / REF_SIGNAL : 0;
+}
+
+/** Até 8 passos pelo volume/ticket (antes do “empurrão” da equipe). */
+function volumeStepsFromRatio(ratio: number): number {
+  if (!Number.isFinite(ratio) || ratio <= 0) return 0;
+  if (ratio <= 1.08) return 0;
+  if (ratio <= 1.32) return 1;
+  if (ratio <= 1.62) return 2;
+  if (ratio <= 2.0) return 3;
+  if (ratio <= 2.48) return 4;
+  if (ratio <= 3.05) return 5;
+  if (ratio <= 3.85) return 6;
   return 7;
 }
 
-/** Piso do degrau conforme tamanho da equipe (progressão além do solo “5×30”). */
+/**
+ * Peso da equipe: equipes maiores sobem degraus, com incrementos mais suaves que o modelo antigo
+ * para não punir quem é pequeno.
+ */
 function teamTierBase(teamSize: TeamSize): number {
   switch (teamSize) {
     case "1":
       return 0;
     case "2-5":
-      return 3;
+      return 2;
     case "6-15":
-      return 7;
+      return 5;
     case "16+":
-      return 12;
+      return 10;
     default:
       return 0;
   }
 }
 
-/** Qual dos 20 degraus (paid_01…paid_20) melhor reflete o perfil — produto idêntico em todos. */
+/** Qual dos 20 degraus (paid_01…paid_20) melhor reflete o perfil (produto idêntico em todos). */
 function recommendedTierIndex(input: RecommendationInput): number {
   const { teamSize, dailyAppointments, averageTicket } = input;
-  const steps = volumeStepsFromBaseline(dailyAppointments, averageTicket);
+  const r = volumeRatio(dailyAppointments, averageTicket);
+  const steps = volumeStepsFromRatio(r);
   const base = teamTierBase(teamSize);
   return base + steps;
 }
@@ -80,11 +94,15 @@ function planOfferCopy(): Pick<DynamicPlanResult, "infrastructure" | "highlight"
   return {
     infrastructure: "",
     highlight:
-      "Mensalidade conforme o perfil do negócio; produto completo e uso ilimitado no escopo declarado. Após o teste, cobrança no cartão (Stripe).",
+      "Mensalidade conforme o perfil informado; produto completo e uso ilimitado no escopo declarado. Após o teste, cobrança no cartão (Stripe).",
     features: [
       {
-        title: "Tudo ilimitado no produto",
-        sub: "Colaboradores, serviços e agendamentos — alinhados ao que você informou na inscrição.",
+        title: "Você já vê o valor mensal",
+        sub: "O investimento é calculado a partir da equipe, ticket médio e volume declarados; o mesmo plano para todos os recursos.",
+      },
+      {
+        title: "Teste sem pressa",
+        sub: "Use tudo por pelo menos 7 dias grátis. Precisa de mais tempo para avaliar? Fale com o suporte e peça extensão do trial por até 1 mês em casos combinados.",
       },
       {
         title: "Infraestrutura dedicada",
@@ -97,10 +115,6 @@ function planOfferCopy(): Pick<DynamicPlanResult, "infrastructure" | "highlight"
       {
         title: "Uso coerente com o declarado",
         sub: "Se o uso for muito diferente do apresentado, a YWP reserva-se o direito de intervir, conforme os Termos de Serviço.",
-      },
-      {
-        title: "Teste grátis e cobrança recorrente",
-        sub: "7 dias para avaliar; em seguida mensalidade no cartão, no degrau indicado para o seu perfil.",
       },
     ],
   };

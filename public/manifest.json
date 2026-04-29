@@ -1,7 +1,7 @@
 {
-  "name": "Agenndo — Sistema de agendamento online",
+  "name": "Agenndo - Sistema de agendamento online",
   "short_name": "Agenndo",
-  "description": "Agenndo (YWP / YourWebPlace): agendamento online para prestadores — link público, lembretes e painel. Instale como app (PWA).",
+  "description": "Agenndo (YWP / YourWebPlace): agendamento online para prestadores. Link público, lembretes e painel. Instale como app (PWA).",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020403",

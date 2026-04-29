@@ -39,7 +39,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
     }
   } catch {
-    /* build sem DB — mantém URLs estáticas */
+    /* build sem DB; mantém URLs estáticas */
   }
 
   return entries;

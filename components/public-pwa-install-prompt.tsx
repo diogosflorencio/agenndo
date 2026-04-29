@@ -129,7 +129,7 @@ export function PublicPwaInstallPrompt({
             {showAndroid
               ? `Instale o atalho de ${businessName.slice(0, 36)}${businessName.length > 36 ? "…" : ""} para abrir o agendamento em tela cheia com um toque.`
               : showIOS
-                ? "No iPhone/iPad: toque em Compartilhar (□↑) e em Adicionar à Tela de Início — assim você volta ao agendamento como um app."
+                ? "No iPhone/iPad: toque em Compartilhar (□↑) e em Adicionar à Tela de Início. Assim você volta ao agendamento como um app."
                 : "Use o menu do navegador (⋮ ou Compartilhar) e escolha Instalar app ou Adicionar à tela inicial, se aparecer."}
           </p>
           <p className={cn("text-[10px] leading-snug", isDark ? "text-white/45" : "text-gray-500")}>

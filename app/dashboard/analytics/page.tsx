@@ -437,7 +437,7 @@ export default function AnalyticsPage() {
         out.push({
           icon: "calendar_month",
           color: "text-blue-400 bg-blue-400/10",
-          text: `${DAYS_LABELS[maxD]} concentra ${pct}% dos agendamentos do período — vale ajustar disponibilidade ou equipe nesse dia.`,
+          text: `${DAYS_LABELS[maxD]} concentra ${pct}% dos agendamentos do período. Vale ajustar disponibilidade ou equipe nesse dia.`,
         });
       }
     }
@@ -538,7 +538,7 @@ export default function AnalyticsPage() {
     {
       label: "Taxa de presença",
       value:
-        taxaCurr !== null ? `${taxaCurr}%` : "—",
+        taxaCurr !== null ? `${taxaCurr}%` : "-",
       sub: mTaxa.text,
       up: mTaxa.up,
     },
@@ -559,7 +559,7 @@ export default function AnalyticsPage() {
       value:
         kpis.agendamentos.curr > 0
           ? formatCurrency(centsToReais(kpis.ticket.curr))
-          : "—",
+          : "-",
       sub: mTicket.text,
       up: mTicket.up,
     },
@@ -818,7 +818,7 @@ export default function AnalyticsPage() {
                                 : "#e5e7eb"
                               : `rgba(19, 236, 91, ${0.2 + intensity * 0.8})`,
                         }}
-                        title={`${day} ${hour}h — ${val} agend.`}
+                        title={`${day} ${hour}h · ${val} agend.`}
                       />
                     );
                   })}

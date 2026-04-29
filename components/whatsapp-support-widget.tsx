@@ -136,7 +136,7 @@ export function WhatsAppSupportWidget({ context }: WhatsAppSupportWidgetProps) {
     <div className={cn("fixed z-50 flex flex-col items-end gap-3", containerPosition)}>
     {open && (
       <div
-        className="w-[280px] sm:w-[320px] rounded-2xl border shadow-2xl backdrop-blur bg-white/95 dark:bg-slate-900/95"
+        className="w-[min(280px,calc(100vw-5rem))] sm:w-[320px] rounded-2xl border shadow-2xl backdrop-blur bg-white/95 dark:bg-slate-900/95"
         style={{
           borderColor: isLanding
             ? "rgba(15, 23, 42, 0.08)"

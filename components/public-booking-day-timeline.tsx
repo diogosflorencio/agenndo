@@ -517,7 +517,7 @@ export function PublicBookingDayTimeline({
         válidos.
       </p>
 
-      {/* Mobile: uma linha — barra | legendas (altura = expediente) | marcas de hora */}
+      {/* Mobile: uma linha (barra, legendas, marcas de hora) */}
       <div className={cn("flex md:hidden gap-1.5 items-stretch w-full", MOBILE_TRACK_MIN_H)}>
             <div
               ref={barVRef}
@@ -772,7 +772,7 @@ export function PublicBookingDayTimeline({
               labelTier={1}
               isDark={isDark}
               label="Já passou"
-              detail={`Agora ${nowHm} — não dá para marcar acima`}
+              detail={`Agora ${nowHm}: não dá para marcar acima`}
             />
           ) : null}
           {payload.schedule.breaks.map((br, i) => {
@@ -1099,7 +1099,7 @@ export function PublicBookingDayTimeline({
       </div>
 
       <p className={cn("text-[11px] leading-relaxed hidden md:block", isDark ? "text-white/45" : "text-gray-500")}>
-        Toque na barra ou arraste o bloco &quot;Você&quot; — ele encaixa só nos horários da grade ({dur + buf} min entre
+        Toque na barra ou arraste o bloco &quot;Você&quot;: ele encaixa só nos horários da grade ({dur + buf} min entre
         cada início de vaga
         {buf > 0 ? ", já contando o intervalo após o serviço" : ""}).
       </p>

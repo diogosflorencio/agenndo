@@ -53,7 +53,7 @@ export function isLocalhostOAuthPopup(): boolean {
  * Origem usada no `redirectTo` do `signInWithOAuth` (deve bater com Redirect URLs no Supabase).
  *
  * No browser em `localhost` / `127.0.0.1`: sempre `window.location.origin`, para o retorno do OAuth
- * e o `postMessage` do oauth-bridge ficarem na mesma origem da página que abriu o popup — mesmo que
+ * e o `postMessage` do oauth-bridge ficarem na mesma origem da página que abriu o popup, mesmo que
  * `NEXT_PUBLIC_SUPABASE_OAUTH_ORIGIN` aponte para produção (cenário comum ao copiar `.env`).
  *
  * Fora disso: `NEXT_PUBLIC_SUPABASE_OAUTH_ORIGIN`, depois `window.location.origin`, ou no SSR `NEXT_PUBLIC_AUTH_REDIRECT_ORIGIN` / `NEXT_PUBLIC_SUPABASE_OAUTH_ORIGIN`.

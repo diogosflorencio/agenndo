@@ -345,7 +345,7 @@ function MiniCalendar({
     );
   }
 
-  // Calendar grid for dia/semana — semanas começam na segunda (ISO), com coluna de número da semana
+  // Calendar grid para dia/semana; semanas começam na segunda (ISO), com coluna de número da semana
   const monthStart = startOfMonth(viewMonth);
   const monthEnd = endOfMonth(viewMonth);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -823,11 +823,11 @@ export default function DisponibilidadePage() {
       case "padrao":
         return "Horários de todos os dias não personalizados";
       case "dia":
-        return `Horário do dia — ${format(parseISO(selDay), "d 'de' MMMM yyyy", { locale: ptBR })}`;
+        return `Horário do dia · ${format(parseISO(selDay), "d 'de' MMMM yyyy", { locale: ptBR })}`;
       case "semana":
         return "Horários da semana selecionada";
       case "mes":
-        return `Horários do mês — ${format(monthStartDate, "MMMM yyyy", { locale: ptBR })}`;
+        return `Horários do mês · ${format(monthStartDate, "MMMM yyyy", { locale: ptBR })}`;
       default:
         return "Horários";
     }
@@ -863,7 +863,7 @@ export default function DisponibilidadePage() {
     return false;
   }, [scope, selDay, selWeekMonday, monthStartDate, overrides]);
 
-  // Determine selected display label for period card — must be before any conditional return
+  // Label do período selecionado (antes de qualquer return condicional)
   const periodLabel = useMemo(() => {
     if (scope === "padrao") return "Todas as semanas";
     if (scope === "dia") return format(parseISO(selDay), "d 'de' MMMM yyyy", { locale: ptBR });
@@ -928,7 +928,7 @@ export default function DisponibilidadePage() {
           <Card isDark={isDark}>
             <CardHeader
               title="Período a configurar"
-              subtitle="Escolha o tipo e o recorte (a partir de hoje e próximos períodos)"
+              subtitle="Escolha o tipo e o período (a partir de hoje e próximos)"
               isDark={isDark}
             />
             <div className="px-5 py-4 space-y-4">
@@ -1078,7 +1078,7 @@ export default function DisponibilidadePage() {
                                   className={`size-3.5 rounded border shrink-0 ${isDark ? "border-white/20 bg-white/5" : "border-gray-300"}`}
                                 />
                                 <span className={`text-xs font-medium ${isDark ? "text-white/75" : "text-gray-800"}`}>
-                                  Não trabalho — sem atendimento neste período
+                                  Não trabalho neste período (sem atendimento)
                                 </span>
                               </label>
                               {day.active ? (
@@ -1157,7 +1157,7 @@ export default function DisponibilidadePage() {
                                 </>
                               ) : (
                                 <p className={`text-xs pl-0.5 ${isDark ? "text-white/40" : "text-gray-500"}`}>
-                                  Nenhum horário disponível para agendamento neste recorte. Desmarque a opção acima para definir expediente.
+                                  Nenhum horário disponível para agendamento neste período. Desmarque a opção acima para definir expediente.
                                 </p>
                               )}
                             </div>
@@ -1193,7 +1193,7 @@ export default function DisponibilidadePage() {
                 label="Intervalo entre atendimentos"
                 sublabel={
                   buffer === 0
-                    ? "Sem intervalo — próximo cliente entra imediatamente"
+                    ? "Sem intervalo entre um cliente e outro (próximo entra na sequência)"
                     : `${buffer} min de folga entre o fim de um serviço e o início do próximo`
                 }
                 value={buffer}
@@ -1209,7 +1209,7 @@ export default function DisponibilidadePage() {
                 label="Aviso prévio mínimo"
                 sublabel={
                   minAdvance === 0
-                    ? "Agendamento imediato permitido — sem aviso mínimo"
+                    ? "Agendamento imediato permitido (sem aviso mínimo)"
                     : `Cliente precisa agendar com pelo menos ${minAdvance}h de antecedência`
                 }
                 value={minAdvance}
@@ -1299,7 +1299,7 @@ export default function DisponibilidadePage() {
                         Blocos de horários
                       </p>
                       <p className={`text-xs mt-1 leading-relaxed ${isDark ? "text-white/50" : "text-gray-500"}`}>
-                        Grade com botões (manhã, tarde, noite) — toque no horário livre.
+                        Grade com botões (manhã, tarde, noite): toque no horário livre.
                       </p>
                     </div>
                   </div>
@@ -1322,7 +1322,7 @@ export default function DisponibilidadePage() {
                     O mais indicado é <strong>Blocos de horários</strong>.
                     {publicBookingTimeUi === "slider" ? (
                       <span className="block mt-1.5 font-medium text-amber-700 dark:text-amber-200/95">
-                        Você está com a linha do tempo ativa — considere mudar para blocos e salvar.
+                        Você está com a linha do tempo ativa; considere mudar para blocos e salvar.
                       </span>
                     ) : null}
                   </p>

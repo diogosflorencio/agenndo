@@ -13,9 +13,23 @@ import {
   removeBusinessObject,
 } from "@/lib/business-assets-storage";
 import { compressImageForUpload } from "@/lib/image-compress";
+import {
+  GALLERY_COMPRESS_MAX_LONG_EDGE,
+  PUBLIC_GALLERY_MAX_IMAGES,
+} from "@/lib/public-gallery";
 import { useAppAlert } from "@/components/app-alert-provider";
 import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
 import { PersonalizationShareQr } from "@/components/personalization-share-qr";
+import { SocialBrandIcon } from "@/components/social-brand-icon";
+import {
+  MAX_SOCIAL_LINKS,
+  mergePersonalizationSocialLinks,
+  SOCIAL_PLATFORM_OPTIONS,
+  socialLinksForDb,
+  formatSocialDisplay,
+  type SocialLink,
+  type SocialPlatformId,
+} from "@/lib/social-links";
 
 const PALETTE = [
   { value: "#13EC5B", label: "Verde" },
@@ -44,6 +58,7 @@ type PersonalizationRow = {
   id?: string;
   banner_url: string | null;
   gallery_urls: string[] | null;
+  social_links?: unknown;
   instagram_url: string | null;
   facebook_url: string | null;
   whatsapp_number: string | null;
@@ -54,48 +69,19 @@ type PersonalizationRow = {
   address_line: string | null;
 };
 
-function normalizeInstagram(raw: string): string | null {
-  const t = raw.trim();
-  if (!t) return null;
-  if (t.startsWith("http")) return t;
-  const u = t.replace(/^@/, "").replace(/^\//, "");
-  return `https://instagram.com/${u}`;
-}
-
-function normalizeFacebook(raw: string): string | null {
-  const t = raw.trim();
-  if (!t) return null;
-  if (t.startsWith("http")) return t;
-  return `https://facebook.com/${t.replace(/^@/, "")}`;
-}
-
-function displayInstagram(url: string | null) {
-  if (!url) return "";
-  try {
-    const u = new URL(url);
-    if (u.hostname.includes("instagram.com")) {
-      const p = u.pathname.replace(/\/$/, "").split("/").filter(Boolean)[0];
-      return p ? `@${p}` : url;
-    }
-  } catch {
-    /* ignore */
-  }
-  return url;
-}
-
 function normalizeGalleryUrls(raw: unknown): string[] {
+  let urls: string[] = [];
   if (Array.isArray(raw)) {
-    return raw.filter((u): u is string => typeof u === "string" && u.length > 0);
-  }
-  if (typeof raw === "string") {
+    urls = raw.filter((u): u is string => typeof u === "string" && u.length > 0);
+  } else if (typeof raw === "string") {
     try {
       const p = JSON.parse(raw) as unknown;
-      return Array.isArray(p) ? p.filter((u): u is string => typeof u === "string" && u.length > 0) : [];
+      urls = Array.isArray(p) ? p.filter((u): u is string => typeof u === "string" && u.length > 0) : [];
     } catch {
-      return [];
+      urls = [];
     }
   }
-  return [];
+  return urls.slice(0, PUBLIC_GALLERY_MAX_IMAGES);
 }
 
 function storageFileExt(file: File): string {
@@ -126,8 +112,7 @@ export default function PersonalizacaoPage() {
     tagline: "",
     primaryColor: "#13EC5B",
     about: "",
-    instagram: "",
-    facebook: "",
+    socialLinks: [] as SocialLink[],
     whatsapp: "",
     address: "",
     floatingWhatsapp: true,
@@ -166,6 +151,7 @@ export default function PersonalizacaoPage() {
         .select("id, name, duration_minutes, price_cents, emoji")
         .eq("business_id", business.id)
         .eq("active", true)
+        .is("archived_at", null)
         .order("name", { ascending: true }),
     ]);
 
@@ -188,8 +174,7 @@ export default function PersonalizacaoPage() {
       tagline: p?.tagline ?? "",
       primaryColor: business.primary_color ?? "#13EC5B",
       about: p?.about ?? "",
-      instagram: displayInstagram(p?.instagram_url ?? null),
-      facebook: p?.facebook_url?.replace(/^https?:\/\/(www\.)?facebook\.com\//i, "") ?? "",
+      socialLinks: mergePersonalizationSocialLinks(p?.social_links, p?.instagram_url ?? null, p?.facebook_url ?? null),
       whatsapp: formatBrazilPhoneFromDigits(business.phone ?? p?.whatsapp_number ?? ""),
       address: p?.address_line ?? "",
       floatingWhatsapp: p?.show_whatsapp_fab !== false,
@@ -215,12 +200,29 @@ export default function PersonalizacaoPage() {
 
   const blockMediaActions = uploading !== null || saving;
 
+  const addSocialLinkRow = () => {
+    setForm((f) => {
+      const used = new Set(f.socialLinks.map((l) => l.platform));
+      const nextPlatform = SOCIAL_PLATFORM_OPTIONS.find((o) => !used.has(o.id))?.id;
+      if (!nextPlatform || f.socialLinks.length >= MAX_SOCIAL_LINKS) return f;
+      return { ...f, socialLinks: [...f.socialLinks, { platform: nextPlatform, handle: "" }] };
+    });
+  };
+
+  const removeSocialLinkRow = (index: number) => {
+    setForm((f) => ({
+      ...f,
+      socialLinks: f.socialLinks.filter((_, i) => i !== index),
+    }));
+  };
+
   const persistGalleryUrls = useCallback(
-    async (urls: string[]) => {
+    async (urls: string[], opts?: { skipRouterRefresh?: boolean }) => {
       if (!business?.id) return;
+      const capped = urls.slice(0, PUBLIC_GALLERY_MAX_IMAGES);
       const supabase = createClient();
       const payload = {
-        gallery_urls: urls.length ? urls : null,
+        gallery_urls: capped.length ? capped : null,
         updated_at: new Date().toISOString(),
       };
       const { data: existing, error: selErr } = await supabase
@@ -251,13 +253,13 @@ export default function PersonalizacaoPage() {
         if (prev === null) return null;
         try {
           const b = JSON.parse(prev) as Record<string, unknown>;
-          b.galleryUrls = urls;
+          b.galleryUrls = capped;
           return JSON.stringify(b);
         } catch {
           return prev;
         }
       });
-      router.refresh();
+      if (!opts?.skipRouterRefresh) router.refresh();
     },
     [business?.id, router]
   );
@@ -319,9 +321,9 @@ export default function PersonalizacaoPage() {
     const files = e.target.files;
     e.target.value = "";
     if (!files?.length || !business?.id || blockMediaActions) return;
-    const remaining = 8 - form.galleryUrls.length;
+    const remaining = PUBLIC_GALLERY_MAX_IMAGES - form.galleryUrls.length;
     if (remaining <= 0) {
-      showAlert("Máximo de 8 fotos na galeria.", { title: "Galeria" });
+      showAlert(`Máximo de ${PUBLIC_GALLERY_MAX_IMAGES} fotos na galeria.`, { title: "Galeria" });
       return;
     }
     setUploading("gallery");
@@ -331,14 +333,17 @@ export default function PersonalizacaoPage() {
     try {
       for (let i = 0; i < count; i++) {
         setUploadLabel(`Otimizando e enviando ${i + 1} de ${count}…`);
-        const prepared = await compressImageForUpload(files[i]);
+        const prepared = await compressImageForUpload(files[i], {
+          maxLongEdge: GALLERY_COMPRESS_MAX_LONG_EDGE,
+        });
         const ext = storageFileExt(prepared);
         const name = `gallery/${crypto.randomUUID()}.${ext}`;
         const url = await uploadBusinessImage(supabase, business.id, name, prepared);
         next = [...next, url];
-        await persistGalleryUrls(next);
-        setForm((f) => ({ ...f, galleryUrls: next }));
       }
+      setForm((f) => ({ ...f, galleryUrls: next }));
+      await persistGalleryUrls(next, { skipRouterRefresh: true });
+      router.refresh();
     } catch (err) {
       showAlert(err instanceof Error ? err.message : "Falha no upload", { title: "Galeria" });
     } finally {
@@ -359,7 +364,9 @@ export default function PersonalizacaoPage() {
     const supabase = createClient();
     const oldUrl = form.galleryUrls[index];
     try {
-      const prepared = await compressImageForUpload(file);
+      const prepared = await compressImageForUpload(file, {
+        maxLongEdge: GALLERY_COMPRESS_MAX_LONG_EDGE,
+      });
       const ext = storageFileExt(prepared);
       const name = `gallery/${crypto.randomUUID()}.${ext}`;
       const url = await uploadBusinessImage(supabase, business.id, name, prepared);
@@ -465,7 +472,6 @@ export default function PersonalizacaoPage() {
     setSaveMsg(null);
     const supabase = createClient();
     const phoneDigits = form.whatsapp.replace(/\D/g, "");
-    const fbUrl = normalizeFacebook(form.facebook);
 
     const { error: bizErr } = await supabase
       .from("businesses")
@@ -485,9 +491,12 @@ export default function PersonalizacaoPage() {
     const payload = {
       business_id: business.id,
       banner_url: form.bannerUrl,
-      gallery_urls: form.galleryUrls.length ? form.galleryUrls : null,
-      instagram_url: normalizeInstagram(form.instagram),
-      facebook_url: fbUrl,
+      gallery_urls: form.galleryUrls.length
+        ? form.galleryUrls.slice(0, PUBLIC_GALLERY_MAX_IMAGES)
+        : null,
+      social_links: socialLinksForDb(form.socialLinks),
+      instagram_url: null,
+      facebook_url: null,
       whatsapp_number: phoneDigits || null,
       tagline: form.tagline.trim() || null,
       about: form.about.trim() || null,
@@ -544,7 +553,7 @@ export default function PersonalizacaoPage() {
           <h1 className="text-2xl font-bold text-gray-900">Personalização</h1>
           <UnsavedChangesIndicator dirty={formDirty} variant="inline" />
         </div>
-        <p className="text-gray-600 text-sm mt-1">Aparência e conteúdo da página pública — salvos no banco e nos arquivos.</p>
+        <p className="text-gray-600 text-sm mt-1">Aparência e conteúdo da página pública (salvos no banco e nos arquivos).</p>
         {loadError && <p className="text-red-600 text-sm mt-2">{loadError}</p>}
       </div>
 
@@ -709,7 +718,7 @@ export default function PersonalizacaoPage() {
             <div className="space-y-4">
               {[
                 { label: "Nome do negócio", key: "businessName" as const, placeholder: "Nome do seu negócio" },
-                { label: "Tagline / Slogan", key: "tagline" as const, placeholder: "Ex: Seu visual, nossa paixão" },
+                { label: "Tagline / Slogan", key: "tagline" as const, placeholder: "Frase curta sobre o seu negócio" },
               ].map((field) => (
                 <div key={field.key} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   <label className="text-sm font-medium text-gray-700 block mb-2">{field.label}</label>
@@ -739,10 +748,13 @@ export default function PersonalizacaoPage() {
               <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium text-gray-700">Galeria de fotos</label>
-                  <span className="text-xs text-gray-500">{form.galleryUrls.length}/8</span>
+                  <span className="text-xs text-gray-500">
+                    {form.galleryUrls.length}/{PUBLIC_GALLERY_MAX_IMAGES}
+                  </span>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
-                  Fotos são otimizadas ao enviar e salvas automaticamente. Máx. 8 imagens.
+                  Fotos são comprimidas ao enviar e salvas automaticamente. Opcional: até{" "}
+                  {PUBLIC_GALLERY_MAX_IMAGES} fotos na página pública (mosaico).
                 </p>
                 <input
                   ref={galleryInputRef}
@@ -791,7 +803,7 @@ export default function PersonalizacaoPage() {
                       </div>
                     </div>
                   ))}
-                  {form.galleryUrls.length < 8 && (
+                  {form.galleryUrls.length < PUBLIC_GALLERY_MAX_IMAGES && (
                     <button
                       type="button"
                       disabled={blockMediaActions}
@@ -816,11 +828,92 @@ export default function PersonalizacaoPage() {
 
           {activeTab === "contato" && (
             <div className="space-y-4">
+              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <label className="text-sm font-medium text-gray-700 block mb-1">Redes sociais</label>
+                <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+                  Escolha a rede e informe o usuário ou página. Na página pública aparece o ícone da rede com esse texto.
+                </p>
+                <div className="space-y-3">
+                  {form.socialLinks.map((link, index) => {
+                    const platformOptions = SOCIAL_PLATFORM_OPTIONS.filter(
+                      (opt) =>
+                        opt.id === link.platform ||
+                        !form.socialLinks.some((l, j) => j !== index && l.platform === opt.id)
+                    );
+                    const hint = SOCIAL_PLATFORM_OPTIONS.find((o) => o.id === link.platform)?.hint ?? "";
+                    return (
+                      <div
+                        key={`${index}-${link.platform}`}
+                        className="flex flex-wrap items-start gap-2 p-3 rounded-xl bg-gray-50 border border-gray-100"
+                      >
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-gray-600 flex items-center justify-center w-9 h-9 rounded-lg bg-white border border-gray-200">
+                            <SocialBrandIcon platform={link.platform} size={20} className="text-gray-800" />
+                          </span>
+                          <select
+                            value={link.platform}
+                            disabled={saving}
+                            onChange={(e) => {
+                              const platform = e.target.value as SocialPlatformId;
+                              setForm((f) => ({
+                                ...f,
+                                socialLinks: f.socialLinks.map((l, i) => (i === index ? { ...l, platform } : l)),
+                              }));
+                            }}
+                            className="h-11 text-sm font-medium bg-white border border-gray-200 rounded-xl px-3 pr-8 outline-none focus:border-primary text-gray-900 max-w-[140px]"
+                          >
+                            {platformOptions.map((opt) => (
+                              <option key={opt.id} value={opt.id}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <input
+                          type="text"
+                          value={link.handle}
+                          disabled={saving}
+                          onChange={(e) => {
+                            const handle = e.target.value;
+                            setForm((f) => ({
+                              ...f,
+                              socialLinks: f.socialLinks.map((l, i) => (i === index ? { ...l, handle } : l)),
+                            }));
+                          }}
+                          placeholder={hint}
+                          className="flex-1 min-w-[160px] h-11 bg-white border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm"
+                        />
+                        <button
+                          type="button"
+                          disabled={saving}
+                          onClick={() => removeSocialLinkRow(index)}
+                          className="h-11 px-3 rounded-xl border border-gray-200 bg-white text-red-600 text-xs font-bold hover:bg-red-50 transition-colors shrink-0"
+                          title="Remover"
+                        >
+                          Remover
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button
+                  type="button"
+                  disabled={
+                    saving ||
+                    form.socialLinks.length >= MAX_SOCIAL_LINKS ||
+                    SOCIAL_PLATFORM_OPTIONS.every((o) => form.socialLinks.some((l) => l.platform === o.id))
+                  }
+                  onClick={addSocialLinkRow}
+                  className="mt-3 w-full sm:w-auto px-4 py-2.5 rounded-xl text-sm font-semibold border border-dashed border-gray-300 text-gray-700 hover:border-primary/50 hover:bg-primary/5 disabled:opacity-45 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-base">add</span>
+                  Adicionar rede ({form.socialLinks.length}/{MAX_SOCIAL_LINKS})
+                </button>
+              </div>
+
               {[
-                { label: "Instagram", key: "instagram" as const, icon: "photo_camera", placeholder: "@seuperfil" },
-                { label: "Facebook", key: "facebook" as const, icon: "public", placeholder: "usuario ou URL" },
                 { label: "WhatsApp", key: "whatsapp" as const, icon: "chat", placeholder: "(11) 99999-9999" },
-                { label: "Endereço", key: "address" as const, icon: "location_on", placeholder: "Rua, número — Cidade/UF" },
+                { label: "Endereço", key: "address" as const, icon: "location_on", placeholder: "Rua, número, Cidade/UF" },
               ].map((field) => (
                 <div key={field.key} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
                   <label className="text-sm font-medium text-gray-700 block mb-2">{field.label}</label>
@@ -976,7 +1069,7 @@ type PreviewForm = {
   tagline: string;
   primaryColor: string;
   about: string;
-  instagram: string;
+  socialLinks: SocialLink[];
   address: string;
   floatingWhatsapp: boolean;
   darkPage: boolean;
@@ -988,7 +1081,7 @@ type PreviewForm = {
 const PREVIEW_MAX_SERVICES = 8;
 
 function PagePreview({ form, services }: { form: PreviewForm; services: PreviewServiceRow[] }) {
-  /* Modo claro: cores literais — o dashboard usa data-theme=dark e globals.css força .bg-white/.text-gray-* etc. */
+  /* Modo claro: cores literais (dashboard usa data-theme=dark; globals.css força .bg-white/.text-gray-* etc.) */
   const bg = form.darkPage ? "bg-[#020403]" : "bg-[#f9fafb]";
   const cardBg = form.darkPage ? "bg-[#14221A] border-[#213428]" : "bg-[#ffffff] border-[#e5e7eb]";
   const cardBgSoft = form.darkPage ? "bg-[#0f1c15] border-white/5" : "bg-[#f9fafb] border-[#e5e7eb]";
@@ -1070,8 +1163,15 @@ function PagePreview({ form, services }: { form: PreviewForm; services: PreviewS
             <p className={cn("text-[11px] truncate", subtext)}>{form.address}</p>
           </div>
         )}
-        {form.instagram && (
-          <p className={cn("text-[10px]", subtext)}>Instagram · {form.instagram}</p>
+        {form.socialLinks.length > 0 && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {form.socialLinks.map((link, i) => (
+              <span key={`${link.platform}-${i}`} className={cn("inline-flex items-center gap-1.5 text-[10px]", subtext)}>
+                <SocialBrandIcon platform={link.platform} size={14} className="shrink-0 opacity-90" />
+                <span className="truncate max-w-[140px]">{formatSocialDisplay(link)}</span>
+              </span>
+            ))}
+          </div>
         )}
       </div>
 
@@ -1080,10 +1180,11 @@ function PagePreview({ form, services }: { form: PreviewForm; services: PreviewS
       ) : null}
 
       {form.galleryUrls.length > 0 && (
-        <div className="flex gap-1 p-2 overflow-x-auto border-b border-transparent">
-          {form.galleryUrls.slice(0, 5).map((u) => (
-            <div key={u} className="relative w-14 h-14 shrink-0 rounded-lg overflow-hidden ring-1 ring-black/10">
-              <Image src={u} alt="" fill className="object-cover" unoptimized />
+        <div className="p-2 border-b border-transparent columns-2 gap-1 [column-fill:_balance]">
+          {form.galleryUrls.slice(0, PUBLIC_GALLERY_MAX_IMAGES).map((u, i) => (
+            <div key={`${i}-${u.slice(-24)}`} className="mb-1 break-inside-avoid">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={u} alt="" className="w-full h-auto rounded-md block ring-1 ring-black/10" loading="lazy" />
             </div>
           ))}
         </div>

@@ -118,9 +118,9 @@ export default function ClienteDetalhePage() {
       <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm mb-6">
         <h2 className="text-sm font-bold text-gray-900 mb-3">Contato</h2>
         <div className="space-y-2 text-sm">
-          <p className="text-gray-700"><span className="text-gray-500">Telefone:</span> {client.phone ?? "—"}</p>
-          <p className="text-gray-700"><span className="text-gray-500">E-mail:</span> {client.email ?? "—"}</p>
-          <p className="text-gray-700"><span className="text-gray-500">Último agendamento:</span> {client.last_appointment_date ? formatDate(client.last_appointment_date) : "—"}</p>
+          <p className="text-gray-700"><span className="text-gray-500">Telefone:</span> {client.phone ?? "-"}</p>
+          <p className="text-gray-700"><span className="text-gray-500">E-mail:</span> {client.email ?? "-"}</p>
+          <p className="text-gray-700"><span className="text-gray-500">Último agendamento:</span> {client.last_appointment_date ? formatDate(client.last_appointment_date) : "-"}</p>
           {client.no_shows > 0 && <p className="text-amber-600 font-medium">Faltas sem aviso: {client.no_shows}</p>}
         </div>
       </div>
@@ -140,8 +140,8 @@ export default function ClienteDetalhePage() {
                     <span className="text-xs text-gray-500">{formatTime(apt.time_start)}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{apt.services?.name ?? "—"}</p>
-                    <p className="text-xs text-gray-500">{apt.collaborators?.name ?? "—"}</p>
+                    <p className="text-sm font-medium text-gray-900">{apt.services?.name ?? "-"}</p>
+                    <p className="text-xs text-gray-500">{apt.collaborators?.name ?? "-"}</p>
                   </div>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${conf.bg} ${conf.color}`}>
                     <span className={`size-1.5 rounded-full ${conf.dot}`} />

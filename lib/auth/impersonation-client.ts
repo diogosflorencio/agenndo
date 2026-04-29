@@ -44,7 +44,7 @@ export async function startImpersonation(token: string) {
 
 /**
  * Remove a sessão de impersonação no Supabase e o token em localStorage.
- * Não navega — usar antes de signOut para não voltar “preso” na outra conta ao logar de novo.
+ * Não navega; usar antes de signOut para não voltar “preso” na outra conta ao logar de novo.
  */
 export async function clearImpersonationSession(): Promise<void> {
   const supabase = createClient();

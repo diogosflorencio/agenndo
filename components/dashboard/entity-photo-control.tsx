@@ -81,10 +81,16 @@ export function EntityPhotoControl({
     setError(null);
     setBusy(true);
     try {
-      const prepared = await compressImageForUpload(file);
+      const prepared = await compressImageForUpload(file, {
+        maxLongEdge: kind === "service" ? 1680 : 2048,
+      });
       const ext = extFromFile(prepared);
       const folder = kind === "collaborator" ? "collaborators" : "services";
-      const relativePath = `${folder}/${entityId}.${ext}`;
+      /** Serviço: arquivo único por upload evita conflito de extensão/cache no storage; colaborador mantém path fixo. */
+      const relativePath =
+        kind === "collaborator"
+          ? `${folder}/${entityId}.${ext}`
+          : `${folder}/${entityId}/${crypto.randomUUID()}.${ext}`;
 
       if (imageUrl) await removeRemote(imageUrl);
 

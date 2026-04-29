@@ -6,7 +6,7 @@ const base = getSiteUrl();
 export const metadata: Metadata = {
   title: "Sobre o Agenndo e a YWP (YourWebPlace)",
   description:
-    "Conheça o Agenndo — sistema de agendamento online para prestadores — e a YWP (YourWebPlace), empresa responsável pelo produto. Agende 24h por link; gestão completa no painel.",
+    "Conheça o Agenndo, sistema de agendamento online para prestadores, e a YWP (YourWebPlace), empresa responsável pelo produto. Agende 24h por link; gestão completa no painel.",
   alternates: { canonical: `${base}/sobre` },
   openGraph: {
     title: "Sobre | Agenndo · YWP",

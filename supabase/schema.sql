@@ -1,5 +1,5 @@
--- Agenndo — Schema Supabase
--- Execute no SQL Editor do Supabase na ordem abaixo.
+-- Agenndo — Schema Supabase (estado alinhado às migrations em supabase/migrations)
+-- Use no SQL Editor para bootstrap de projeto novo. Projetos existentes: preferir apenas migrations.
 
 -- Extensões
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -12,9 +12,16 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   full_name TEXT,
   avatar_url TEXT,
   role TEXT NOT NULL DEFAULT 'provider', -- 'provider' | 'admin'
+  recommended_plan TEXT,
+  recommended_price_display NUMERIC(10, 2),
+  onboarding_inputs JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+COMMENT ON COLUMN public.profiles.recommended_plan IS 'Variante interna sugerida no cadastro: plano_1 | plano_2 | plano_3 | paid_20 | …';
+COMMENT ON COLUMN public.profiles.recommended_price_display IS 'Valor exibido no onboarding (referência); cobrança efetiva conforme Stripe';
+COMMENT ON COLUMN public.profiles.onboarding_inputs IS 'Snapshot: equipe, volume, ticket médio declarados';
 
 -- Negócios (um perfil pode ter um negócio; no futuro pode ser mais de um)
 CREATE TABLE IF NOT EXISTS public.businesses (
@@ -27,12 +34,59 @@ CREATE TABLE IF NOT EXISTS public.businesses (
   city TEXT,
   primary_color TEXT DEFAULT '#13EC5B',
   logo_url TEXT,
-  plan TEXT NOT NULL DEFAULT 'free', -- 'free' | 'plano_1' | 'plano_2' | 'plano_3'
+  plan TEXT NOT NULL DEFAULT 'free', -- 'free' | 'plano_1' | 'plano_2' | 'plano_3' | 'paid_20' | …
+  stripe_customer_id TEXT,
+  stripe_subscription_id TEXT,
+  subscription_status TEXT,
+  stripe_price_id TEXT,
+  subscription_current_period_end TIMESTAMPTZ,
+  trial_ends_at TIMESTAMPTZ,
+  billing_issue_deadline TIMESTAMPTZ,
+  billing_legal_name TEXT,
+  billing_document TEXT,
+  billing_address_line1 TEXT,
+  billing_address_line2 TEXT,
+  billing_neighborhood TEXT,
+  billing_city TEXT,
+  billing_state TEXT,
+  billing_postal_code TEXT,
+  billing_country TEXT NOT NULL DEFAULT 'BR',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS businesses_slug_key ON public.businesses(slug);
+
+COMMENT ON COLUMN public.businesses.subscription_status IS 'Stripe subscription.status: trialing, active, past_due, canceled, unpaid, incomplete, incomplete_expired, paused';
+COMMENT ON COLUMN public.businesses.trial_ends_at IS 'Fim do período de teste gratuito (antes de assinar Stripe).';
+COMMENT ON COLUMN public.businesses.billing_issue_deadline IS 'Após past_due/unpaid: até quando o negócio mantém acesso antes de bloquear agendamentos públicos.';
+COMMENT ON COLUMN public.businesses.billing_legal_name IS 'Nome completo (PF) ou razão social (PJ) para cobrança/NF.';
+COMMENT ON COLUMN public.businesses.billing_document IS 'CPF ou CNPJ (apenas dígitos).';
+COMMENT ON COLUMN public.businesses.billing_address_line1 IS 'Logradouro e número.';
+COMMENT ON COLUMN public.businesses.billing_address_line2 IS 'Complemento (opcional).';
+COMMENT ON COLUMN public.businesses.billing_neighborhood IS 'Bairro.';
+COMMENT ON COLUMN public.businesses.billing_city IS 'Cidade.';
+COMMENT ON COLUMN public.businesses.billing_state IS 'UF (2 letras).';
+COMMENT ON COLUMN public.businesses.billing_postal_code IS 'CEP (apenas dígitos).';
+COMMENT ON COLUMN public.businesses.billing_country IS 'Código ISO do país (ex.: BR).';
+
+CREATE OR REPLACE FUNCTION public.set_business_trial_ends()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.trial_ends_at IS NULL THEN
+    NEW.trial_ends_at := NOW() + INTERVAL '7 days';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS businesses_set_trial_ends ON public.businesses;
+CREATE TRIGGER businesses_set_trial_ends
+  BEFORE INSERT ON public.businesses
+  FOR EACH ROW
+  EXECUTE PROCEDURE public.set_business_trial_ends();
 
 -- ========== CLIENTES ==========
 -- Clientes podem ter conta (auth) ou só existir como registro (agendamento só com nome)
@@ -81,7 +135,10 @@ CREATE TABLE IF NOT EXISTS public.services (
   price_cents INT NOT NULL DEFAULT 0,
   emoji TEXT DEFAULT '✂️',
   image_url TEXT,
+  description_public TEXT,
+  variant_gallery JSONB NOT NULL DEFAULT '[]',
   active BOOLEAN NOT NULL DEFAULT true,
+  archived_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -157,6 +214,8 @@ CREATE TABLE IF NOT EXISTS public.appointments (
   price_cents INT NOT NULL DEFAULT 0,
   status appointment_status NOT NULL DEFAULT 'agendado',
   notes TEXT,
+  service_variant_index SMALLINT,
+  service_variant_label TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -208,6 +267,7 @@ CREATE TABLE IF NOT EXISTS public.personalization (
   gallery_urls TEXT[],
   instagram_url TEXT,
   facebook_url TEXT,
+  social_links JSONB NOT NULL DEFAULT '[]',
   whatsapp_number TEXT,
   tagline TEXT,
   about TEXT,
@@ -218,6 +278,187 @@ CREATE TABLE IF NOT EXISTS public.personalization (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT personalization_public_theme_check CHECK (public_theme IN ('dark', 'light'))
 );
+
+-- ========== IMPERSONAÇÃO (suporte / co-admins) ==========
+-- RLS do prestador usa effective_user_id(); clients_self continua com auth.uid().
+CREATE TABLE IF NOT EXISTS public.user_impersonate_tokens (
+  user_id uuid PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
+  token_hash text NOT NULL UNIQUE,
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.session_impersonation (
+  real_uid uuid NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+  target_uid uuid NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+  expires_at timestamptz NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (real_uid)
+);
+
+CREATE INDEX IF NOT EXISTS session_impersonation_expires_idx ON public.session_impersonation (expires_at);
+
+ALTER TABLE public.user_impersonate_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.session_impersonation ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "user_impersonate_tokens_own" ON public.user_impersonate_tokens;
+CREATE POLICY "user_impersonate_tokens_own" ON public.user_impersonate_tokens FOR ALL
+  USING (user_id = (SELECT auth.uid()))
+  WITH CHECK (user_id = (SELECT auth.uid()));
+
+DROP POLICY IF EXISTS "session_impersonation_own" ON public.session_impersonation;
+CREATE POLICY "session_impersonation_own" ON public.session_impersonation FOR ALL
+  USING (real_uid = (SELECT auth.uid()))
+  WITH CHECK (real_uid = (SELECT auth.uid()));
+
+DROP POLICY IF EXISTS "session_impersonation_read_as_target" ON public.session_impersonation;
+CREATE POLICY "session_impersonation_read_as_target"
+  ON public.session_impersonation FOR SELECT
+  TO authenticated
+  USING (target_uid = (SELECT auth.uid()));
+
+CREATE OR REPLACE FUNCTION public.effective_user_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE(
+    (
+      SELECT s.target_uid
+      FROM public.session_impersonation s
+      WHERE s.real_uid = (SELECT auth.uid())
+        AND s.expires_at > now()
+      LIMIT 1
+    ),
+    (SELECT auth.uid())
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.effective_user_id() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.effective_user_id() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.get_effective_user_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT public.effective_user_id();
+$$;
+
+REVOKE ALL ON FUNCTION public.get_effective_user_id() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_effective_user_id() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.regenerate_impersonate_token()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_hash text;
+BEGIN
+  v_hash := md5(random()::text || clock_timestamp()::text || random()::text || random()::text);
+  INSERT INTO public.user_impersonate_tokens (user_id, token_hash, updated_at)
+  VALUES ((SELECT auth.uid()), v_hash, now())
+  ON CONFLICT (user_id) DO UPDATE
+    SET token_hash = excluded.token_hash, updated_at = now();
+  RETURN v_hash;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.regenerate_impersonate_token() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.regenerate_impersonate_token() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.start_impersonation(p_token_hash text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_target uuid;
+  v_hash text;
+BEGIN
+  v_hash := lower(trim(p_token_hash));
+  IF v_hash !~ '^[0-9a-f]{32}$' THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'token_invalid');
+  END IF;
+
+  SELECT t.user_id INTO v_target
+  FROM public.user_impersonate_tokens t
+  WHERE t.token_hash = v_hash
+  LIMIT 1;
+
+  IF v_target IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'token_invalid');
+  END IF;
+
+  IF v_target = (SELECT auth.uid()) THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'cannot_impersonate_self');
+  END IF;
+
+  DELETE FROM public.session_impersonation WHERE real_uid = (SELECT auth.uid());
+  INSERT INTO public.session_impersonation (real_uid, target_uid, expires_at)
+  VALUES ((SELECT auth.uid()), v_target, now() + interval '8 hours');
+
+  RETURN jsonb_build_object('ok', true, 'target_uid', v_target);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.start_impersonation(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.start_impersonation(text) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.stop_impersonation()
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_sub uuid;
+BEGIN
+  v_sub := auth.uid();
+  IF v_sub IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'error', 'not_authenticated');
+  END IF;
+  DELETE FROM public.session_impersonation WHERE real_uid = v_sub;
+  RETURN jsonb_build_object('ok', true);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.stop_impersonation() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.stop_impersonation() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.ensure_impersonate_token()
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_hash text;
+BEGIN
+  SELECT t.token_hash INTO v_hash
+  FROM public.user_impersonate_tokens t
+  WHERE t.user_id = (SELECT auth.uid())
+  LIMIT 1;
+
+  IF v_hash IS NOT NULL THEN
+    RETURN v_hash;
+  END IF;
+
+  v_hash := md5(random()::text || clock_timestamp()::text || random()::text || random()::text);
+  INSERT INTO public.user_impersonate_tokens (user_id, token_hash, updated_at)
+  VALUES ((SELECT auth.uid()), v_hash, now());
+  RETURN v_hash;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.ensure_impersonate_token() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.ensure_impersonate_token() TO authenticated;
 
 -- ========== RLS (Row Level Security) ==========
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
@@ -234,23 +475,62 @@ ALTER TABLE public.financial_records ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notification_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.personalization ENABLE ROW LEVEL SECURITY;
 
--- Políticas: prestador acessa só dados do seu negócio
-CREATE POLICY "profiles_own" ON public.profiles FOR ALL USING (auth.uid() = id);
-CREATE POLICY "businesses_own" ON public.businesses FOR ALL USING (
-  profile_id IN (SELECT id FROM public.profiles WHERE id = auth.uid())
-);
-CREATE POLICY "clients_own" ON public.clients FOR ALL USING (
-  business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
-);
-CREATE POLICY "collaborators_own" ON public.collaborators FOR ALL USING (
-  business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
-);
-CREATE POLICY "services_own" ON public.services FOR ALL USING (
-  business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
-);
-CREATE POLICY "collaborator_services_own" ON public.collaborator_services FOR ALL USING (
-  collaborator_id IN (SELECT id FROM public.collaborators WHERE business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid()))
-);
+-- Políticas: prestador acessa só dados do negócio do perfil efetivo (impersonação → effective_user_id)
+DROP POLICY IF EXISTS "profiles_own" ON public.profiles;
+CREATE POLICY "profiles_own" ON public.profiles FOR ALL
+  USING (id = public.effective_user_id())
+  WITH CHECK (id = public.effective_user_id());
+
+DROP POLICY IF EXISTS "businesses_own" ON public.businesses;
+CREATE POLICY "businesses_own" ON public.businesses FOR ALL
+  USING (profile_id = public.effective_user_id())
+  WITH CHECK (profile_id = public.effective_user_id());
+
+DROP POLICY IF EXISTS "clients_own" ON public.clients;
+CREATE POLICY "clients_own" ON public.clients FOR ALL
+  USING (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  )
+  WITH CHECK (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  );
+
+DROP POLICY IF EXISTS "collaborators_own" ON public.collaborators;
+CREATE POLICY "collaborators_own" ON public.collaborators FOR ALL
+  USING (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  )
+  WITH CHECK (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  );
+
+DROP POLICY IF EXISTS "services_own" ON public.services;
+CREATE POLICY "services_own" ON public.services FOR ALL
+  USING (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  )
+  WITH CHECK (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  );
+
+DROP POLICY IF EXISTS "collaborator_services_own" ON public.collaborator_services;
+CREATE POLICY "collaborator_services_own" ON public.collaborator_services FOR ALL
+  USING (
+    collaborator_id IN (
+      SELECT c.id FROM public.collaborators c
+      WHERE c.business_id IN (
+        SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id()
+      )
+    )
+  )
+  WITH CHECK (
+    collaborator_id IN (
+      SELECT c.id FROM public.collaborators c
+      WHERE c.business_id IN (
+        SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id()
+      )
+    )
+  );
 -- Página pública: quem faz cada serviço (anon)
 DROP POLICY IF EXISTS "collaborator_services_public_read" ON public.collaborator_services;
 CREATE POLICY "collaborator_services_public_read" ON public.collaborator_services
@@ -258,35 +538,76 @@ CREATE POLICY "collaborator_services_public_read" ON public.collaborator_service
   USING (
     EXISTS (
       SELECT 1 FROM public.services s
-      WHERE s.id = collaborator_services.service_id AND s.active = true
+      WHERE s.id = collaborator_services.service_id AND s.active = true AND s.archived_at IS NULL
     )
   );
-CREATE POLICY "availability_own" ON public.availability FOR ALL USING (
-  business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
-);
-CREATE POLICY "availability_overrides_own" ON public.availability_overrides FOR ALL USING (
-  business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
-);
-CREATE POLICY "availability_blocks_own" ON public.availability_blocks FOR ALL USING (
-  business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
-);
-CREATE POLICY "appointments_own" ON public.appointments FOR ALL USING (
-  business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
-);
-CREATE POLICY "financial_records_own" ON public.financial_records FOR ALL USING (
-  business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
-);
-CREATE POLICY "notification_settings_own" ON public.notification_settings FOR ALL USING (
-  business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
-);
-CREATE POLICY "personalization_own" ON public.personalization FOR ALL USING (
-  business_id IN (SELECT id FROM public.businesses WHERE profile_id = auth.uid())
-);
+DROP POLICY IF EXISTS "availability_own" ON public.availability;
+CREATE POLICY "availability_own" ON public.availability FOR ALL
+  USING (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  )
+  WITH CHECK (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  );
+
+DROP POLICY IF EXISTS "availability_overrides_own" ON public.availability_overrides;
+CREATE POLICY "availability_overrides_own" ON public.availability_overrides FOR ALL
+  USING (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  )
+  WITH CHECK (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  );
+
+DROP POLICY IF EXISTS "availability_blocks_own" ON public.availability_blocks;
+CREATE POLICY "availability_blocks_own" ON public.availability_blocks FOR ALL
+  USING (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  )
+  WITH CHECK (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  );
+
+DROP POLICY IF EXISTS "appointments_own" ON public.appointments;
+CREATE POLICY "appointments_own" ON public.appointments FOR ALL
+  USING (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  )
+  WITH CHECK (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  );
+
+DROP POLICY IF EXISTS "financial_records_own" ON public.financial_records;
+CREATE POLICY "financial_records_own" ON public.financial_records FOR ALL
+  USING (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  )
+  WITH CHECK (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  );
+
+DROP POLICY IF EXISTS "notification_settings_own" ON public.notification_settings;
+CREATE POLICY "notification_settings_own" ON public.notification_settings FOR ALL
+  USING (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  )
+  WITH CHECK (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  );
+
+DROP POLICY IF EXISTS "personalization_own" ON public.personalization;
+CREATE POLICY "personalization_own" ON public.personalization FOR ALL
+  USING (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  )
+  WITH CHECK (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  );
 CREATE POLICY "personalization_public_read" ON public.personalization FOR SELECT USING (true);
 
 -- Página pública: leitura de negócio por slug (anon)
 CREATE POLICY "businesses_public_read" ON public.businesses FOR SELECT USING (true);
-CREATE POLICY "services_public_read" ON public.services FOR SELECT USING (active = true);
+CREATE POLICY "services_public_read" ON public.services FOR SELECT USING (active = true AND archived_at IS NULL);
 CREATE POLICY "collaborators_public_read" ON public.collaborators FOR SELECT USING (active = true);
 
 -- Cliente com conta: leitura dos próprios dados e agendamentos
@@ -299,6 +620,45 @@ CREATE POLICY "appointments_client_read" ON public.appointments
     AND EXISTS (
       SELECT 1 FROM public.clients c
       WHERE c.id = appointments.client_id AND c.auth_user_id = auth.uid()
+    )
+  );
+
+-- ========== STORAGE (bucket business-assets) ==========
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('business-assets', 'business-assets', true)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "business_assets_public_read" ON storage.objects;
+CREATE POLICY "business_assets_public_read" ON storage.objects
+  FOR SELECT USING (bucket_id = 'business-assets');
+
+DROP POLICY IF EXISTS "business_assets_insert" ON storage.objects;
+CREATE POLICY "business_assets_insert" ON storage.objects
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'business-assets'
+    AND split_part(name, '/', 1) IN (
+      SELECT b.id::text FROM public.businesses b WHERE b.profile_id = public.effective_user_id()
+    )
+  );
+
+DROP POLICY IF EXISTS "business_assets_update" ON storage.objects;
+CREATE POLICY "business_assets_update" ON storage.objects
+  FOR UPDATE TO authenticated
+  USING (
+    bucket_id = 'business-assets'
+    AND split_part(name, '/', 1) IN (
+      SELECT b.id::text FROM public.businesses b WHERE b.profile_id = public.effective_user_id()
+    )
+  );
+
+DROP POLICY IF EXISTS "business_assets_delete" ON storage.objects;
+CREATE POLICY "business_assets_delete" ON storage.objects
+  FOR DELETE TO authenticated
+  USING (
+    bucket_id = 'business-assets'
+    AND split_part(name, '/', 1) IN (
+      SELECT b.id::text FROM public.businesses b WHERE b.profile_id = public.effective_user_id()
     )
   );
 
@@ -320,11 +680,14 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.notification_settings FOR 
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.personalization FOR EACH ROW EXECUTE PROCEDURE public.set_updated_at();
 CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.appointments FOR EACH ROW EXECUTE PROCEDURE public.set_updated_at();
 
--- ========== CRIAR PROFILE AO CRIAR USUÁRIO (Auth) ==========
+-- ========== CRIAR PROFILE + TOKEN DE IMPERSONAÇÃO (Auth) ==========
 -- No Supabase Dashboard: Authentication -> Triggers ou execute no SQL Editor.
--- Cria linha em public.profiles quando um novo auth.users é inserido (ex.: login com Google).
 CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   INSERT INTO public.profiles (id, email, full_name, avatar_url, role)
   VALUES (
@@ -335,9 +698,18 @@ BEGIN
     'provider'
   )
   ON CONFLICT (id) DO NOTHING;
+
+  INSERT INTO public.user_impersonate_tokens (user_id, token_hash, updated_at)
+  VALUES (
+    NEW.id,
+    md5(random()::text || clock_timestamp()::text || random()::text || random()::text),
+    now()
+  )
+  ON CONFLICT (user_id) DO NOTHING;
+
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 -- Só existe se o trigger ainda não foi criado (Supabase pode expor isso em Auth -> Triggers).
 -- Se der erro "trigger already exists", pode dropar: DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -345,20 +717,3 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
-
--- ========== STRIPE (assinatura) — ou rode supabase/migrations/20250328_stripe_billing.sql ==========
-ALTER TABLE public.businesses
-  ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT,
-  ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT,
-  ADD COLUMN IF NOT EXISTS subscription_status TEXT,
-  ADD COLUMN IF NOT EXISTS stripe_price_id TEXT,
-  ADD COLUMN IF NOT EXISTS subscription_current_period_end TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS billing_issue_deadline TIMESTAMPTZ;
-
--- ========== PERFIL DE PRECIFICAÇÃO (onboarding) — ou migrations/20250328_profiles_pricing_lock.sql ==========
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS recommended_plan TEXT,
-  ADD COLUMN IF NOT EXISTS recommended_price_display NUMERIC(10, 2),
-  ADD COLUMN IF NOT EXISTS onboarding_inputs JSONB;
-

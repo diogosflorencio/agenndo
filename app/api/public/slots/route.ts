@@ -73,10 +73,10 @@ export async function GET(req: Request) {
 
   const { data: svc, error: svcErr } = await admin
     .from("services")
-    .select("id, business_id, duration_minutes, active")
+    .select("id, business_id, duration_minutes, active, archived_at")
     .eq("id", serviceId)
     .maybeSingle();
-  if (svcErr || !svc?.id || svc.business_id !== bid || !svc.active) {
+  if (svcErr || !svc?.id || svc.business_id !== bid || !svc.active || svc.archived_at != null) {
     return NextResponse.json({ error: "Serviço inválido" }, { status: 400 });
   }
   const durationMinutes = Number(svc.duration_minutes) || 30;

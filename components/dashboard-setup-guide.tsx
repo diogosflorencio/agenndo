@@ -211,10 +211,10 @@ export function DashboardSetupGuide({ snapshot }: { snapshot: SetupProgressSnaps
         </div>
         <p className={cn("text-xs mt-2", isDark ? "text-white/50" : "text-gray-500")}>
           {allDone ? (
-            <>Configuração concluída — ótimo trabalho.</>
+            <>Configuração concluída. Ótimo trabalho.</>
           ) : (
             <>
-              {doneCount} de {total} passos concluídos — complete os itens abaixo para liberar agendamentos com confiança.
+              {doneCount} de {total} passos concluídos. Complete os itens abaixo para liberar agendamentos com confiança.
             </>
           )}
         </p>

@@ -28,6 +28,7 @@ type AptRow = {
   price_cents: number;
   status: string;
   client_name_snapshot: string | null;
+  service_variant_label: string | null;
   clients: { name: string; phone: string | null } | null;
   services: { name: string } | null;
   collaborators: { id: string; name: string } | null;
@@ -81,7 +82,7 @@ export default function AgendamentosPage() {
       supabase
         .from("appointments")
         .select(
-          "id, collaborator_id, client_id, date, time_start, time_end, price_cents, status, client_name_snapshot, clients(name, phone), services(name), collaborators(id, name)"
+          "id, collaborator_id, client_id, date, time_start, time_end, price_cents, status, client_name_snapshot, service_variant_label, clients(name, phone), services(name), collaborators(id, name)"
         )
         .eq("business_id", business.id)
         .gte("date", fetchRange.from)
@@ -452,8 +453,8 @@ export default function AgendamentosPage() {
                 filtered.map((apt) => {
                   const conf = STATUS_CONFIG[apt.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.agendado;
                   const clientName = apt.clients?.name ?? apt.client_name_snapshot ?? "Cliente";
-                  const serviceName = apt.services?.name ?? "—";
-                  const collabName = apt.collaborators?.name ?? "—";
+                  const serviceName = apt.services?.name ?? "-";
+                  const collabName = apt.collaborators?.name ?? "-";
                   const isSelected = selected.includes(apt.id);
                   return (
                     <div
@@ -477,7 +478,8 @@ export default function AgendamentosPage() {
                             <div>
                               <p className="text-gray-900 font-semibold text-sm">{clientName}</p>
                               <p className="text-gray-600 text-xs mt-0.5">
-                                {serviceName} · {collabName}
+                                {serviceName}
+                                {apt.service_variant_label ? ` (${apt.service_variant_label})` : ""} · {collabName}
                               </p>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">

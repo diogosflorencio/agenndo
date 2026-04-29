@@ -65,10 +65,20 @@ function targetOutputBytes(inputSize: number): number {
 
 const QUALITIES_DESC = [0.82, 0.76, 0.7, 0.64, 0.58, 0.52, 0.48, 0.44, 0.4, 0.36, 0.34];
 
+export type CompressImageOptions = {
+  /** Maior lado máximo em pixels (padrão 2048). Galeria pública usa valor menor para reduzir peso. */
+  maxLongEdge?: number;
+};
+
 /**
  * Redimensiona + reencode JPEG até ficar ≤ targetMax (e ≤ MAX_COMPRESSED_OUTPUT_BYTES).
  */
-async function rasterToJpegUnderTarget(img: HTMLImageElement, file: File, targetMax: number): Promise<File> {
+async function rasterToJpegUnderTarget(
+  img: HTMLImageElement,
+  file: File,
+  targetMax: number,
+  maxLongCap = 2048
+): Promise<File> {
   const w0 = img.naturalWidth || img.width;
   const h0 = img.naturalHeight || img.height;
   if (!w0 || !h0) throw new Error("Dimensões inválidas.");
@@ -77,7 +87,7 @@ async function rasterToJpegUnderTarget(img: HTMLImageElement, file: File, target
   let bestBlob: Blob | null = null;
   let bestSize = Infinity;
 
-  let maxLong = Math.min(2048, Math.max(w0, h0));
+  let maxLong = Math.min(maxLongCap, Math.max(w0, h0));
 
   while (maxLong >= 360) {
     const scale = Math.min(1, maxLong / Math.max(w0, h0));
@@ -148,7 +158,9 @@ async function rasterToJpegUnderTarget(img: HTMLImageElement, file: File, target
 /**
  * @returns File pronto para upload (JPEG na maioria dos casos; GIF pequeno intacto).
  */
-export async function compressImageForUpload(file: File): Promise<File> {
+export async function compressImageForUpload(file: File, options?: CompressImageOptions): Promise<File> {
+  const maxLongCap = options?.maxLongEdge ?? 2048;
+
   if (!file.type.startsWith("image/")) {
     throw new Error("Arquivo não é imagem.");
   }
@@ -162,19 +174,19 @@ export async function compressImageForUpload(file: File): Promise<File> {
     }
     const img = await loadImageFromFile(file);
     const target = targetOutputBytes(file.size);
-    return rasterToJpegUnderTarget(img, file, target);
+    return rasterToJpegUnderTarget(img, file, target, maxLongCap);
   }
 
-  if (file.size <= 72 * KB && file.type === "image/jpeg") {
+  if (file.size <= 72 * KB && file.type === "image/jpeg" && maxLongCap >= 2048) {
     return file;
   }
 
   const img = await loadImageFromFile(file);
   const target = targetOutputBytes(file.size);
 
-  if (file.size <= 120 * KB) {
+  if (file.size <= 120 * KB && maxLongCap >= 2048) {
     try {
-      const out = await rasterToJpegUnderTarget(img, file, Math.min(target, file.size));
+      const out = await rasterToJpegUnderTarget(img, file, Math.min(target, file.size), maxLongCap);
       if (out.size >= file.size * 0.94) {
         return file;
       }
@@ -184,5 +196,5 @@ export async function compressImageForUpload(file: File): Promise<File> {
     }
   }
 
-  return rasterToJpegUnderTarget(img, file, target);
+  return rasterToJpegUnderTarget(img, file, target, maxLongCap);
 }

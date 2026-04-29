@@ -443,7 +443,7 @@ export function AgendaScheduleView({
             {dayApts.length === 0 ? "Sem atendimentos" : `${dayApts.length} agendamento(s)`}
           </span>
           <span className="rounded-full bg-gray-100 px-2 py-1 font-medium text-gray-700">
-            {String(GRID_START_H).padStart(2, "0")}:00 — {String(GRID_END_H).padStart(2, "0")}:00
+            {String(GRID_START_H).padStart(2, "0")}:00 - {String(GRID_END_H).padStart(2, "0")}:00
           </span>
         </div>
       </div>
@@ -503,7 +503,7 @@ export function AgendaScheduleView({
                             {ev.apt.clients?.name ?? ev.apt.client_name_snapshot ?? "Cliente"}
                           </span>
                           <span className="block truncate px-0.5 opacity-90">
-                            {formatTimeShort(ev.apt.time_start)} — {formatTimeShort(ev.apt.time_end)}
+                            {formatTimeShort(ev.apt.time_start)} - {formatTimeShort(ev.apt.time_end)}
                           </span>
                         </button>
                       );
@@ -516,7 +516,7 @@ export function AgendaScheduleView({
         </div>
       )}
 
-      {/* Day timeline — colunas por profissional */}
+      {/* Day timeline: colunas por profissional */}
       {view === "day" && (
         <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="min-w-[640px] flex">
@@ -566,7 +566,7 @@ export function AgendaScheduleView({
                               {ev.apt.clients?.name ?? ev.apt.client_name_snapshot ?? "Cliente"}
                             </span>
                             <span className="block truncate text-[9px] opacity-90">
-                              {ev.apt.services?.name ?? "—"}
+                              {ev.apt.services?.name ?? "-"}
                             </span>
                             <span className="block text-[9px] opacity-80">
                               {formatTimeShort(ev.apt.time_start)} – {formatTimeShort(ev.apt.time_end)}
@@ -661,10 +661,11 @@ export function AgendaScheduleView({
 
       <Link
         href="/dashboard/clientes"
-        className="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-3 text-sm font-bold text-gray-900 shadow-lg hover:bg-gray-50"
+        title="Ir para clientes"
+        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-4 z-[45] inline-flex max-w-[min(18rem,calc(100vw-6rem))] items-center gap-2 rounded-full border border-gray-200 bg-white py-2.5 pl-3 pr-3.5 text-sm font-bold text-gray-900 shadow-lg hover:bg-gray-50 lg:bottom-8 lg:left-auto lg:right-[5.75rem] lg:py-3 lg:pl-4 lg:pr-4"
       >
-        <span className="material-symbols-outlined text-primary">search</span>
-        Buscar cliente
+        <span className="material-symbols-outlined shrink-0 text-primary text-xl">search</span>
+        <span className="min-w-0 truncate">Buscar cliente</span>
       </Link>
     </div>
   );

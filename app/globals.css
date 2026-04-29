@@ -223,7 +223,7 @@ input[type="range"]::-moz-range-thumb {
   color-scheme: dark;
 }
 
-/* Inputs/select/textarea sem fundo explícito: o texto vira claro (.text-gray-900) mas o UA deixa fundo branco — força superfície escura */
+/* Inputs/select/textarea sem fundo explícito: o texto vira claro (.text-gray-900) mas o UA deixa fundo branco; força superfície escura */
 [data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]):not(.bg-transparent),
 [data-theme="dark"] textarea:not(.bg-transparent),
 [data-theme="dark"] select {
