@@ -11,10 +11,18 @@ import {
   isLocalhostOAuthPopup,
   OAUTH_POPUP_MESSAGE,
 } from "@/lib/auth/oauth-popup";
+import { GoogleOneTap } from "@/components/auth/google-one-tap";
+
+function safeLoginNext(raw: string | null): string {
+  const n = raw?.trim();
+  if (n && n.startsWith("/") && !n.startsWith("//")) return n;
+  return "/dashboard";
+}
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const nextPath = safeLoginNext(searchParams.get("next"));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const popupHandledRef = useRef(false);
@@ -63,7 +71,7 @@ function LoginContent() {
     const origin = getOAuthRedirectOrigin() || window.location.origin;
 
     if (isLocalhostOAuthPopup()) {
-      const startUrl = buildOAuthStartUrl(origin, { next: "/dashboard" });
+      const startUrl = buildOAuthStartUrl(origin, { next: nextPath });
       const popup = window.open(startUrl, "agenndo-oauth", "width=520,height=720,scrollbars=yes");
       if (!popup) {
         setError("Permita popups para este site ou use outro navegador.");
@@ -85,7 +93,7 @@ function LoginContent() {
     }
 
     const supabase = createClient();
-    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/callback", { next: "/dashboard" });
+    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/callback", { next: nextPath });
 
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -107,6 +115,11 @@ function LoginContent() {
 
   return (
     <div className="min-h-screen bg-[#102216] text-white flex flex-col lg:flex-row">
+      <GoogleOneTap
+        nextPath={nextPath}
+        onError={setError}
+        disabled={loading || isLocalhostOAuthPopup()}
+      />
       <aside className="hidden lg:flex lg:w-[42%] xl:w-[45%] lg:min-h-screen flex-col relative overflow-hidden bg-gradient-to-br from-[#0d2818] via-[#102216] to-[#0a1f12]">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_20%,rgba(19,236,91,0.12),transparent)]" />
         <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-[#13ec5b]/10 blur-[80px]" />
