@@ -75,7 +75,7 @@ export default function HomePage() {
             <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.1]">
               A agenda que seu negócio{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-400">
-                merecia ter
+                merece ter
               </span>
             </h1>
 
@@ -92,7 +92,7 @@ export default function HomePage() {
                 <span className="material-symbols-outlined text-lg">arrow_forward</span>
               </Link>
               <Link
-                href="/barbearia-elite"
+                href="/ywp"
                 className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined">play_circle</span>
