@@ -1,19 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-function redirectWithCookies(source: NextResponse, targetUrl: string): NextResponse {
-  const out = NextResponse.redirect(targetUrl);
-  const setCookies = source.headers.getSetCookie?.() ?? [];
-  for (const cookie of setCookies) {
-    const [nameValue] = cookie.split(";").map((s) => s.trim());
-    const eq = nameValue.indexOf("=");
-    if (eq > 0) {
-      out.cookies.set(nameValue.slice(0, eq), nameValue.slice(eq + 1));
-    }
-  }
-  return out;
-}
-
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -42,7 +29,7 @@ export async function GET(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => response.cookies.set(name, value));
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
         },
       },
     }
@@ -88,5 +75,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return redirectWithCookies(response, redirectTo);
+  response.headers.set("Location", redirectTo);
+
+  return response;
 }

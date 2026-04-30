@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Scissors, ArrowLeft } from "lucide-react";
-import { type PlanId } from "@/lib/plans";
+import { type PlanId, isPaidPlanId } from "@/lib/plans";
 import {
   readPricingLock,
   writePricingLock,
@@ -58,9 +58,13 @@ type ProfilePricingRow = {
 
 export default function SetupPage() {
   const router = useRouter();
+  const slugUserEditedRef = useRef(false);
   const [step, setStep] = useState(1);
   const [lockSnapshot, setLockSnapshot] = useState<PricingLockPayload | null>(null);
   const [profileRec, setProfileRec] = useState<ProfilePricingRow | null>(null);
+  /** null = ainda não checou ou slug curto demais; true = já existe em businesses */
+  const [slugTaken, setSlugTaken] = useState<boolean | null>(null);
+  const [slugChecking, setSlugChecking] = useState(false);
   const [data, setData] = useState<SetupFormData>({
     businessName: "",
     segment: "",
@@ -113,6 +117,23 @@ export default function SetupPage() {
     }));
   }, [profileRec?.onboarding_inputs]);
 
+  useEffect(() => {
+    const raw = data.slug.trim();
+    if (!raw || raw.length < 2) {
+      setSlugTaken(null);
+      setSlugChecking(false);
+      return;
+    }
+    setSlugChecking(true);
+    const id = window.setTimeout(async () => {
+      const supabase = createClient();
+      const { data: row } = await supabase.from("businesses").select("id").eq("slug", raw).maybeSingle();
+      setSlugTaken(Boolean(row?.id));
+      setSlugChecking(false);
+    }, 450);
+    return () => window.clearTimeout(id);
+  }, [data.slug]);
+
   const effectivePlan = useMemo(
     () =>
       resolveEffectiveDynamicPlan(
@@ -133,6 +154,30 @@ export default function SetupPage() {
       profileRec?.recommended_price_display,
     ]
   );
+
+  /** Primeira vez no passo do preço: grava lock no navegador se ainda não existir (anti-manipulação; sem UI). */
+  useEffect(() => {
+    if (step !== 5) return;
+    const fromStorage = readPricingLock();
+    if (fromStorage && isPaidPlanId(fromStorage.tier)) {
+      setLockSnapshot((prev) => {
+        if (
+          prev?.tier === fromStorage.tier &&
+          prev?.priceDisplay === fromStorage.priceDisplay &&
+          prev?.lockedAt === fromStorage.lockedAt
+        ) {
+          return prev;
+        }
+        return fromStorage;
+      });
+      return;
+    }
+    const { tier, monthlyPrice } = effectivePlan;
+    if (!isPaidPlanId(tier)) return;
+    writePricingLock(tier, monthlyPrice);
+    const next = readPricingLock();
+    if (next) setLockSnapshot(next);
+  }, [step, effectivePlan.tier, effectivePlan.monthlyPrice]);
 
   const handleNext = () => {
     if (step < totalSteps) setStep(step + 1);
@@ -225,13 +270,23 @@ export default function SetupPage() {
   };
 
   const updateData = (field: string, value: unknown) => {
-    setData((prev) => {
-      const updated = { ...prev, [field]: value };
-      if (field === "businessName") {
-        updated.slug = slugify(value as string);
-      }
-      return updated;
-    });
+    if (field === "slug") {
+      slugUserEditedRef.current = true;
+      setData((prev) => ({ ...prev, slug: slugify(String(value)) }));
+      return;
+    }
+    if (field === "businessName") {
+      setData((prev) => {
+        const name = String(value);
+        const next: SetupFormData = { ...prev, businessName: name };
+        if (!slugUserEditedRef.current) {
+          next.slug = slugify(name);
+        }
+        return next;
+      });
+      return;
+    }
+    setData((prev) => ({ ...prev, [field]: value }));
   };
 
   const stepLabel =
@@ -312,7 +367,13 @@ export default function SetupPage() {
 
           {/* Step content */}
           {step === 1 && (
-            <Step1 data={data} update={updateData} segments={SEGMENTS} />
+            <Step1
+              data={data}
+              update={updateData}
+              segments={SEGMENTS}
+              slugTaken={slugTaken}
+              slugChecking={slugChecking}
+            />
           )}
           {step === 2 && (
             <Step2 data={data} update={updateData} />
@@ -345,7 +406,14 @@ export default function SetupPage() {
               )}
               <button
                 onClick={handleNext}
-                disabled={step === 1 && !data.businessName}
+                disabled={
+                  step === 1 &&
+                  (!data.businessName.trim() ||
+                    !data.slug.trim() ||
+                    data.slug.trim().length < 2 ||
+                    slugTaken === true ||
+                    slugChecking)
+                }
                 className="flex-1 py-4 bg-primary hover:bg-primary/90 disabled:bg-primary/40 disabled:cursor-not-allowed text-black font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)] flex items-center justify-center gap-2"
               >
                 Continuar
@@ -361,7 +429,19 @@ export default function SetupPage() {
 }
 
 // Step 1 - Business info
-function Step1({ data, update, segments }: { data: SetupFormData; update: (f: string, v: unknown) => void; segments: string[] }) {
+function Step1({
+  data,
+  update,
+  segments,
+  slugTaken,
+  slugChecking,
+}: {
+  data: SetupFormData;
+  update: (f: string, v: unknown) => void;
+  segments: string[];
+  slugTaken: boolean | null;
+  slugChecking: boolean;
+}) {
   return (
     <div>
       <div className="mb-8">
@@ -378,12 +458,28 @@ function Step1({ data, update, segments }: { data: SetupFormData; update: (f: st
             placeholder="Ex.: nome do seu negócio"
             className="w-full h-12 bg-[#14221A] border border-[#213428] focus:border-primary rounded-xl px-4 text-white placeholder-gray-600 outline-none transition-colors text-sm"
           />
-          {data.businessName && (
-            <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
-              <span className="material-symbols-outlined text-xs text-primary">link</span>
-              agenndo.com.br/{data.slug}
-            </p>
-          )}
+        </FormField>
+
+        <FormField label="Nome de usuário (Seu link público. Edite!)" required>
+          <input
+            type="text"
+            value={data.slug}
+            onChange={(e) => update("slug", e.target.value)}
+            placeholder="ex.: meu-estudio"
+            autoComplete="off"
+            spellCheck={false}
+            className="w-full h-12 bg-[#14221A] border border-[#213428] focus:border-primary rounded-xl px-4 text-white placeholder-gray-600 outline-none transition-colors font-mono text-sm"
+          />
+          <p className="text-xs text-gray-500 mt-1.5 flex items-center gap-1">
+            <span className="material-symbols-outlined text-xs text-primary">link</span>
+            agenndo.com.br/{data.slug || "…"}
+          </p>
+          {data.slug.trim().length >= 2 && slugChecking ? (
+            <p className="text-[11px] text-gray-500 mt-1">Verificando…</p>
+          ) : null}
+          {slugTaken === true ? (
+            <p className="text-[11px] text-amber-400 mt-1">Este endereço já está em uso. Altere o nome de usuário.</p>
+          ) : null}
         </FormField>
 
         <FormField label="Segmento">
