@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Scissors, ArrowLeft } from "lucide-react";
-import { type PlanId, normalizePlanId, isPaidPlanId } from "@/lib/plans";
+import { type PlanId } from "@/lib/plans";
 import {
   readPricingLock,
   writePricingLock,
@@ -13,6 +13,12 @@ import {
 } from "@/lib/pricing-lock";
 import { formatBrazilPhoneFromDigits, phoneDigitsOnly, slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+
+/** Mesmo número usado em `WhatsAppSupportWidget`; env opcional no deploy. */
+const SUPPORT_WHATSAPP =
+  typeof process.env.NEXT_PUBLIC_AGENNDO_SUPPORT_WHATSAPP === "string"
+    ? process.env.NEXT_PUBLIC_AGENNDO_SUPPORT_WHATSAPP.replace(/\D/g, "")
+    : "5513981740870";
 
 const SEGMENTS = [
   "Salão de Beleza", "Clínica de Estética", "Manicure / Pedicure", "Barbearia",
@@ -128,10 +134,6 @@ export default function SetupPage() {
     ]
   );
 
-  const pricingPinnedNotice =
-    lockSnapshot != null ||
-    (profileRec?.recommended_plan != null && isPaidPlanId(normalizePlanId(profileRec.recommended_plan)));
-
   const handleNext = () => {
     if (step < totalSteps) setStep(step + 1);
   };
@@ -232,7 +234,8 @@ export default function SetupPage() {
     });
   };
 
-  const stepLabel = step === 1 ? "Negócio" : step === 2 ? "Equipe" : step === 3 ? "Volume" : step === 4 ? "Aparência" : "Plano";
+  const stepLabel =
+    step === 1 ? "Negócio" : step === 2 ? "Equipe" : step === 3 ? "Volume" : step === 4 ? "Aparência" : "Começar";
 
   return (
     <div className="min-h-screen bg-[#102216] text-white flex flex-col lg:flex-row">
@@ -324,9 +327,7 @@ export default function SetupPage() {
             <Step5
               data={data}
               dynamicPlan={effectivePlan}
-              pricingPinnedNotice={pricingPinnedNotice}
-              onFinish={handleFinish}
-              onFree={() => handleFinish("free")}
+              onStartTrial={() => void handleFinish("free")}
             />
           )}
 
@@ -466,9 +467,8 @@ function Step3({ data, update }: { data: { dailyAppointments: number; averageTic
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white mb-2">Volume de trabalho</h1>
         <p className="text-gray-400 text-sm leading-relaxed">
-          Estes números definem o <span className="text-primary font-medium">valor mensal</span> que você
-          verá no último passo. O ticket médio pesa mais do que só a quantidade de atendimentos: muitos
-          horários no dia nem sempre significam o mesmo faturamento.
+          Ajudam a entender seu perfil e o <span className="text-primary font-medium">valor mensal sugerido</span> quando
+          você decidir assinar. O ticket médio pesa mais do que só a quantidade de atendimentos no dia.
         </p>
       </div>
 
@@ -595,53 +595,85 @@ function Step4({ data, update, colors }: { data: { primaryColor: string; busines
   );
 }
 
-// Step 5 - Plano dinâmico: usuário só vê a opção destinada ao perfil
+// Step 5 — teste primeiro (`effectivePlan` via `resolveEffectiveDynamicPlan`, sem microcopiar regra técnica)
 function Step5({
   data,
   dynamicPlan,
-  pricingPinnedNotice,
-  onFinish,
-  onFree,
+  onStartTrial,
 }: {
-  data: { businessName: string; teamSize: string; dailyAppointments: number; averageTicket: number };
-  dynamicPlan: { tier: PlanId; monthlyPrice: number; infrastructure: string; highlight: string; features: { title: string; sub: string }[] };
-  pricingPinnedNotice: boolean;
-  onFinish: (plan: PlanId) => void;
-  onFree: () => void;
+  data: { businessName: string };
+  dynamicPlan: {
+    tier: PlanId;
+    monthlyPrice: number;
+    infrastructure: string;
+    highlight: string;
+    features: { title: string; sub: string }[];
+  };
+  onStartTrial: () => void;
 }) {
+  const waTrialHref = useMemo(() => {
+    const text = encodeURIComponent(
+      `Olá! Estou iniciando o teste do Agenndo (${data.businessName || "meu negócio"}) e gostaria de falar sobre a duração do período gratuito.`
+    );
+    return `https://wa.me/${SUPPORT_WHATSAPP}?text=${text}`;
+  }, [data.businessName]);
+
+  const priceFmt = `R$ ${dynamicPlan.monthlyPrice.toFixed(2).replace(".", ",")}`;
+
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white mb-2">Plano e investimento</h1>
+    <div className="space-y-5">
+      <div>
+        <h1 className="text-2xl font-bold text-white mb-2">Comece pelo teste gratuito</h1>
         <p className="text-gray-400 text-sm leading-relaxed">
-          Você <span className="text-white font-medium">já sabe o preço</span> que passará a pagar após o período de
-          teste: é o valor abaixo, calculado com base no que informou (equipe, atendimentos por dia e ticket
-          médio) para <span className="text-primary font-semibold">{data.businessName || "seu negócio"}</span>. Condições
-          gerais estão nos Termos de Uso.
+          Entre e use sem cartão para explorar o Agenndo. Se gostar, você poderá assinar depois pelo painel pelo valor mensal de (<span className="text-white/90">{priceFmt}</span>). Com Infraestrutura de Software dedicada ao seu negócio.
         </p>
-        {pricingPinnedNotice && (
-          <p className="mt-3 text-xs text-amber-200/90 bg-amber-500/10 border border-amber-500/25 rounded-xl px-3 py-2 leading-relaxed">
-            Este valor segue o que já foi definido neste aparelho ou na sua conta. Informações falsas ou uso incompatível com
-            o declarado podem ensejar medidas descritas nos Termos.
-          </p>
-        )}
       </div>
 
-      <div className="bg-[#14221A] border border-primary/30 rounded-2xl p-5 mb-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 bg-primary px-3 py-1 rounded-bl-xl">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-[#102216]">Recomendado</p>
-        </div>
-        {dynamicPlan.infrastructure.trim() ? (
-          <div className="flex items-center gap-2 mb-4">
-            <span className="material-symbols-outlined text-primary text-lg">bolt</span>
-            <p className="text-sm font-semibold text-primary">{dynamicPlan.infrastructure}</p>
+      <div className="rounded-2xl border border-primary/35 bg-[#14221A] p-5 space-y-4">
+        <div className="flex items-start gap-3">
+          <span className="material-symbols-outlined text-primary text-2xl shrink-0">rocket_launch</span>
+          <div>
+            <p className="text-sm font-bold text-white">Período de teste sem pressa</p>
+            <p className="text-xs text-gray-400 mt-1 leading-snug">
+              Em geral <span className="text-gray-300">7 dias ou mais</span> com acesso completo. Precisa avaliar com calma?
+              Chame o suporte e combine extensão (até cerca de 1 mês, caso a caso).
+            </p>
+            <a
+              href={waTrialHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold text-primary hover:brightness-110"
+            >
+              <span className="material-symbols-outlined text-base">chat</span>
+              Falar no WhatsApp sobre o trial
+            </a>
           </div>
+        </div>
+
+        <div className="rounded-xl bg-[#080c0a]/90 border border-white/10 px-4 py-3">
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Depois do teste, se você quiser continuar</p>
+          <p className="text-lg font-extrabold text-white mt-1 tabular-nums">
+            {priceFmt}
+            <span className="text-sm font-medium text-gray-400"> /mês</span>
+          </p>
+          <p className="text-[11px] text-gray-500 mt-2 leading-snug">
+            Cobrança recorrente no cartão (via Stripe com qualquer cartão) apenas quando você ativar o plano pago. Ou seja, gostou do Agenndo, do suporte e das atualizações? Assine e aproveite!
+          </p>
+        </div>
+      </div>
+
+      <SetupCollapsible title="O que está incluído no plano completo">
+        {dynamicPlan.infrastructure.trim() ? (
+          <p className="text-xs text-primary font-medium mb-3 flex items-center gap-2">
+            <span className="material-symbols-outlined text-base">bolt</span>
+            {dynamicPlan.infrastructure}
+          </p>
         ) : null}
-        <p className="text-gray-400 text-sm mb-4">{dynamicPlan.highlight}</p>
-        <ul className="space-y-3 mb-5">
+        {dynamicPlan.highlight.trim() ? <p className="text-xs text-gray-500 mb-3">{dynamicPlan.highlight}</p> : null}
+        <ul className="space-y-3">
           {dynamicPlan.features.map((f) => (
-            <li key={f.title} className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-primary text-base mt-0.5">check_circle</span>
+            <li key={f.title} className="flex items-start gap-2.5">
+              <span className="material-symbols-outlined text-primary text-base shrink-0 mt-0.5">check_circle</span>
               <div>
                 <p className="text-sm font-medium text-white">{f.title}</p>
                 <p className="text-xs text-gray-500">{f.sub}</p>
@@ -649,45 +681,50 @@ function Step5({
             </li>
           ))}
         </ul>
-        <div className="border-t border-white/10 pt-4 flex items-center justify-between">
-          <div>
-            <p className="text-xs text-gray-500">Investimento mensal</p>
-            <p className="text-2xl font-extrabold text-white">
-              R$ {dynamicPlan.monthlyPrice.toFixed(2).replace(".", ",")}
-              <span className="text-sm font-normal text-gray-400">/mês</span>
-            </p>
-          </div>
-          <div className="text-right">
-            <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-2 max-w-[11rem]">
-              <p className="text-xs font-bold text-primary">Teste grátis (7+ dias)</p>
-              <p className="text-[10px] text-gray-400">Cobrança no cartão só após o fim do trial, no valor acima</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      </SetupCollapsible>
 
       <button
-        onClick={() => onFinish(dynamicPlan.tier)}
+        type="button"
+        onClick={onStartTrial}
         className="w-full py-4 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)] flex items-center justify-center gap-2"
       >
-        Começar agora com assinatura
-        <span className="material-symbols-outlined text-base">arrow_forward</span>
+        Entrar no teste gratuito
+        <span className="material-symbols-outlined text-base">rocket_launch</span>
       </button>
-      <button
-        type="button"
-        onClick={onFree}
-        className="w-full mt-3 py-3 text-sm text-gray-400 hover:text-gray-300 transition-colors"
-      >
-        Continuar sem assinar o plano pago (período de teste)
-      </button>
-      <p className="text-xs text-gray-500 text-center mt-4 leading-relaxed">
-        O acesso completo no teste costuma ser de <span className="text-gray-400">7 dias</span> ou mais, sem cobrança
-        enquanto o trial estiver ativo. Se precisar de mais tempo para decidir, <span className="text-gray-400">fale com o
-        suporte</span> e peça extensão do teste por até <span className="text-gray-400">1 mês</span>, conforme combinação.
-        Depois do trial, a cobrança recorrente segue o valor exibido acima (cartão via Stripe). Outros meios podem ser
-        adicionados depois.
+
+      <p className="text-[11px] text-gray-500 text-center leading-relaxed">
+        Ao entrar você concorda com os{" "}
+        <Link href="/termos" className="text-primary font-semibold hover:underline">
+          Termos de Uso
+        </Link>
+        . A assinatura paga fica no painel, quando você quiser.
       </p>
     </div>
+  );
+}
+
+function SetupCollapsible({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group rounded-xl border border-[#213428] bg-[#14221A]/70 overflow-hidden open:border-[#2a4534] [&_summary::-webkit-details-marker]:hidden">
+      <summary className="cursor-pointer list-none px-4 py-3.5 hover:bg-white/[0.04] transition-colors flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white">{title}</p>
+          {subtitle ? <p className="text-[11px] text-gray-500 mt-1 leading-snug">{subtitle}</p> : null}
+        </div>
+        <span className="material-symbols-outlined text-gray-500 text-xl shrink-0 transition-transform duration-200 group-open:rotate-180">
+          expand_more
+        </span>
+      </summary>
+      <div className="border-t border-white/[0.06] px-4 py-3">{children}</div>
+    </details>
   );
 }
 
