@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
 import { useTheme } from "@/lib/theme-context";
 import { recalcClientTotalSpent } from "@/lib/appointment-finance";
+import { recalculateCommissionAmountForAppointment } from "@/lib/commission-sync";
+import { CommissionsModule } from "@/components/dashboard/commissions-module";
 import { useAppAlert } from "@/components/app-alert-provider";
 import {
   DashboardFullScreenOverlay,
@@ -116,7 +118,8 @@ function FinanceEditModalFooter({ saving }: { saving: boolean }) {
 export default function FinanceiroPage() {
   const { showAlert, showConfirm } = useAppAlert();
   const { theme } = useTheme();
-  const { business } = useDashboard();
+  const { business, profile } = useDashboard();
+  const [financeTab, setFinanceTab] = useState<"revenue" | "commissions">("revenue");
   const [records, setRecords] = useState<RecordRow[]>([]);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -176,9 +179,13 @@ export default function FinanceiroPage() {
     loadRecords();
   }, [loadRecords]);
 
-  useRegisterDashboardHotkeys(!showAddModal && !editingRecord && !!business?.id, "financeiro-novo", {
-    novo: () => setShowAddModal(true),
-  });
+  useRegisterDashboardHotkeys(
+    financeTab === "revenue" && !showAddModal && !editingRecord && !!business?.id,
+    "financeiro-novo",
+    {
+      novo: () => setShowAddModal(true),
+    }
+  );
 
   const manualFormRef = useRef(manualForm);
   manualFormRef.current = manualForm;
@@ -448,6 +455,16 @@ export default function FinanceiroPage() {
         .update({ price_cents: cents })
         .eq("id", editingRecord.appointment_id)
         .eq("business_id", business.id);
+      const rc = await recalculateCommissionAmountForAppointment({
+        supabase,
+        businessId: business.id,
+        appointmentId: editingRecord.appointment_id,
+      });
+      if ("error" in rc && rc.error) {
+        setEditError(rc.error);
+        setEditSaving(false);
+        return false;
+      }
     }
     const ids = uniqueClientIdsForRecalc(oldCid, newCid);
     let recalcErr: string | undefined;
@@ -481,27 +498,57 @@ export default function FinanceiroPage() {
           <h1 className="text-2xl font-bold text-gray-900">Financeiro</h1>
           <p className="text-gray-600 text-sm mt-1">Acompanhe sua receita e pagamentos</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={exportCsv}
-            className="px-3 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5"
-          >
-            <span className="material-symbols-outlined text-base">download</span>
-            Exportar CSV
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
-          >
-            <span className="material-symbols-outlined shrink-0 text-base">add</span>
-            <span className="min-w-0 flex-1 text-left">Entrada manual</span>
-            <HotkeyHint action="novo" variant="primary" />
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mr-1">
+            <button
+              type="button"
+              onClick={() => setFinanceTab("revenue")}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                financeTab === "revenue" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Receita
+            </button>
+            <button
+              type="button"
+              onClick={() => setFinanceTab("commissions")}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
+                financeTab === "commissions" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Comissões
+            </button>
+          </div>
+          {financeTab === "revenue" ? (
+            <>
+              <button
+                type="button"
+                onClick={exportCsv}
+                className="px-3 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-base">download</span>
+                Exportar CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
+              >
+                <span className="material-symbols-outlined shrink-0 text-base">add</span>
+                <span className="min-w-0 flex-1 text-left">Entrada manual</span>
+                <HotkeyHint action="novo" variant="primary" />
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
 
+      {financeTab === "commissions" && business?.id && profile?.id ? (
+        <CommissionsModule businessId={business.id} profileId={profile.id} />
+      ) : null}
+
+      {financeTab === "revenue" ? (
+        <>
       {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[
@@ -700,6 +747,8 @@ export default function FinanceiroPage() {
           )}
         </div>
       </div>
+        </>
+      ) : null}
 
       {showAddModal && (
         <DashboardFullScreenOverlay

@@ -7,7 +7,7 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
 import { SwitchToggle } from "@/components/switch-toggle";
 import { EntityPhotoControl } from "@/components/dashboard/entity-photo-control";
-import { formatBrazilPhoneFromDigits, maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
+import { formatBrazilPhoneFromDigits, getAuthHeaders, maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
 import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 
 const COLORS = [
@@ -23,6 +23,7 @@ type Row = {
   color: string | null;
   avatar_url: string | null;
   active: boolean;
+  auth_user_id: string | null;
 };
 
 export default function EditarColaboradorPage() {
@@ -43,6 +44,9 @@ export default function EditarColaboradorPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [linkEmail, setLinkEmail] = useState("");
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkedUser, setLinkedUser] = useState(false);
 
   const load = useCallback(async () => {
     if (!id || !business?.id) {
@@ -53,7 +57,7 @@ export default function EditarColaboradorPage() {
     const supabase = createClient();
     const { data, error: qErr } = await supabase
       .from("collaborators")
-      .select("id, name, role, phone, color, avatar_url, active")
+      .select("id, name, role, phone, color, avatar_url, active, auth_user_id")
       .eq("id", id)
       .eq("business_id", business.id)
       .maybeSingle();
@@ -72,6 +76,7 @@ export default function EditarColaboradorPage() {
       active: row.active,
     });
     setAvatarUrl(row.avatar_url ?? null);
+    setLinkedUser(!!row.auth_user_id);
     setNotFound(false);
   }, [id, business?.id]);
 
@@ -271,6 +276,84 @@ export default function EditarColaboradorPage() {
           <span className="material-symbols-outlined text-base">category</span>
           Gerenciar serviços deste colaborador
         </Link>
+      </div>
+
+      <div className="mt-6 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+        <h2 className="text-sm font-bold text-gray-900 mb-1">Conta para “Minhas comissões”</h2>
+        <p className="text-xs text-gray-500 mb-4">
+          Vincule o e-mail da conta Agendo do profissional para ele acessar{" "}
+          <span className="font-semibold text-gray-700">Financeiro → Minhas comissões</span> e ver apenas os próprios
+          valores.
+        </p>
+        {linkedUser ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-sm text-primary font-semibold">Conta vinculada</span>
+            <button
+              type="button"
+              disabled={linkBusy}
+              onClick={async () => {
+                setLinkBusy(true);
+                try {
+                  const res = await fetch(`/api/dashboard/collaborator-link?collaboratorId=${encodeURIComponent(id)}`, {
+                    method: "DELETE",
+                    credentials: "include",
+                    headers: { ...getAuthHeaders() },
+                  });
+                  const j = (await res.json()) as { error?: string };
+                  if (!res.ok) throw new Error(j.error ?? "Erro");
+                  setLinkedUser(false);
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Erro ao desvincular");
+                } finally {
+                  setLinkBusy(false);
+                }
+              }}
+              className="text-sm font-semibold text-red-600 hover:underline disabled:opacity-50"
+            >
+              Desvincular
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap gap-2 items-end">
+            <label className="flex-1 min-w-[12rem] text-xs font-medium text-gray-600">
+              E-mail da conta Agendo (profissional)
+              <input
+                type="email"
+                value={linkEmail}
+                onChange={(e) => setLinkEmail(e.target.value)}
+                placeholder="nome@email.com"
+                className="mt-1 w-full h-11 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm text-gray-900"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={linkBusy || !linkEmail.trim()}
+              onClick={async () => {
+                setLinkBusy(true);
+                setError(null);
+                try {
+                  const res = await fetch("/api/dashboard/collaborator-link", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+                    body: JSON.stringify({ collaboratorId: id, email: linkEmail.trim() }),
+                  });
+                  const j = (await res.json()) as { error?: string };
+                  if (!res.ok) throw new Error(j.error ?? "Erro");
+                  setLinkedUser(true);
+                  setLinkEmail("");
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : "Erro ao vincular");
+                } finally {
+                  setLinkBusy(false);
+                }
+              }}
+              className="h-11 px-4 rounded-xl bg-gray-900 text-white text-sm font-bold disabled:opacity-50"
+            >
+              {linkBusy ? "…" : "Vincular"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

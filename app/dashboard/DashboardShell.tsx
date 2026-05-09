@@ -11,6 +11,7 @@ import type { UserInfo } from "@/lib/dashboard-context";
 import type { BusinessRow } from "@/lib/dashboard-context";
 import type { ProfileRow } from "@/lib/dashboard-context";
 import { WhatsAppSupportWidget } from "@/components/whatsapp-support-widget";
+import { StaffDashboardBoundary } from "@/components/dashboard/staff-dashboard-boundary";
 import { stopImpersonation } from "@/lib/auth/impersonation-client";
 import { useAppAlert } from "@/components/app-alert-provider";
 import { DashboardHotkeyProvider } from "@/lib/dashboard-hotkeys";
@@ -29,6 +30,7 @@ const MENU_CADASTROS = [
 const MENU_DADOS = [
   { href: "/dashboard/analytics", icon: "analytics", label: "Analytics" },
   { href: "/dashboard/financeiro", icon: "payments", label: "Financeiro" },
+  { href: "/dashboard/minhas-comissoes", icon: "savings", label: "Minhas comissões" },
   { href: "/dashboard/clientes", icon: "person_search", label: "Clientes" },
 ];
 const MENU_CONFIG = [
@@ -50,6 +52,11 @@ const MOBILE_NAV_ITEMS: MobileNavItem[] = [
   { type: "group", key: "dados", icon: "bar_chart", label: "Dados", items: MENU_DADOS },
   { type: "group", key: "config", icon: "tune", label: "Config", items: MENU_CONFIG },
   { type: "link", href: "/dashboard/conta", icon: "manage_accounts", label: "Conta" },
+];
+
+const MOBILE_STAFF_NAV: MobileNavItem[] = [
+  { type: "link", href: "/dashboard/minhas-comissoes", icon: "savings", label: "Comissões", exact: false },
+  { type: "link", href: "/dashboard/conta", icon: "manage_accounts", label: "Conta", exact: false },
 ];
 
 const MOBILE_GROUP_TITLE: Record<GroupKey, string> = {
@@ -89,7 +96,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const { showAlert } = useAppAlert();
-  const { business, user, profile } = useDashboard();
+  const { business, user, profile, isStaffDashboard } = useDashboard();
   const [impersonationExitLoading, setImpersonationExitLoading] = useState(false);
   /** Apenas um grupo aberto por vez; Início e Conta fecham todos. */
   const [openSidebarGroup, setOpenSidebarGroup] = useState<GroupKey | null>(null);
@@ -226,38 +233,80 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           {business?.name && <p className="text-xs text-gray-500 mt-1 truncate" title={business.name}>{business.name}</p>}
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4 min-h-0">
-          <GuardedDashboardLink
-            href="/dashboard"
-            onClick={() => {
-              setOpenSidebarGroup(null);
-              setMobileExpandedGroup(null);
-            }}
-            className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-2 ${pathname === "/dashboard" ? "bg-primary/10 text-primary" : isLight ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
-          >
-            <span className={`material-symbols-outlined text-[20px] ${pathname === "/dashboard" ? "filled" : ""}`}>grid_view</span>
-            Início
-          </GuardedDashboardLink>
-          <p className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider ${isLight ? "text-gray-400" : "text-gray-500"}`}>Menu</p>
-          {renderSidebarGroup("agenda", "Agenda", "calendar_month", MENU_AGENDA)}
-          {renderSidebarGroup("cadastros", "Cadastros", "folder", MENU_CADASTROS)}
-          {renderSidebarGroup("dados", "Dados", "bar_chart", MENU_DADOS)}
-          {renderSidebarGroup("config", "Configurações", "tune", MENU_CONFIG)}
-          <div className="mt-3 pt-3 border-t border-inherit space-y-0.5">
-            {DIRECT_LINKS.map((item) => (
+          {isStaffDashboard ? (
+            <>
+              <p className={`px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider ${isLight ? "text-gray-400" : "text-gray-500"}`}>
+                Profissional
+              </p>
               <GuardedDashboardLink
-                key={item.href}
-                href={item.href}
+                href="/dashboard/minhas-comissoes"
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-1 ${
+                  pathname.startsWith("/dashboard/minhas-comissoes")
+                    ? "bg-primary/10 text-primary"
+                    : isLight
+                      ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      : "text-gray-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <span
+                  className={`material-symbols-outlined text-[20px] ${pathname.startsWith("/dashboard/minhas-comissoes") ? "filled" : ""}`}
+                >
+                  savings
+                </span>
+                Minhas comissões
+              </GuardedDashboardLink>
+              <GuardedDashboardLink
+                href="/dashboard/conta"
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  pathname.startsWith("/dashboard/conta")
+                    ? "bg-primary/10 text-primary"
+                    : isLight
+                      ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      : "text-gray-400 hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <span className={`material-symbols-outlined text-[20px] ${pathname.startsWith("/dashboard/conta") ? "filled" : ""}`}>
+                  manage_accounts
+                </span>
+                Conta
+              </GuardedDashboardLink>
+            </>
+          ) : (
+            <>
+              <GuardedDashboardLink
+                href="/dashboard"
                 onClick={() => {
                   setOpenSidebarGroup(null);
                   setMobileExpandedGroup(null);
                 }}
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(item.href) ? "bg-primary/10 text-primary" : isLight ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors mb-2 ${pathname === "/dashboard" ? "bg-primary/10 text-primary" : isLight ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
               >
-                <span className={`material-symbols-outlined text-[20px] ${isActive(item.href) ? "filled" : ""}`}>{item.icon}</span>
-                {item.label}
+                <span className={`material-symbols-outlined text-[20px] ${pathname === "/dashboard" ? "filled" : ""}`}>grid_view</span>
+                Início
               </GuardedDashboardLink>
-            ))}
-          </div>
+              <p className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider ${isLight ? "text-gray-400" : "text-gray-500"}`}>Menu</p>
+              {renderSidebarGroup("agenda", "Agenda", "calendar_month", MENU_AGENDA)}
+              {renderSidebarGroup("cadastros", "Cadastros", "folder", MENU_CADASTROS)}
+              {renderSidebarGroup("dados", "Dados", "bar_chart", MENU_DADOS)}
+              {renderSidebarGroup("config", "Configurações", "tune", MENU_CONFIG)}
+              <div className="mt-3 pt-3 border-t border-inherit space-y-0.5">
+                {DIRECT_LINKS.map((item) => (
+                  <GuardedDashboardLink
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => {
+                      setOpenSidebarGroup(null);
+                      setMobileExpandedGroup(null);
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(item.href) ? "bg-primary/10 text-primary" : isLight ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
+                  >
+                    <span className={`material-symbols-outlined text-[20px] ${isActive(item.href) ? "filled" : ""}`}>{item.icon}</span>
+                    {item.label}
+                  </GuardedDashboardLink>
+                ))}
+              </div>
+            </>
+          )}
         </nav>
         <div className={`p-3 border-t border-inherit space-y-1 shrink-0 ${isLight ? "bg-gray-50/80" : "bg-black/20"}`}>
           {slug && (
@@ -312,6 +361,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         <main className={`flex-1 w-full lg:pb-8 ${mobileExpandedGroup ? "pb-36" : "pb-20"}`}>
           <div className="px-4 sm:px-6 lg:px-8 py-6 w-full max-w-none">
             {business &&
+              !isStaffDashboard &&
               !hasFullServiceAccess({
                 plan: business.plan,
                 stripe_subscription_id: business.stripe_subscription_id,
@@ -352,7 +402,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   </GuardedDashboardLink>
                 </div>
               )}
-            {children}
+            <StaffDashboardBoundary>{children}</StaffDashboardBoundary>
           </div>
         </main>
       </div>
@@ -361,12 +411,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             aria-label="Fechar submenu"
-            className="lg:hidden fixed inset-x-0 top-0 z-[28] bg-black/45 backdrop-blur-[2px]"
-            style={{ bottom: "calc(0px + env(safe-area-inset-bottom, 0px))" }}
+            className="lg:hidden fixed inset-x-0 top-0 z-[52] bg-black/45 backdrop-blur-[2px]"
+            style={{ bottom: "calc(56px + env(safe-area-inset-bottom, 0px))" }}
             onClick={() => setMobileExpandedGroup(null)}
           />
           <div
-            className={`lg:hidden fixed left-2 right-2 z-[32] rounded-2xl border shadow-[0_-8px_40px_rgba(0,0,0,0.18)] overflow-hidden ${
+            className={`lg:hidden fixed left-2 right-2 z-[53] rounded-2xl border shadow-[0_-8px_40px_rgba(0,0,0,0.18)] overflow-hidden ${
               isLight ? "bg-white border-gray-200/90" : "bg-[#0c1210] border-white/10"
             }`}
             style={{ bottom: "calc(56px + env(safe-area-inset-bottom, 0px) + 10px)" }}
@@ -413,7 +463,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileExpandedGroup(null)}
-                    className={`flex items-center gap-3 min-h-[52px] px-3 py-3 rounded-xl transition-colors ${
+                    className={`flex items-center gap-3 min-h-[52px] px-3 py-2.5 rounded-xl transition-colors ${
                       subActive
                         ? isLight
                           ? "bg-primary/12 text-primary"
@@ -424,7 +474,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     }`}
                   >
                     <span
-                      className={`size-11 rounded-xl flex items-center justify-center shrink-0 material-symbols-outlined text-[22px] ${
+                      className={`grid shrink-0 place-items-center size-11 rounded-xl ${
                         subActive
                           ? "bg-primary/20 text-primary"
                           : isLight
@@ -432,15 +482,22 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                             : "bg-white/[0.08] text-white/70"
                       }`}
                     >
-                      {item.icon}
+                      <span className="material-symbols-outlined inline-grid size-[22px] place-items-center text-[22px] leading-none !min-h-[22px] !min-w-[22px]">
+                        {item.icon}
+                      </span>
                     </span>
-                    <span className="flex-1 text-left text-[15px] font-semibold leading-tight">{item.label}</span>
+                    <span className="flex min-w-0 flex-1 items-center text-left text-[15px] font-semibold leading-snug">
+                      {item.label}
+                    </span>
                     <span
-                      className={`material-symbols-outlined text-xl shrink-0 ${
+                      className={`flex size-9 shrink-0 items-center justify-center ${
                         subActive ? "text-primary" : isLight ? "text-gray-300" : "text-white/25"
                       }`}
+                      aria-hidden
                     >
-                      chevron_right
+                      <span className="material-symbols-outlined inline-grid size-6 place-items-center text-xl leading-none !min-h-6 !min-w-6">
+                        chevron_right
+                      </span>
                     </span>
                   </GuardedDashboardLink>
                 );
@@ -449,13 +506,23 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
         </>
       )}
-      <nav className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 border-t flex items-center justify-around px-1 pt-1.5 pb-1.5 pb-safe ${navBottomBg}`}>
-        {MOBILE_NAV_ITEMS.map((item) => {
+      <nav
+        className={`lg:hidden fixed bottom-0 left-0 right-0 border-t flex items-center justify-around px-1 pt-1.5 pb-1.5 pb-safe ${navBottomBg} ${
+          mobileExpandedGroup ? "z-[55]" : "z-40"
+        }`}
+      >
+        {(isStaffDashboard ? MOBILE_STAFF_NAV : MOBILE_NAV_ITEMS).map((item) => {
           if (item.type === "link") {
             const active = isActive(item.href, item.exact);
             return (
               <GuardedDashboardLink key={item.href} href={item.href} onClick={() => setMobileExpandedGroup(null)} className={`flex flex-col items-center gap-0.5 py-1.5 flex-1 min-w-0 max-w-[72px] ${active ? "text-primary" : isLight ? "text-gray-500" : "text-gray-500"}`}>
-                <span className={`material-symbols-outlined text-[20px] ${active ? "filled" : ""}`}>{item.icon}</span>
+                <span className="flex h-[22px] w-full items-center justify-center">
+                  <span
+                    className={`material-symbols-outlined inline-grid size-5 place-items-center text-[20px] leading-none !min-h-5 !min-w-5 ${active ? "filled" : ""}`}
+                  >
+                    {item.icon}
+                  </span>
+                </span>
                 <span className={`text-[9px] font-medium leading-none truncate w-full text-center ${active ? "text-primary" : ""}`}>{item.label}</span>
               </GuardedDashboardLink>
             );
@@ -469,7 +536,13 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               onClick={() => setMobileExpandedGroup((prev) => (prev === item.key ? null : item.key))}
               className={`flex flex-col items-center gap-0.5 py-1.5 flex-1 min-w-0 max-w-[72px] ${active || open ? "text-primary" : isLight ? "text-gray-500" : "text-gray-500"}`}
             >
-              <span className={`material-symbols-outlined text-[20px] ${active || open ? "filled" : ""}`}>{item.icon}</span>
+              <span className="flex h-[22px] w-full items-center justify-center">
+                <span
+                  className={`material-symbols-outlined inline-grid size-5 place-items-center text-[20px] leading-none !min-h-5 !min-w-5 ${active || open ? "filled" : ""}`}
+                >
+                  {item.icon}
+                </span>
+              </span>
               <span className={`text-[9px] font-medium leading-none truncate w-full text-center ${active || open ? "text-primary" : ""}`}>{item.label}</span>
             </button>
           );
@@ -486,12 +559,29 @@ type DashboardShellProps = {
   profile: ProfileRow | null;
   business: BusinessRow | null;
   children: React.ReactNode;
+  isStaffDashboard?: boolean;
+  staffCollaboratorId?: string | null;
 };
 
-export function DashboardShell({ user, profile, business, children }: DashboardShellProps) {
+export function DashboardShell({
+  user,
+  profile,
+  business,
+  children,
+  isStaffDashboard = false,
+  staffCollaboratorId = null,
+}: DashboardShellProps) {
   return (
     <ThemeProvider>
-      <DashboardProvider user={user} profile={profile} business={business} loading={false} refetch={() => {}}>
+      <DashboardProvider
+        user={user}
+        profile={profile}
+        business={business}
+        loading={false}
+        refetch={() => {}}
+        isStaffDashboard={isStaffDashboard}
+        staffCollaboratorId={staffCollaboratorId}
+      >
         <DashboardHotkeyProvider>
           <DashboardNavigationGuardProvider>
             <DashboardLayoutInner>{children}</DashboardLayoutInner>

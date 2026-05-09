@@ -11,6 +11,7 @@ import {
   updateCompareceuPaidAmount,
   centsToMoneyInput,
 } from "@/lib/appointment-finance";
+import { voidCommissionsForAppointments } from "@/lib/commission-sync";
 import { AppointmentValueModal } from "@/components/appointment-value-modal";
 import { useAppAlert } from "@/components/app-alert-provider";
 import { AgendaScheduleView, type AgendaViewMode } from "@/components/agenda-schedule-view";
@@ -288,6 +289,16 @@ export default function AgendamentosPage() {
     if (!ok) return;
     setBusyId("__bulk__");
     const supabase = createClient();
+    const voidRes = await voidCommissionsForAppointments({
+      supabase,
+      businessId: business.id,
+      appointmentIds: selected,
+    });
+    if ("error" in voidRes) {
+      setBusyId(null);
+      showActionMessage(voidRes.error, "error");
+      return;
+    }
     const { error } = await supabase
       .from("appointments")
       .update({ status: "cancelado" })

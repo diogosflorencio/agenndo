@@ -50,6 +50,23 @@ const PALETTE = [
   { value: "#A855F7", label: "Púrpura" },
 ];
 
+/** Aceita #RGB ou #RRGGBB; devolve #RRGGBB normalizado ou null. */
+function normalizePrimaryHex(input: string): string | null {
+  let s = input.trim();
+  if (!s.startsWith("#")) s = `#${s}`;
+  const hex = s.slice(1).replace(/[^0-9a-fA-F]/g, "");
+  if (hex.length === 3) {
+    const [r, g, b] = hex.split("") as [string, string, string];
+    return `#${r}${r}${g}${g}${b}${b}`.toUpperCase();
+  }
+  if (hex.length === 6) return `#${hex.toUpperCase()}`;
+  return null;
+}
+
+function primaryColorInputValue(hex: string): string {
+  return normalizePrimaryHex(hex) ?? "#13EC5B";
+}
+
 type PreviewServiceRow = {
   id: string;
   name: string;
@@ -112,6 +129,11 @@ export default function PersonalizacaoPage() {
     bannerUrl: null as string | null,
     galleryUrls: [] as string[],
   });
+
+  const [primaryHexDraft, setPrimaryHexDraft] = useState(form.primaryColor);
+  useEffect(() => {
+    setPrimaryHexDraft(form.primaryColor);
+  }, [form.primaryColor]);
 
   const [uploading, setUploading] = useState<"logo" | "banner" | "gallery" | null>(null);
   const [uploadLabel, setUploadLabel] = useState<string | null>(null);
@@ -671,23 +693,83 @@ export default function PersonalizacaoPage() {
           {activeTab === "aparencia" && (
             <div className="space-y-5">
               <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-                <h3 className="text-sm font-bold text-gray-900 mb-4">Cor principal</h3>
-                <div className="grid grid-cols-6 gap-2">
-                  {PALETTE.map((color) => (
-                    <button
-                      key={color.value}
-                      type="button"
-                      onClick={() => setForm({ ...form, primaryColor: color.value })}
-                      className={cn(
-                        "aspect-square rounded-xl transition-all",
-                        form.primaryColor === color.value
-                          ? "ring-2 ring-primary ring-offset-2 ring-offset-gray-50 scale-110"
-                          : "hover:scale-105"
-                      )}
-                      style={{ backgroundColor: color.value }}
-                      title={color.label}
-                    />
-                  ))}
+                <div className="mb-3">
+                  <h3 className="text-sm font-bold text-gray-900">Cor principal</h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Presets compactos ou qualquer cor com o seletor ou o código hexadecimal.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mb-4">
+                  {PALETTE.map((color) => {
+                    const selected =
+                      normalizePrimaryHex(form.primaryColor)?.toUpperCase() === color.value.toUpperCase();
+                    return (
+                      <button
+                        key={color.value}
+                        type="button"
+                        aria-label={color.label}
+                        title={color.label}
+                        onClick={() => setForm({ ...form, primaryColor: color.value })}
+                        className={cn(
+                          "size-7 shrink-0 rounded-md shadow-sm ring-1 ring-black/10 transition-transform outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                          selected
+                            ? "ring-2 ring-primary ring-offset-2 ring-offset-white scale-105 z-[1]"
+                            : "hover:scale-110 active:scale-95"
+                        )}
+                        style={{ backgroundColor: color.value }}
+                      />
+                    );
+                  })}
+                </div>
+                <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-3.5 shadow-inner">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2.5">
+                    Cor personalizada
+                  </p>
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[11px] font-medium text-gray-600">Seletor</span>
+                      <label className="group relative flex size-11 cursor-pointer overflow-hidden rounded-xl border-2 border-gray-200 bg-white shadow-sm transition-colors hover:border-primary/60 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25">
+                        <input
+                          type="color"
+                          value={primaryColorInputValue(form.primaryColor)}
+                          onChange={(e) =>
+                            setForm((f) => ({ ...f, primaryColor: e.target.value.toUpperCase() }))
+                          }
+                          className={cn(
+                            "h-11 w-11 cursor-pointer border-0 bg-transparent p-0",
+                            "[&::-webkit-color-swatch-wrapper]:p-0",
+                            "[&::-webkit-color-swatch]:rounded-lg [&::-webkit-color-swatch]:border-0",
+                            "[&::-moz-color-swatch]:rounded-lg [&::-moz-color-swatch]:border-0"
+                          )}
+                          aria-label="Abrir seletor de cor do sistema"
+                        />
+                      </label>
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-[12rem]">
+                      <label htmlFor="primary-hex" className="text-[11px] font-medium text-gray-600">
+                        Hexadecimal
+                      </label>
+                      <input
+                        id="primary-hex"
+                        type="text"
+                        spellCheck={false}
+                        autoCapitalize="characters"
+                        placeholder="#13EC5B"
+                        value={primaryHexDraft}
+                        onChange={(e) => setPrimaryHexDraft(e.target.value)}
+                        onBlur={() => {
+                          const n = normalizePrimaryHex(primaryHexDraft);
+                          if (n) {
+                            setForm((f) => ({ ...f, primaryColor: n }));
+                            setPrimaryHexDraft(n);
+                          } else {
+                            setPrimaryHexDraft(form.primaryColor);
+                          }
+                        }}
+                        className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 font-mono text-sm uppercase tracking-wide text-gray-900 outline-none transition-shadow focus:border-primary focus:ring-2 focus:ring-primary/20"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1183,12 +1265,13 @@ function PagePreview({
 }) {
   const accent = form.primaryColor;
   const isDark = form.darkPage;
-  const titleCls = isDark ? "text-white" : "text-gray-900";
-  const subCls = isDark ? "text-gray-400" : "text-gray-600";
-  const mutedCls = isDark ? "text-gray-500" : "text-gray-500";
-  const cardCls = isDark ? "bg-[#14221A] border-[#213428]" : "bg-white border-gray-200";
-  const cardHover = isDark ? "hover:border-white/25" : "hover:border-gray-300";
-  const avatarBorder = isDark ? "border-[#020403]" : "border-gray-50";
+  /** Modo claro: cores em formato arbitrário para não serem sobrescritas por `[data-theme="dark"] .text-gray-*` / `.bg-white` do painel. */
+  const titleCls = isDark ? "text-white" : "text-[#111827]";
+  const subCls = isDark ? "text-gray-400" : "text-[#4b5563]";
+  const mutedCls = isDark ? "text-gray-500" : "text-[#6b7280]";
+  const cardCls = isDark ? "bg-[#14221A] border-[#213428]" : "bg-[#ffffff] border-[#e5e7eb]";
+  const cardHover = isDark ? "hover:border-white/25" : "hover:border-[#d1d5db]";
+  const avatarBorder = isDark ? "border-[#020403]" : "border-[#f9fafb]";
   const floatBtn =
     "text-[9px] font-semibold px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-md text-white border border-white/25 shadow-md";
 
@@ -1201,7 +1284,7 @@ function PagePreview({
       data-public-preview-theme={isDark ? "dark" : "light"}
       className={cn(
         "relative flex max-h-[min(78vh,860px)] flex-col overflow-hidden overflow-y-auto overscroll-contain rounded-2xl border shadow-[0_16px_48px_-12px_rgba(0,0,0,0.35)]",
-        isDark ? "border-white/10 bg-[#020403]" : "border-gray-200 bg-gray-50"
+        isDark ? "border-white/10 bg-[#020403]" : "border-[#e5e7eb] bg-[#f9fafb]"
       )}
       style={{ ["--public-accent"]: accent } as CSSProperties}
     >
@@ -1282,7 +1365,7 @@ function PagePreview({
                 <p
                   className={cn(
                     "inline-flex items-center rounded-lg px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
-                    isDark ? "bg-white/10 text-gray-300" : "bg-gray-200/80 text-gray-700"
+                    isDark ? "bg-white/10 text-gray-300" : "bg-[rgb(229_231_235/0.88)] text-[#374151]"
                   )}
                 >
                   {segment}
@@ -1309,11 +1392,11 @@ function PagePreview({
                       key={`${link.platform}-${i}`}
                       className={cn(
                         "inline-flex max-w-full items-center gap-1.5 rounded-xl border px-2 py-1.5 text-[10px] font-semibold",
-                        isDark ? "border-white/15 bg-white/[0.04]" : "border-gray-200 bg-white"
+                        isDark ? "border-white/15 bg-white/[0.04]" : "border-[#e5e7eb] bg-[#ffffff]"
                       )}
                     >
                       <SocialBrandIcon platform={link.platform} size={14} className="shrink-0" style={{ color: iconColor }} />
-                      <span className={cn("truncate", isDark ? "text-gray-200" : "text-gray-800")}>{formatSocialDisplay(link)}</span>
+                      <span className={cn("truncate", isDark ? "text-gray-200" : "text-[#1f2937]")}>{formatSocialDisplay(link)}</span>
                     </span>
                   );
                 })}
@@ -1366,7 +1449,7 @@ function PagePreview({
                   <div
                     className={cn(
                       "flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-black/5 text-xl",
-                      isDark ? "bg-[#213428]" : "bg-gray-100"
+                      isDark ? "bg-[#213428]" : "bg-[#f3f4f6]"
                     )}
                   >
                     {s.image_url ? (
@@ -1374,7 +1457,7 @@ function PagePreview({
                     ) : s.emoji ? (
                       <span className="leading-none">{s.emoji}</span>
                     ) : (
-                      <span className="material-symbols-outlined text-gray-500 text-[22px]">category</span>
+                      <span className="material-symbols-outlined text-[#6b7280] text-[22px]">category</span>
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -1386,7 +1469,7 @@ function PagePreview({
                       <p className={cn("mt-1 line-clamp-2 text-[10px] leading-snug", mutedCls)}>{s.description_public.trim()}</p>
                     ) : null}
                   </div>
-                  <span className="material-symbols-outlined shrink-0 text-base text-gray-500">calendar_add_on</span>
+                  <span className="material-symbols-outlined shrink-0 text-base text-[#6b7280]">calendar_add_on</span>
                 </div>
               ))}
               {restCount > 0 ? (
@@ -1408,7 +1491,7 @@ function PagePreview({
                     alt=""
                     className={cn(
                       "block w-full rounded-xl border",
-                      isDark ? "border-white/10" : "border-gray-200/80"
+                      isDark ? "border-white/10" : "border-[rgb(229_231_235/0.85)]"
                     )}
                     loading="lazy"
                     decoding="async"
