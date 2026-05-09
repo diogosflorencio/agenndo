@@ -5,6 +5,13 @@ const nextConfig = {
   // server bundles em C:\ não resolvem `require('next/...')` → 404 nas API routes. Padrão: .next no projeto.
   images: {
     domains: ["lh3.googleusercontent.com", "avatars.githubusercontent.com"],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
   },
   // Supabase fora do bundle do servidor evita referências quebradas a vendor-chunks (comum com .next incompleto / rede).
   experimental: {

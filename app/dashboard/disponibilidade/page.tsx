@@ -31,12 +31,23 @@ import {
   type DaySchedule,
   type WeekdayKey,
 } from "@/lib/disponibilidade";
+import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
+import { useRegisterDashboardUnsavedNavigation } from "@/lib/dashboard-navigation-guard";
+import { useAppAlert } from "@/components/app-alert-provider";
 
 type WeekKey = WeekdayKey;
 type Scope = "padrao" | "dia" | "semana" | "mes";
 
 const dk = (d: Date) => format(d, "yyyy-MM-dd");
 const wk = (d: Date): WeekKey => dateToWeekdayKey(d);
+
+/** Mesmos defaults do painel quando não há valor gravado (estado de “fábrica”). */
+const FACTORY_BOOKING_DEFAULTS = {
+  bufferMinutes: 0,
+  minAdvanceHours: 0,
+  maxFutureDays: 30,
+  publicBookingTimeUi: "slider" as const,
+};
 
 // ─── Interactive Timeline (0–24h, 1-min snap) ────────────────────────────────
 
@@ -568,6 +579,7 @@ function selectClass(isDark: boolean) {
 
 export default function DisponibilidadePage() {
   const { theme } = useTheme();
+  const { showConfirm } = useAppAlert();
   const isDark = theme === "dark";
 
   const [hydrated, setHydrated] = useState(false);
@@ -772,7 +784,7 @@ export default function DisponibilidadePage() {
     });
   }, [scope, selDay, selWeekMonday, monthStartDate]);
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (): Promise<boolean> => {
     setSaveState("loading");
     setSaveError(null);
     try {
@@ -796,11 +808,94 @@ export default function DisponibilidadePage() {
       setSavedSnapshot(buildPersistSnapshot());
       setSaveState("ok");
       setTimeout(() => setSaveState("idle"), 2200);
+      return true;
     } catch (e) {
       setSaveState("err");
       setSaveError(e instanceof Error ? e.message : "Erro");
+      return false;
     }
   }, [schedule, overrides, buffer, minAdvance, maxFutureDays, publicBookingTimeUi, buildPersistSnapshot]);
+
+  const saveRef = useRef(save);
+  saveRef.current = save;
+
+  const discardChanges = useCallback(() => {
+    if (!savedSnapshot) return;
+    try {
+      const parsed = JSON.parse(savedSnapshot) as {
+        weekly: Record<string, DaySchedule>;
+        overrides: Record<string, DaySchedule>;
+        booking: {
+          bufferMinutes: number;
+          minAdvanceHours: number;
+          maxFutureDays: number;
+          publicBookingTimeUi?: string;
+        };
+      };
+      const wkSch = { ...DEFAULT_WEEKLY_SCHEDULE, ...parsed.weekly } as Record<WeekKey, DaySchedule>;
+      (Object.keys(wkSch) as WeekKey[]).forEach((k) => {
+        wkSch[k] = sanitizeDaySchedule({ ...wkSch[k] });
+      });
+      setSchedule(wkSch);
+      const ov = Object.fromEntries(
+        Object.entries(parsed.overrides ?? {}).map(([k, v]) => [k, sanitizeDaySchedule({ ...v })])
+      );
+      setOverrides(ov);
+      setBuffer(parsed.booking?.bufferMinutes ?? 0);
+      setMinAdvance(parsed.booking?.minAdvanceHours ?? 0);
+      setMaxFutureDays(parsed.booking?.maxFutureDays ?? 30);
+      setPublicBookingTimeUi(parsed.booking?.publicBookingTimeUi === "blocks" ? "blocks" : "slider");
+      setSaveError(null);
+      setSaveState("idle");
+    } catch {
+      /* snapshot inválido — não alterar estado */
+    }
+  }, [savedSnapshot]);
+
+  const discardRef = useRef(discardChanges);
+  discardRef.current = discardChanges;
+
+  const applyFactoryReset = useCallback(() => {
+    const nextWeekly = { ...DEFAULT_WEEKLY_SCHEDULE } as Record<WeekKey, DaySchedule>;
+    (UI_DAY_ORDER.map((o) => o.key) as WeekKey[]).forEach((k) => {
+      nextWeekly[k] = sanitizeDaySchedule({ ...nextWeekly[k] });
+    });
+    setSchedule(nextWeekly);
+    const todayStr = dk(new Date());
+    setOverrides((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([dateKey]) => dateKey < todayStr))
+    );
+    setBuffer(FACTORY_BOOKING_DEFAULTS.bufferMinutes);
+    setMinAdvance(FACTORY_BOOKING_DEFAULTS.minAdvanceHours);
+    setMaxFutureDays(FACTORY_BOOKING_DEFAULTS.maxFutureDays);
+    setPublicBookingTimeUi(FACTORY_BOOKING_DEFAULTS.publicBookingTimeUi);
+    setSaveError(null);
+    setSaveState("idle");
+  }, []);
+
+  const confirmFactoryReset = useCallback(async () => {
+    const ok = await showConfirm({
+      title: "Restaurar horários de fábrica?",
+      message:
+        "Seu modelo semanal volta para os horários padrão (segunda a sábado 07h–16h com intervalo ao meio-dia; domingo fechado). Todas as personalizações por calendário serão removidas para hoje e para dias futuros — cada uma dessas datas passará a seguir só o modelo semanal.\n\nTambém voltam aos valores iniciais: Regras de agendamento (0 min de folga entre serviços, 0 h de antecedência mínima, até 30 dias à frente) e Página pública: escolha do horário (linha do tempo / slider).\n\nIsso não altera o servidor até você salvar. Alterações locais não salvas nesta tela serão substituídas por esta pré-visualização.",
+      confirmLabel: "Sim, aplicar aqui",
+      cancelLabel: "Cancelar",
+      variant: "danger",
+    });
+    if (ok) applyFactoryReset();
+  }, [applyFactoryReset, showConfirm]);
+
+  useRegisterDashboardHotkeys(saveState !== "loading", "disponibilidade-save", {
+    save: () => void saveRef.current(),
+    cancel: isDirty
+      ? () => {
+          if (typeof document !== "undefined" && document.querySelector("[data-app-alert-dialog]")) return;
+          discardRef.current();
+        }
+      : undefined,
+  });
+
+  useRegisterDashboardUnsavedNavigation(isDirty, () => saveRef.current(), true);
 
   const personalizedCount = Object.keys(overrides).length;
 
@@ -1334,20 +1429,53 @@ export default function DisponibilidadePage() {
           <UnsavedChangesIndicator dirty={isDirty} className="w-full" />
 
           {saveError && <p className={`text-sm ${isDark ? "text-red-400" : "text-red-600"}`}>{saveError}</p>}
-          <button
-            type="button"
-            disabled={saveState === "loading"}
-            onClick={() => void save()}
-            className={`w-full py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
-              saveState === "ok"
-                ? "bg-primary/15 text-primary border border-primary/30"
-                : isDirty
-                  ? "bg-primary text-black hover:opacity-90 ring-2 ring-amber-500/50 ring-offset-2 ring-offset-transparent"
-                  : "bg-primary text-black hover:opacity-90"
-            } disabled:opacity-50`}
-          >
-            {saveState === "loading" ? "Salvando…" : saveState === "ok" ? "Salvo no servidor" : "Salvar no servidor"}
-          </button>
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-3 lg:items-stretch">
+            <button
+              type="button"
+              disabled={saveState === "loading" || !hydrated || !!loadError || !isDirty}
+              onClick={() => discardChanges()}
+              title={!savedSnapshot ? undefined : "Volta ao último estado salvo no servidor (descarta edições locais)"}
+              className={`order-1 lg:order-none relative flex min-h-[3.25rem] items-center justify-center gap-2 px-3 py-3.5 rounded-xl font-semibold text-sm transition-all border disabled:opacity-45 disabled:cursor-not-allowed lg:pr-[4.75rem] ${
+                isDark
+                  ? "border-gray-500/35 bg-gray-500/[0.14] text-gray-100 hover:bg-gray-500/[0.22] shadow-sm shadow-black/20"
+                  : "border-gray-200 bg-white text-gray-800 hover:bg-gray-50"
+              }`}
+            >
+              <span className="text-center">Descartar alterações</span>
+              {isDirty ? <HotkeyHint action="cancel" layout="floating-end" /> : null}
+            </button>
+            <button
+              type="button"
+              disabled={saveState === "loading"}
+              onClick={() => void save()}
+              className={`order-3 lg:order-none relative flex min-h-[3.25rem] w-full items-center justify-center px-4 py-4 text-center text-sm font-bold transition-all lg:min-h-0 lg:pr-[4.75rem] ${
+                saveState === "ok"
+                  ? "rounded-xl bg-primary/15 text-primary border border-primary/30"
+                  : isDirty
+                    ? "rounded-xl bg-primary text-black hover:opacity-90 ring-2 ring-amber-500/50 ring-offset-2 ring-offset-transparent"
+                    : "rounded-xl bg-primary text-black hover:opacity-90"
+              } disabled:opacity-50`}
+            >
+              <span className="min-w-0 px-1">
+                {saveState === "loading" ? "Salvando…" : saveState === "ok" ? "Salvo no servidor" : "Salvar no servidor"}
+              </span>
+              {saveState !== "loading" && saveState !== "ok" ? (
+                <HotkeyHint action="save" variant="primary" layout="floating-end" />
+              ) : null}
+            </button>
+            <button
+              type="button"
+              disabled={saveState === "loading" || !hydrated || !!loadError}
+              onClick={() => void confirmFactoryReset()}
+              className={`order-2 lg:order-none py-3.5 rounded-xl font-semibold text-sm transition-all border disabled:opacity-45 ${
+                isDark
+                  ? "border-amber-500/35 bg-amber-500/10 text-amber-100 hover:bg-amber-500/15"
+                  : "border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100/80"
+              }`}
+            >
+              Restaurar padrão de fábrica…
+            </button>
+          </div>
         </div>
       </div>
     </div>

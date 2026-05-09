@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
+import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 
 type Filter = "todos" | "frequentes" | "inativos" | "noshow";
 
@@ -41,6 +42,10 @@ export default function ClientesPage() {
       });
   }, [business?.id]);
 
+  useRegisterDashboardHotkeys(!loading && !!business?.id, "clientes-busca", {
+    focusSearch: () => document.getElementById("clientes-search-input")?.focus(),
+  });
+
   const filtered = clients.filter((c) => {
     if (search && !c.name.toLowerCase().includes(search.toLowerCase()) && !(c.phone ?? "").includes(search) && !(c.email ?? "").toLowerCase().includes(search.toLowerCase())) return false;
     if (filter === "frequentes" && c.total_appointments < 10) return false;
@@ -71,15 +76,24 @@ export default function ClientesPage() {
       </div>
 
       <div className="flex flex-col md:flex-row gap-3 mb-6">
-        <div className="flex-1 relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 text-base">search</span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome ou telefone..."
-            className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary transition-colors"
-          />
+        <div className="flex-1 min-w-0 space-y-1">
+          <div className="hidden lg:flex justify-end items-center gap-2 text-[11px] text-gray-400">
+            <span>Foco na busca</span>
+            <HotkeyHint action="focusFind" />
+          </div>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 text-base pointer-events-none">
+              search
+            </span>
+            <input
+              id="clientes-search-input"
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar por nome ou telefone..."
+              className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary transition-colors"
+            />
+          </div>
         </div>
         <div className="flex gap-2">
           {[

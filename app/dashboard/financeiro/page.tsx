@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useLayoutEffect, useRef } from "react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
@@ -8,6 +8,11 @@ import { formatCurrency } from "@/lib/utils";
 import { useTheme } from "@/lib/theme-context";
 import { recalcClientTotalSpent } from "@/lib/appointment-finance";
 import { useAppAlert } from "@/components/app-alert-provider";
+import {
+  DashboardFullScreenOverlay,
+  useFullScreenOverlayRequestClose,
+} from "@/components/dashboard/dashboard-full-screen-overlay";
+import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 
 type RecordRow = {
   id: string;
@@ -54,6 +59,58 @@ async function recalcClientIds(supabase: ReturnType<typeof createClient>, ids: s
     if (r.error) return r;
   }
   return {};
+}
+
+function FinanceManualModalFooter({ saving }: { saving: boolean }) {
+  const requestClose = useFullScreenOverlayRequestClose();
+  return (
+    <>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => void requestClose()}
+        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 pr-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 disabled:opacity-50 sm:w-auto sm:min-w-[140px] lg:pr-[4.75rem]"
+      >
+        <span className="flex min-w-0 flex-1 justify-center">Cancelar</span>
+        <HotkeyHint action="cancel" layout="floating-end" />
+      </button>
+      <button
+        type="submit"
+        form="finance-manual-add-form"
+        disabled={saving}
+        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-black transition-colors hover:opacity-90 disabled:opacity-50 sm:min-w-[180px] sm:w-auto lg:pr-[4.75rem]"
+      >
+        <span className="flex min-w-0 flex-1 justify-center">{saving ? "Salvando…" : "Salvar"}</span>
+        {!saving ? <HotkeyHint action="save" variant="primary" layout="floating-end" /> : null}
+      </button>
+    </>
+  );
+}
+
+function FinanceEditModalFooter({ saving }: { saving: boolean }) {
+  const requestClose = useFullScreenOverlayRequestClose();
+  return (
+    <>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => void requestClose()}
+        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 pr-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 disabled:opacity-50 sm:w-auto sm:min-w-[140px] lg:pr-[4.75rem]"
+      >
+        <span className="flex min-w-0 flex-1 justify-center">Cancelar</span>
+        <HotkeyHint action="cancel" layout="floating-end" />
+      </button>
+      <button
+        type="submit"
+        form="finance-edit-record-form"
+        disabled={saving}
+        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-black transition-colors hover:opacity-90 disabled:opacity-50 sm:min-w-[200px] sm:w-auto lg:pr-[4.75rem]"
+      >
+        <span className="flex min-w-0 flex-1 justify-center">{saving ? "Salvando…" : "Salvar alterações"}</span>
+        {!saving ? <HotkeyHint action="save" variant="primary" layout="floating-end" /> : null}
+      </button>
+    </>
+  );
 }
 
 export default function FinanceiroPage() {
@@ -118,6 +175,56 @@ export default function FinanceiroPage() {
   useEffect(() => {
     loadRecords();
   }, [loadRecords]);
+
+  useRegisterDashboardHotkeys(!showAddModal && !editingRecord && !!business?.id, "financeiro-novo", {
+    novo: () => setShowAddModal(true),
+  });
+
+  const manualFormRef = useRef(manualForm);
+  manualFormRef.current = manualForm;
+
+  const manualPrevOpenRef = useRef(false);
+  const manualBaselineRef = useRef("");
+  const manualBaselineReadyRef = useRef(false);
+  useLayoutEffect(() => {
+    if (!showAddModal) {
+      manualBaselineReadyRef.current = false;
+    } else if (!manualPrevOpenRef.current) {
+      manualBaselineRef.current = JSON.stringify(manualFormRef.current);
+      manualBaselineReadyRef.current = true;
+    }
+    manualPrevOpenRef.current = showAddModal;
+  }, [showAddModal]);
+
+  const manualDirty =
+    showAddModal &&
+    manualBaselineReadyRef.current &&
+    JSON.stringify(manualForm) !== manualBaselineRef.current;
+
+  const editFormRef = useRef(editForm);
+  editFormRef.current = editForm;
+
+  const editPrevIdRef = useRef<string | null>(null);
+  const editBaselineRef = useRef("");
+  const editBaselineReadyRef = useRef(false);
+  useLayoutEffect(() => {
+    const id = editingRecord?.id ?? null;
+    if (!id) {
+      editPrevIdRef.current = null;
+      editBaselineReadyRef.current = false;
+      return;
+    }
+    if (editPrevIdRef.current !== id) {
+      editPrevIdRef.current = id;
+      editBaselineRef.current = JSON.stringify(editFormRef.current);
+      editBaselineReadyRef.current = true;
+    }
+  }, [editingRecord?.id]);
+
+  const editDirty =
+    !!editingRecord &&
+    editBaselineReadyRef.current &&
+    JSON.stringify(editForm) !== editBaselineRef.current;
 
   const totalMonth = records.reduce((s, r) => s + Number(r.amount_cents), 0);
   const paidMonth = records.filter((r) => r.paid).reduce((s, r) => s + Number(r.amount_cents), 0);
@@ -257,6 +364,105 @@ export default function FinanceiroPage() {
     loadRecords();
   };
 
+  const submitManualAdd = useCallback(async (): Promise<boolean> => {
+    if (!business?.id) return false;
+    const cents = parseReaisToCents(manualForm.amount);
+    if (cents == null || cents <= 0) {
+      setManualError("Informe um valor válido (ex.: 120 ou 120,50).");
+      return false;
+    }
+    setManualError(null);
+    setManualSaving(true);
+    const supabase = createClient();
+    const cid = manualForm.client_id.trim();
+    const { error } = await supabase.from("financial_records").insert({
+      business_id: business.id,
+      appointment_id: null,
+      client_id: cid || null,
+      date: manualForm.date,
+      client_name: manualForm.client_name.trim() || null,
+      service_name: manualForm.service_name.trim() || null,
+      collaborator_name: manualForm.collaborator_name.trim() || null,
+      amount_cents: cents,
+      paid: manualForm.paid,
+    });
+    setManualSaving(false);
+    if (error) {
+      setManualError(error.message);
+      return false;
+    }
+    if (cid) {
+      const rMan = await recalcClientIds(supabase, [cid]);
+      if (rMan.error) {
+        setManualError(rMan.error);
+        loadRecords();
+        return false;
+      }
+    }
+    setShowAddModal(false);
+    setManualForm({
+      date: new Date().toISOString().slice(0, 10),
+      client_id: "",
+      client_name: "",
+      service_name: "",
+      collaborator_name: "",
+      amount: "",
+      paid: true,
+    });
+    loadRecords();
+    return true;
+  }, [business?.id, manualForm, loadRecords]);
+
+  const submitEditRecord = useCallback(async (): Promise<boolean> => {
+    if (!business?.id || !editingRecord) return false;
+    const cents = parseReaisToCents(editForm.amount);
+    if (cents == null || cents <= 0) {
+      setEditError("Informe um valor válido (ex.: 120 ou 120,50).");
+      return false;
+    }
+    setEditSaving(true);
+    setEditError(null);
+    const supabase = createClient();
+    const newCid = editForm.client_id.trim() || null;
+    const oldCid = editingRecord.client_id;
+    const { error } = await supabase
+      .from("financial_records")
+      .update({
+        date: editForm.date,
+        client_id: newCid,
+        client_name: editForm.client_name.trim() || null,
+        service_name: editForm.service_name.trim() || null,
+        collaborator_name: editForm.collaborator_name.trim() || null,
+        amount_cents: cents,
+        paid: editForm.paid,
+      })
+      .eq("id", editingRecord.id);
+    if (error) {
+      setEditError(error.message);
+      setEditSaving(false);
+      return false;
+    }
+    if (editingRecord.appointment_id) {
+      await supabase
+        .from("appointments")
+        .update({ price_cents: cents })
+        .eq("id", editingRecord.appointment_id)
+        .eq("business_id", business.id);
+    }
+    const ids = uniqueClientIdsForRecalc(oldCid, newCid);
+    let recalcErr: string | undefined;
+    if (ids.length) {
+      const rec = await recalcClientIds(supabase, ids);
+      recalcErr = rec.error;
+      if (rec.error) setEditError(rec.error);
+    }
+    setEditSaving(false);
+    loadRecords();
+    if (recalcErr) return false;
+    setEditingRecord(null);
+    return true;
+  }, [business?.id, editingRecord, editForm, loadRecords]);
+
   const exportCsv = () => {
     const rows: string[] = ["Relatório Financeiro - Agenndo", `Exportado em,${new Date().toLocaleString("pt-BR")}`, "", "Indicador;Valor", `Este mês;${formatCurrency(totalMonth / 100)}`, `Pendente;${formatCurrency(pendingMonth / 100)}`, "", "data;cliente;serviço;colaborador;valor;pago"];
     records.forEach((r) => rows.push(`${r.date};${r.client_name ?? ""};${r.service_name ?? ""};${r.collaborator_name ?? ""};${(r.amount_cents / 100).toFixed(2)};${r.paid ? "Sim" : "Não"}`));
@@ -285,11 +491,13 @@ export default function FinanceiroPage() {
             Exportar CSV
           </button>
           <button
+            type="button"
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
           >
-            <span className="material-symbols-outlined text-base">add</span>
-            Entrada manual
+            <span className="material-symbols-outlined shrink-0 text-base">add</span>
+            <span className="min-w-0 flex-1 text-left">Entrada manual</span>
+            <HotkeyHint action="novo" variant="primary" />
           </button>
         </div>
       </div>
@@ -494,75 +702,39 @@ export default function FinanceiroPage() {
       </div>
 
       {showAddModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="manual-entry-title"
-          onClick={() => !manualSaving && setShowAddModal(false)}
+        <DashboardFullScreenOverlay
+          title="Entrada manual"
+          subtitle='Registre um valor sem vínculo com agendamento. Se escolher um cliente cadastrado e marcar "Já pago", o total gasto dele é atualizado.'
+          onClose={() => !manualSaving && setShowAddModal(false)}
+          closeOnEscape={!manualSaving}
+          closeBlocked={manualSaving}
+          dirty={manualDirty}
+          onSaveBeforeClose={submitManualAdd}
+          hotkeys={{
+            save: () => {
+              if (manualSaving) return;
+              const el = document.getElementById("finance-manual-add-form");
+              if (el instanceof HTMLFormElement) el.requestSubmit();
+            },
+          }}
+          banner={
+            manualError ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                {manualError}
+              </div>
+            ) : undefined
+          }
+          footer={<FinanceManualModalFooter saving={manualSaving} />}
         >
-          <div
-            className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-xl p-5"
-            onClick={(e) => e.stopPropagation()}
+          <form
+            id="finance-manual-add-form"
+            className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submitManualAdd();
+            }}
           >
-            <h2 id="manual-entry-title" className="text-lg font-bold text-gray-900 mb-1">
-              Entrada manual
-            </h2>
-            <p className="text-xs text-gray-500 mb-4">
-              Registre um valor sem vínculo com agendamento. Se escolher um cliente cadastrado e marcar &quot;Já
-              pago&quot;, o total gasto dele é atualizado.
-            </p>
-            <form
-              className="space-y-3"
-              onSubmit={async (e) => {
-                e.preventDefault();
-                if (!business?.id) return;
-                const cents = parseReaisToCents(manualForm.amount);
-                if (cents == null || cents <= 0) {
-                  setManualError("Informe um valor válido (ex.: 120 ou 120,50).");
-                  return;
-                }
-                setManualError(null);
-                setManualSaving(true);
-                const supabase = createClient();
-                const cid = manualForm.client_id.trim();
-                const { error } = await supabase.from("financial_records").insert({
-                  business_id: business.id,
-                  appointment_id: null,
-                  client_id: cid || null,
-                  date: manualForm.date,
-                  client_name: manualForm.client_name.trim() || null,
-                  service_name: manualForm.service_name.trim() || null,
-                  collaborator_name: manualForm.collaborator_name.trim() || null,
-                  amount_cents: cents,
-                  paid: manualForm.paid,
-                });
-                setManualSaving(false);
-                if (error) {
-                  setManualError(error.message);
-                  return;
-                }
-                if (cid) {
-                  const rMan = await recalcClientIds(supabase, [cid]);
-                  if (rMan.error) {
-                    setManualError(rMan.error);
-                    loadRecords();
-                    return;
-                  }
-                }
-                setShowAddModal(false);
-                setManualForm({
-                  date: new Date().toISOString().slice(0, 10),
-                  client_id: "",
-                  client_name: "",
-                  service_name: "",
-                  collaborator_name: "",
-                  amount: "",
-                  paid: true,
-                });
-                loadRecords();
-              }}
-            >
+            <div className="grid gap-4 lg:grid-cols-2">
               <label className="block text-xs font-medium text-gray-600">
                 Data
                 <input
@@ -570,7 +742,7 @@ export default function FinanceiroPage() {
                   required
                   value={manualForm.date}
                   onChange={(e) => setManualForm((f) => ({ ...f, date: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
                 />
               </label>
               <label className="block text-xs font-medium text-gray-600">
@@ -582,10 +754,10 @@ export default function FinanceiroPage() {
                   placeholder="ex.: 150 ou 150,50"
                   value={manualForm.amount}
                   onChange={(e) => setManualForm((f) => ({ ...f, amount: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
                 />
               </label>
-              <label className="block text-xs font-medium text-gray-600">
+              <label className="block text-xs font-medium text-gray-600 lg:col-span-2">
                 Cliente cadastrado (opcional)
                 <select
                   value={manualForm.client_id}
@@ -598,7 +770,7 @@ export default function FinanceiroPage() {
                       client_name: c ? c.name : f.client_name,
                     }));
                   }}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
                 >
                   <option value="">(nenhum)</option>
                   {clients.map((c) => (
@@ -608,14 +780,14 @@ export default function FinanceiroPage() {
                   ))}
                 </select>
               </label>
-              <label className="block text-xs font-medium text-gray-600">
+              <label className="block text-xs font-medium text-gray-600 lg:col-span-2">
                 Nome no lançamento (opcional)
                 <input
                   type="text"
                   value={manualForm.client_name}
                   onChange={(e) => setManualForm((f) => ({ ...f, client_name: e.target.value }))}
                   placeholder="Ex.: texto livre se não usar cliente acima"
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
                 />
               </label>
               <label className="block text-xs font-medium text-gray-600">
@@ -624,7 +796,7 @@ export default function FinanceiroPage() {
                   type="text"
                   value={manualForm.service_name}
                   onChange={(e) => setManualForm((f) => ({ ...f, service_name: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
                 />
               </label>
               <label className="block text-xs font-medium text-gray-600">
@@ -633,188 +805,134 @@ export default function FinanceiroPage() {
                   type="text"
                   value={manualForm.collaborator_name}
                   onChange={(e) => setManualForm((f) => ({ ...f, collaborator_name: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
+                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
                 />
               </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={manualForm.paid}
-                  onChange={(e) => setManualForm((f) => ({ ...f, paid: e.target.checked }))}
-                  className="rounded border-gray-300"
-                />
-                Já pago
-              </label>
-              {manualError && <p className="text-sm text-red-600">{manualError}</p>}
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  disabled={manualSaving}
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={manualSaving}
-                  className="flex-1 py-2.5 rounded-lg bg-primary text-black text-sm font-bold hover:opacity-90 disabled:opacity-50"
-                >
-                  {manualSaving ? "Salvando…" : "Salvar"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+            </div>
+            <label className="mt-5 flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={manualForm.paid}
+                onChange={(e) => setManualForm((f) => ({ ...f, paid: e.target.checked }))}
+                className="rounded border-gray-300"
+              />
+              Já pago
+            </label>
+          </form>
+        </DashboardFullScreenOverlay>
       )}
 
       {editingRecord && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="edit-entry-title"
-          onClick={() => !editSaving && setEditingRecord(null)}
+        <DashboardFullScreenOverlay
+          title="Editar lançamento"
+          subtitle='Marque "Já pago" quando receber; o total gasto do cliente (se houver cadastro) é recalculado.'
+          onClose={() => !editSaving && setEditingRecord(null)}
+          closeOnEscape={!editSaving}
+          closeBlocked={editSaving}
+          dirty={editDirty}
+          onSaveBeforeClose={submitEditRecord}
+          hotkeys={{
+            save: () => {
+              if (editSaving) return;
+              const el = document.getElementById("finance-edit-record-form");
+              if (el instanceof HTMLFormElement) el.requestSubmit();
+            },
+          }}
+          banner={
+            editError ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">{editError}</div>
+            ) : undefined
+          }
+          footer={<FinanceEditModalFooter saving={editSaving} />}
         >
-          <div
-            className="w-full max-w-md bg-white border border-gray-200 rounded-xl shadow-xl p-5 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 id="edit-entry-title" className="text-lg font-bold text-gray-900 mb-1">
-              Editar lançamento
-            </h2>
-            {editingRecord.appointment_id && (
-              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 mb-3">
+          <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+            {editingRecord.appointment_id ? (
+              <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Ligado a um agendamento. Ao alterar o valor, o preço do agendamento é atualizado para manter o mesmo
                 número.
               </p>
-            )}
-            <p className="text-xs text-gray-500 mb-4">
-              Marque &quot;Já pago&quot; quando receber; o total gasto do cliente (se houver cadastro) é recalculado.
-            </p>
+            ) : null}
             <form
-              className="space-y-3"
-              onSubmit={async (e) => {
+              id="finance-edit-record-form"
+              onSubmit={(e) => {
                 e.preventDefault();
-                if (!business?.id || !editingRecord) return;
-                const cents = parseReaisToCents(editForm.amount);
-                if (cents == null || cents <= 0) {
-                  setEditError("Informe um valor válido (ex.: 120 ou 120,50).");
-                  return;
-                }
-                setEditSaving(true);
-                setEditError(null);
-                const supabase = createClient();
-                const newCid = editForm.client_id.trim() || null;
-                const oldCid = editingRecord.client_id;
-                const { error } = await supabase
-                  .from("financial_records")
-                  .update({
-                    date: editForm.date,
-                    client_id: newCid,
-                    client_name: editForm.client_name.trim() || null,
-                    service_name: editForm.service_name.trim() || null,
-                    collaborator_name: editForm.collaborator_name.trim() || null,
-                    amount_cents: cents,
-                    paid: editForm.paid,
-                  })
-                  .eq("id", editingRecord.id);
-                if (error) {
-                  setEditError(error.message);
-                  setEditSaving(false);
-                  return;
-                }
-                if (editingRecord.appointment_id) {
-                  await supabase
-                    .from("appointments")
-                    .update({ price_cents: cents })
-                    .eq("id", editingRecord.appointment_id)
-                    .eq("business_id", business.id);
-                }
-                const ids = uniqueClientIdsForRecalc(oldCid, newCid);
-                let recalcErr: string | undefined;
-                if (ids.length) {
-                  const rec = await recalcClientIds(supabase, ids);
-                  recalcErr = rec.error;
-                  if (rec.error) setEditError(rec.error);
-                }
-                setEditSaving(false);
-                loadRecords();
-                if (!recalcErr) setEditingRecord(null);
+                void submitEditRecord();
               }}
             >
-              <label className="block text-xs font-medium text-gray-600">
-                Data
-                <input
-                  type="date"
-                  required
-                  value={editForm.date}
-                  onChange={(e) => setEditForm((f) => ({ ...f, date: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
-                />
-              </label>
-              <label className="block text-xs font-medium text-gray-600">
-                Valor (R$)
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  required
-                  value={editForm.amount}
-                  onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
-                />
-              </label>
-              <label className="block text-xs font-medium text-gray-600">
-                Cliente cadastrado (opcional)
-                <select
-                  value={editForm.client_id}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    const c = clients.find((x) => x.id === v);
-                    setEditForm((f) => ({
-                      ...f,
-                      client_id: v,
-                      client_name: c ? c.name : f.client_name,
-                    }));
-                  }}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
-                >
-                  <option value="">(nenhum)</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-xs font-medium text-gray-600">
-                Nome no lançamento (opcional)
-                <input
-                  type="text"
-                  value={editForm.client_name}
-                  onChange={(e) => setEditForm((f) => ({ ...f, client_name: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
-                />
-              </label>
-              <label className="block text-xs font-medium text-gray-600">
-                Serviço (opcional)
-                <input
-                  type="text"
-                  value={editForm.service_name}
-                  onChange={(e) => setEditForm((f) => ({ ...f, service_name: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
-                />
-              </label>
-              <label className="block text-xs font-medium text-gray-600">
-                Colaborador (opcional)
-                <input
-                  type="text"
-                  value={editForm.collaborator_name}
-                  onChange={(e) => setEditForm((f) => ({ ...f, collaborator_name: e.target.value }))}
-                  className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900"
-                />
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <label className="block text-xs font-medium text-gray-600">
+                  Data
+                  <input
+                    type="date"
+                    required
+                    value={editForm.date}
+                    onChange={(e) => setEditForm((f) => ({ ...f, date: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-gray-600">
+                  Valor (R$)
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    required
+                    value={editForm.amount}
+                    onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-gray-600 lg:col-span-2">
+                  Cliente cadastrado (opcional)
+                  <select
+                    value={editForm.client_id}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      const c = clients.find((x) => x.id === v);
+                      setEditForm((f) => ({
+                        ...f,
+                        client_id: v,
+                        client_name: c ? c.name : f.client_name,
+                      }));
+                    }}
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                  >
+                    <option value="">(nenhum)</option>
+                    {clients.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block text-xs font-medium text-gray-600 lg:col-span-2">
+                  Nome no lançamento (opcional)
+                  <input
+                    type="text"
+                    value={editForm.client_name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, client_name: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-gray-600">
+                  Serviço (opcional)
+                  <input
+                    type="text"
+                    value={editForm.service_name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, service_name: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                  />
+                </label>
+                <label className="block text-xs font-medium text-gray-600">
+                  Colaborador (opcional)
+                  <input
+                    type="text"
+                    value={editForm.collaborator_name}
+                    onChange={(e) => setEditForm((f) => ({ ...f, collaborator_name: e.target.value }))}
+                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                  />
+                </label>
+              </div>
+              <label className="mt-5 flex cursor-pointer items-center gap-2 text-sm text-gray-700">
                 <input
                   type="checkbox"
                   checked={editForm.paid}
@@ -823,27 +941,9 @@ export default function FinanceiroPage() {
                 />
                 Já pago
               </label>
-              {editError && <p className="text-sm text-red-600">{editError}</p>}
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  disabled={editSaving}
-                  onClick={() => setEditingRecord(null)}
-                  className="flex-1 py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={editSaving}
-                  className="flex-1 py-2.5 rounded-lg bg-primary text-black text-sm font-bold hover:opacity-90 disabled:opacity-50"
-                >
-                  {editSaving ? "Salvando…" : "Salvar alterações"}
-                </button>
-              </div>
             </form>
           </div>
-        </div>
+        </DashboardFullScreenOverlay>
       )}
     </div>
   );

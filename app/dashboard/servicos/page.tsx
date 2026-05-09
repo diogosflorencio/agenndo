@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import Image from "next/image";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
@@ -10,7 +10,12 @@ import { compressImageForUpload } from "@/lib/image-compress";
 import { uploadBusinessImage } from "@/lib/business-assets-storage";
 import { formatCurrency } from "@/lib/utils";
 import { ServiceVariantGalleryEditor } from "@/components/dashboard/service-variant-gallery-editor";
+import {
+  DashboardFullScreenOverlay,
+  useFullScreenOverlayRequestClose,
+} from "@/components/dashboard/dashboard-full-screen-overlay";
 import { useAppAlert } from "@/components/app-alert-provider";
+import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 import {
   emptyVariantSlot,
   normalizeVariantGallery,
@@ -76,6 +81,13 @@ export default function ServicosPage() {
     load();
     setLoading(false);
   }, [business?.id, load]);
+
+  useRegisterDashboardHotkeys(!showModal && !!business?.id, "servicos-novo", {
+    novo: () => {
+      setEditService(null);
+      setShowModal(true);
+    },
+  });
 
   const toggleActive = async (s: ServiceRow) => {
     if (s.archived_at) return;
@@ -204,14 +216,16 @@ export default function ServicosPage() {
           </p>
         </div>
         <button
+          type="button"
           onClick={() => {
             setEditService(null);
             setShowModal(true);
           }}
           className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
         >
-          <span className="material-symbols-outlined text-base">add</span>
-          Novo serviço
+          <span className="material-symbols-outlined shrink-0 text-base">add</span>
+          <span className="min-w-0 flex-1 text-left">Novo serviço</span>
+          <HotkeyHint action="novo" variant="primary" />
         </button>
       </div>
 
@@ -377,11 +391,9 @@ export default function ServicosPage() {
           key={editService?.id ?? "new-service"}
           businessId={business!.id}
           service={editService}
+          refreshList={load}
           onClose={() => setShowModal(false)}
-          onSaved={() => {
-            setShowModal(false);
-            load();
-          }}
+          onSaved={() => setShowModal(false)}
         />
       )}
     </div>
@@ -402,14 +414,54 @@ function padVariantSlots(raw: unknown): ServiceVariantItem[] {
   return p.slice(0, 3);
 }
 
+function ServiceModalFooterActions({
+  saving,
+  canSubmit,
+  isEdit,
+  onSaveClick,
+}: {
+  saving: boolean;
+  canSubmit: boolean;
+  isEdit: boolean;
+  onSaveClick: () => void;
+}) {
+  const requestClose = useFullScreenOverlayRequestClose();
+  return (
+    <>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={() => void requestClose()}
+        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 pr-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 disabled:opacity-50 sm:w-auto sm:min-w-[160px] lg:pr-[4.75rem]"
+      >
+        <span className="flex min-w-0 flex-1 justify-center">Cancelar</span>
+        <HotkeyHint action="cancel" layout="floating-end" />
+      </button>
+      <button
+        type="button"
+        onClick={onSaveClick}
+        disabled={saving || !canSubmit}
+        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-black transition-colors hover:bg-primary/90 disabled:opacity-50 sm:min-w-[220px] sm:w-auto lg:pr-[4.75rem]"
+      >
+        <span className="flex min-w-0 flex-1 justify-center">
+          {saving ? "Salvando..." : isEdit ? "Salvar alterações" : "Criar serviço"}
+        </span>
+        {!saving ? <HotkeyHint action="save" variant="primary" layout="floating-end" /> : null}
+      </button>
+    </>
+  );
+}
+
 function ServiceModal({
   businessId,
   service,
+  refreshList,
   onClose,
   onSaved,
 }: {
   businessId: string;
   service: ServiceRow | null;
+  refreshList: () => void;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -482,8 +534,65 @@ function ServiceModal({
     }
   };
 
-  const handleSubmit = async () => {
-    if (!form.name.trim()) return;
+  const linkedBaselineStr = useMemo(() => {
+    const ids = (service?.collaborator_services ?? [])
+      .map((cs) => cs.collaborator_id || cs.collaborators?.id)
+      .filter((id): id is string => Boolean(id));
+    return [...ids].sort().join(",");
+  }, [service?.collaborator_services]);
+
+  const baselineSnap = useMemo(
+    () =>
+      JSON.stringify({
+        form: {
+          name: (service?.name ?? "").trim(),
+          duration: service?.duration_minutes ?? 30,
+          price: service ? service.price_cents / 100 : 0,
+          emoji: service?.emoji ?? null,
+          active: service?.active ?? true,
+        },
+        linked: linkedBaselineStr,
+        description: (service?.description_public ?? "").trim(),
+        variants: padVariantSlots(service?.variant_gallery),
+        imageUrl: service?.image_url ?? null,
+        pendingKey: null as string | null,
+      }),
+    [
+      service?.name,
+      service?.duration_minutes,
+      service?.price_cents,
+      service?.emoji,
+      service?.active,
+      service?.description_public,
+      service?.variant_gallery,
+      service?.image_url,
+      linkedBaselineStr,
+    ]
+  );
+
+  const currentSnap = useMemo(
+    () =>
+      JSON.stringify({
+        form: {
+          name: form.name.trim(),
+          duration: form.duration,
+          price: form.price,
+          emoji: form.emoji,
+          active: form.active,
+        },
+        linked: [...linkedIds].sort().join(","),
+        description: descriptionPublic.trim(),
+        variants: variantSlots,
+        imageUrl,
+        pendingKey: pendingFile ? `${pendingFile.name}:${pendingFile.size}` : null,
+      }),
+    [form, linkedIds, descriptionPublic, variantSlots, imageUrl, pendingFile]
+  );
+
+  const modalDirty = currentSnap !== baselineSnap;
+
+  const persistService = async (): Promise<boolean> => {
+    if (!form.name.trim()) return false;
     setSaving(true);
     setModalError(null);
     const supabase = createClient();
@@ -549,114 +658,152 @@ function ServiceModal({
         }
       }
       setSaving(false);
-      onSaved();
+      refreshList();
+      return true;
     } catch (e) {
       setSaving(false);
       setModalError(e instanceof Error ? e.message : "Erro ao salvar");
+      return false;
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-gray-50 border border-gray-200 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-gray-200 sticky top-0 bg-gray-50 z-[1]">
-          <h2 className="text-lg font-bold text-gray-900">{service ? "Editar serviço" : "Novo serviço"}</h2>
-          <button type="button" onClick={onClose} className="size-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400">
-            <span className="material-symbols-outlined text-base">close</span>
-          </button>
-        </div>
-        {modalError && (
-          <div className="mx-5 mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{modalError}</div>
-        )}
-        <div className="p-5 space-y-5">
-          {service ? (
-            <div className="flex justify-center pb-1">
-              <EntityPhotoControl
-                businessId={businessId}
-                kind="service"
-                entityId={service.id}
-                imageUrl={imageUrl}
-                onPersist={async (url) => {
-                  const sb = createClient();
-                  const { error: pErr } = await sb.from("services").update({ image_url: url }).eq("id", service.id);
-                  if (pErr) throw new Error(pErr.message);
-                  setImageUrl(url);
-                }}
-                size="md"
-                fallback={
-                  form.emoji?.trim() ? (
-                    <span className="text-4xl leading-none select-none">{form.emoji}</span>
-                  ) : (
-                    <span className="material-symbols-outlined text-gray-400 text-4xl">category</span>
-                  )
-                }
-              />
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white px-4 py-5 flex flex-col items-center">
-              <p className="text-xs font-semibold text-gray-700 mb-1">Foto na página pública (opcional)</p>
-              <p className="text-[11px] text-gray-500 text-center mb-3 max-w-sm leading-relaxed">
-                Sem foto, usamos o ícone ou emoji abaixo. Você pode enviar agora ou depois em Editar.
-              </p>
-              <div className="relative">
-                <div className="size-24 rounded-2xl overflow-hidden border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-                  {pendingPreview ? (
-                    <Image src={pendingPreview} alt="" width={96} height={96} className="size-full object-cover" unoptimized />
-                  ) : form.emoji?.trim() ? (
-                    <span className="text-4xl leading-none select-none">{form.emoji}</span>
-                  ) : (
-                    <span className="material-symbols-outlined text-gray-400 text-4xl">category</span>
-                  )}
-                </div>
-                <div className="absolute -bottom-1 -right-1 flex gap-1">
-                  <button
-                    type="button"
-                    onClick={() => newPhotoInputRef.current?.click()}
-                    title="Adicionar foto"
-                    className="size-9 rounded-xl bg-primary text-black shadow-lg border-2 border-white flex items-center justify-center hover:brightness-95 transition-transform hover:scale-105 active:scale-95"
-                  >
-                    <span className="material-symbols-outlined text-lg">add_a_photo</span>
-                  </button>
-                  {pendingPreview ? (
-                    <button
-                      type="button"
-                      onClick={() => setPendingFile(null)}
-                      title="Remover seleção"
-                      className="size-9 rounded-xl bg-white text-red-600 shadow-lg border-2 border-gray-200 flex items-center justify-center hover:bg-red-50 transition-transform hover:scale-105 active:scale-95"
-                    >
-                      <span className="material-symbols-outlined text-lg">delete</span>
-                    </button>
-                  ) : null}
-                </div>
-                <input
-                  ref={newPhotoInputRef}
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp,image/gif"
-                  className="hidden"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    e.target.value = "";
-                    if (f) setPendingFile(f);
-                  }}
-                />
-              </div>
-            </div>
-          )}
+  const handleSubmit = async () => {
+    const ok = await persistService();
+    if (ok) onSaved();
+  };
 
-          <div>
-            <label className="text-sm font-medium text-gray-600 block mb-2">Ícone (opcional)</label>
-            <p className="text-xs text-gray-500 mb-3">
-              Deixe vazio para nenhum ícone, ou escolha um atalho / cole qualquer emoji (ex.: atalho de emoji do sistema).
+  const errorBanner =
+    modalError ? (
+      <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">{modalError}</div>
+    ) : undefined;
+
+  return (
+    <DashboardFullScreenOverlay
+      title={service ? "Editar serviço" : "Novo serviço"}
+      subtitle={
+        service
+          ? "Imagem, texto na página pública, variações com foto e quem pode atender."
+          : "Aparece na página pública de agendamento. Você poderá adicionar variações depois."
+      }
+      onClose={onClose}
+      banner={errorBanner}
+      dirty={modalDirty}
+      onSaveBeforeClose={persistService}
+      closeBlocked={saving}
+      hotkeys={{
+        save: () => void handleSubmit(),
+      }}
+      footer={
+        <ServiceModalFooterActions
+          saving={saving}
+          canSubmit={!!form.name.trim()}
+          isEdit={!!service}
+          onSaveClick={() => void handleSubmit()}
+        />
+      }
+    >
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10 lg:items-start">
+        {/* Coluna identidade (desktop esquerda) */}
+        <div className="space-y-5 lg:col-span-5">
+          <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Identidade na página pública</h3>
+            <p className="mt-1 text-[11px] leading-snug text-gray-500">
+              Foto opcional; sem foto usamos ícone ou emoji.
             </p>
-            <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="mt-4 flex justify-center lg:justify-start">
+              {service ? (
+                <EntityPhotoControl
+                  businessId={businessId}
+                  kind="service"
+                  entityId={service.id}
+                  imageUrl={imageUrl}
+                  onPersist={async (url) => {
+                    const sb = createClient();
+                    const { error: pErr } = await sb.from("services").update({ image_url: url }).eq("id", service.id);
+                    if (pErr) throw new Error(pErr.message);
+                    setImageUrl(url);
+                  }}
+                  size="md"
+                  fallback={
+                    form.emoji?.trim() ? (
+                      <span className="text-4xl leading-none select-none">{form.emoji}</span>
+                    ) : (
+                      <span className="material-symbols-outlined text-4xl text-gray-400">category</span>
+                    )
+                  }
+                />
+              ) : (
+                <div className="flex w-full max-w-sm flex-col items-center rounded-xl border border-dashed border-gray-300 bg-gray-50 px-4 py-5">
+                  <div className="relative">
+                    <div className="flex size-24 items-center justify-center overflow-hidden rounded-2xl border-2 border-gray-200 bg-gradient-to-br from-gray-50 to-gray-100">
+                      {pendingPreview ? (
+                        <Image
+                          src={pendingPreview}
+                          alt=""
+                          width={96}
+                          height={96}
+                          className="size-full object-cover"
+                          unoptimized
+                        />
+                      ) : form.emoji?.trim() ? (
+                        <span className="text-4xl leading-none select-none">{form.emoji}</span>
+                      ) : (
+                        <span className="material-symbols-outlined text-4xl text-gray-400">category</span>
+                      )}
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => newPhotoInputRef.current?.click()}
+                        title="Adicionar foto"
+                        className="flex size-9 items-center justify-center rounded-xl border-2 border-white bg-primary text-black shadow-lg transition-transform hover:brightness-95 hover:scale-105 active:scale-95"
+                      >
+                        <span className="material-symbols-outlined text-lg">add_a_photo</span>
+                      </button>
+                      {pendingPreview ? (
+                        <button
+                          type="button"
+                          onClick={() => setPendingFile(null)}
+                          title="Remover seleção"
+                          className="flex size-9 items-center justify-center rounded-xl border-2 border-gray-200 bg-white text-red-600 shadow-lg transition-transform hover:bg-red-50 hover:scale-105 active:scale-95"
+                        >
+                          <span className="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                      ) : null}
+                    </div>
+                    <input
+                      ref={newPhotoInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        e.target.value = "";
+                        if (f) setPendingFile(f);
+                      }}
+                    />
+                  </div>
+                  <p className="mt-3 text-center text-[11px] text-gray-500">
+                    Opcional agora; você pode enviar depois em Editar.
+                  </p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+            <label className="mb-2 block text-sm font-medium text-gray-600">Ícone (opcional)</label>
+            <p className="mb-3 text-xs text-gray-500">
+              Atalhos ou qualquer emoji (atalho do sistema). Vazio = sem ícone.
+            </p>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setForm({ ...form, emoji: null })}
-                className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                className={`rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
                   form.emoji == null || form.emoji === ""
-                    ? "bg-primary/15 border-primary text-gray-900 ring-2 ring-primary/40"
-                    : "bg-white border-gray-200 text-gray-600 hover:bg-gray-100"
+                    ? "border-primary bg-primary/15 text-gray-900 ring-2 ring-primary/40"
+                    : "border-gray-200 bg-white text-gray-600 hover:bg-gray-100"
                 }`}
               >
                 Sem ícone
@@ -669,20 +816,20 @@ function ServiceModal({
                 const v = e.target.value;
                 setForm({ ...form, emoji: v === "" ? null : v });
               }}
-              placeholder="Cole ou digite qualquer emoji aqui…"
-              className="w-full h-11 bg-white border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-lg mb-3"
+              placeholder="Cole ou digite emoji…"
+              className="mb-3 h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-lg text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-primary"
               maxLength={32}
               autoComplete="off"
             />
-            <p className="text-xs font-medium text-gray-500 mb-2">Atalhos</p>
-            <div className="flex gap-2 flex-wrap">
+            <p className="mb-2 text-xs font-medium text-gray-500">Atalhos</p>
+            <div className="flex max-h-32 flex-wrap gap-2 overflow-y-auto pr-1 [-webkit-overflow-scrolling:touch] sm:max-h-none">
               {emojiPresets.map((e) => (
                 <button
                   key={e}
                   type="button"
                   title={e}
                   onClick={() => setForm({ ...form, emoji: e })}
-                  className={`size-10 rounded-xl text-xl flex items-center justify-center transition-all ${
+                  className={`flex size-10 items-center justify-center rounded-xl text-xl transition-all ${
                     form.emoji === e ? "bg-primary/20 ring-2 ring-primary" : "bg-gray-100 hover:bg-gray-200"
                   }`}
                 >
@@ -690,37 +837,66 @@ function ServiceModal({
                 </button>
               ))}
             </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-600 block mb-1.5">Nome do serviço *</label>
-            <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ex.: nome do serviço" className="w-full h-11 bg-white border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm" />
-          </div>
-          <div>
-            <label className="text-sm font-medium text-gray-600 block mb-1.5">Descrição para o cliente (opcional)</label>
+          </section>
+
+          <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+            <label className="mb-1.5 block text-sm font-medium text-gray-600">Nome do serviço *</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              placeholder="Ex.: nome do serviço"
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-primary"
+            />
+            <label className="mb-1.5 mt-4 block text-sm font-medium text-gray-600">
+              Descrição para o cliente (opcional)
+            </label>
             <textarea
               value={descriptionPublic}
               onChange={(e) => setDescriptionPublic(e.target.value)}
-              placeholder="Detalhes que aparecem na página pública ao escolher este serviço…"
-              rows={3}
+              placeholder="Detalhes na página pública ao escolher este serviço…"
+              rows={4}
               maxLength={1200}
-              className="w-full bg-white border border-gray-200 focus:border-primary rounded-xl px-4 py-3 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm resize-none"
+              className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-primary"
             />
-            <p className="text-[11px] text-gray-400 mt-1 text-right">{descriptionPublic.length}/1200</p>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-sm font-medium text-gray-600 block mb-1.5">Duração (min)</label>
-              <input type="number" min={5} max={240} step={5} value={form.duration} onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })} className="w-full h-11 bg-white border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 outline-none text-sm" />
+            <p className="mt-1 text-right text-[11px] text-gray-400">{descriptionPublic.length}/1200</p>
+          </section>
+        </div>
+
+        {/* Coluna preço, variações e equipe (desktop direita) */}
+        <div className="space-y-5 lg:col-span-7">
+          <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+            <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Tempo e valor</h3>
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-600">Duração (min)</label>
+                <input
+                  type="number"
+                  min={5}
+                  max={240}
+                  step={5}
+                  value={form.duration}
+                  onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })}
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-gray-600">Preço (R$)</label>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none focus:border-primary"
+                />
+              </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-gray-600 block mb-1.5">Preço (R$)</label>
-              <input type="number" min={0} step={0.01} value={form.price} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} className="w-full h-11 bg-white border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 outline-none text-sm" />
+            <div className="mt-5 flex items-center gap-3 border-t border-gray-100 pt-5">
+              <SwitchToggle checked={form.active} onChange={() => setForm({ ...form, active: !form.active })} />
+              <span className="text-sm text-gray-600">Serviço ativo (visível na página pública)</span>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <SwitchToggle checked={form.active} onChange={() => setForm({ ...form, active: !form.active })} />
-            <span className="text-sm text-gray-600">Serviço ativo (visível na página pública)</span>
-          </div>
+          </section>
 
           {service ? (
             <ServiceVariantGalleryEditor
@@ -732,43 +908,56 @@ function ServiceModal({
               disabled={saving}
             />
           ) : (
-            <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3">
-              Depois de criar o serviço, abra <strong>Editar</strong> para adicionar até 3 fotos de variações (com título e
-              texto curto) opcionais.
-            </p>
+            <div className="rounded-2xl border border-dashed border-gray-300 bg-gray-50 px-4 py-4 text-xs text-gray-600">
+              Depois de criar o serviço, abra <strong className="text-gray-800">Editar</strong> para adicionar até 3 fotos
+              de variações (título e texto curto), opcionais.
+            </div>
           )}
 
-          <div className="rounded-xl border border-gray-200 bg-white p-4">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div>
-                <label className="text-sm font-medium text-gray-800 block">Quem faz este serviço</label>
-                <p className="text-[11px] text-gray-500 mt-1 leading-snug">
-                  Nenhum marcado = <strong>qualquer profissional ativo</strong> pode atender.
-                </p>
-              </div>
-            </div>
+          <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+            <label className="block text-sm font-medium text-gray-800">Quem faz este serviço</label>
+            <p className="mt-1 text-[11px] leading-snug text-gray-500">
+              Nenhum marcado = <strong className="text-gray-700">qualquer profissional ativo</strong> pode atender.
+            </p>
             {collaborators.length === 0 ? (
-              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">Cadastre profissionais em Colaboradores para vincular aqui.</p>
+              <p className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Cadastre profissionais em Equipe para vincular aqui.
+              </p>
             ) : (
               <>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <button type="button" onClick={selectAllCollabs} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={selectAllCollabs}
+                    className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                  >
                     Marcar todos
                   </button>
-                  <button type="button" onClick={clearCollabs} className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700">
+                  <button
+                    type="button"
+                    onClick={clearCollabs}
+                    className="rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-200"
+                  >
                     Limpar (todos na página pública)
                   </button>
                 </div>
-                <ul className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                <ul className="mt-3 max-h-[min(22rem,45vh)] space-y-2 overflow-y-auto pr-1 [-webkit-overflow-scrolling:touch] lg:max-h-[min(28rem,50vh)]">
                   {collaborators.map((c) => {
                     const on = linkedIds.includes(c.id);
                     return (
                       <li key={c.id}>
-                        <label className="flex items-center gap-3 cursor-pointer rounded-lg border border-gray-100 hover:bg-gray-50 px-2 py-2">
-                          <input type="checkbox" checked={on} onChange={() => toggleCollab(c.id)} className="size-4 rounded border-gray-300 text-primary focus:ring-primary" />
+                        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-gray-100 px-2 py-2 hover:bg-gray-50">
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={() => toggleCollab(c.id)}
+                            className="size-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          />
                           <span
-                            className="size-7 rounded-lg overflow-hidden flex items-center justify-center text-[11px] font-bold text-gray-900 shrink-0"
-                            style={{ backgroundColor: c.avatar_url ? undefined : c.color ? `${c.color}40` : "#e5e7eb" }}
+                            className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-lg text-[11px] font-bold text-gray-900"
+                            style={{
+                              backgroundColor: c.avatar_url ? undefined : c.color ? `${c.color}40` : "#e5e7eb",
+                            }}
                           >
                             {c.avatar_url ? (
                               <Image src={c.avatar_url} alt="" width={28} height={28} className="size-full object-cover" unoptimized />
@@ -776,30 +965,22 @@ function ServiceModal({
                               c.name[0]
                             )}
                           </span>
-                          <span className="text-sm text-gray-800 truncate">{c.name}</span>
+                          <span className="truncate text-sm text-gray-800">{c.name}</span>
                         </label>
                       </li>
                     );
                   })}
                 </ul>
-                <p className="text-[10px] text-gray-400 mt-2">
+                <p className="mt-2 text-[10px] text-gray-400">
                   {linkedIds.length === 0
-                    ? "Página pública: listagem de profissionais no agendamento = todos os ativos."
+                    ? "Página pública: profissionais no agendamento = todos os ativos."
                     : `Página pública: apenas ${linkedIds.length} profissional(is) marcado(s).`}
                 </p>
               </>
             )}
-          </div>
-        </div>
-        <div className="flex gap-3 p-5 border-t border-gray-200 sticky bottom-0 bg-gray-50 z-[1]">
-          <button type="button" onClick={onClose} className="flex-1 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-900 font-semibold rounded-xl text-sm transition-colors">
-            Cancelar
-          </button>
-          <button type="button" onClick={() => void handleSubmit()} disabled={saving || !form.name.trim()} className="flex-1 py-3 bg-primary hover:bg-primary/90 disabled:opacity-50 text-black font-bold rounded-xl text-sm transition-colors">
-            {saving ? "Salvando..." : service ? "Salvar alterações" : "Criar serviço"}
-          </button>
+          </section>
         </div>
       </div>
-    </div>
+    </DashboardFullScreenOverlay>
   );
 }

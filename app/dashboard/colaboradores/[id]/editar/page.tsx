@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { SwitchToggle } from "@/components/switch-toggle";
 import { EntityPhotoControl } from "@/components/dashboard/entity-photo-control";
 import { formatBrazilPhoneFromDigits, maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
+import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 
 const COLORS = [
   "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B",
@@ -101,6 +102,11 @@ export default function EditarColaboradorPage() {
     }
     router.push("/dashboard/colaboradores");
   };
+
+  useRegisterDashboardHotkeys(!saving && !!id, "colab-editar", {
+    save: () => void handleSave(),
+    cancel: () => router.push("/dashboard/colaboradores"),
+  });
 
   if (loading) {
     return (
@@ -238,18 +244,22 @@ export default function EditarColaboradorPage() {
       <div className="flex gap-3 mt-6">
         <Link
           href="/dashboard/colaboradores"
-          className="flex-1 py-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl text-sm transition-all text-center"
+          className="relative flex flex-1 items-center justify-center gap-2 px-3 py-4 pr-3 text-center text-sm font-semibold text-gray-700 transition-all bg-white border border-gray-200 hover:bg-gray-50 rounded-xl lg:pr-[4.75rem]"
         >
-          Cancelar
+          <span className="flex min-w-0 flex-1 justify-center">Cancelar</span>
+          <HotkeyHint action="cancel" layout="floating-end" />
         </Link>
         <button
           type="button"
           onClick={() => void handleSave()}
           disabled={!form.name.trim() || saving}
-          className="flex-1 py-4 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+          className="relative flex flex-1 items-center justify-center gap-2 px-3 py-4 pr-3 text-sm font-bold text-black transition-all bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl lg:pr-[4.75rem]"
         >
-          {saving ? "Salvando…" : "Salvar alterações"}
-          {!saving && <span className="material-symbols-outlined text-base">check</span>}
+          <span className="flex min-w-0 flex-1 items-center justify-center gap-2">
+            {saving ? "Salvando…" : "Salvar alterações"}
+            {!saving && <span className="material-symbols-outlined shrink-0 text-base">check</span>}
+          </span>
+          {!saving && <HotkeyHint action="save" variant="primary" layout="floating-end" />}
         </button>
       </div>
 
@@ -258,7 +268,7 @@ export default function EditarColaboradorPage() {
           href={`/dashboard/colaboradores/${id}/servicos`}
           className="flex items-center justify-center gap-2 py-3 w-full bg-white border border-gray-200 hover:border-primary/40 rounded-xl text-sm font-semibold text-gray-700 hover:text-gray-900 transition-all"
         >
-          <span className="material-symbols-outlined text-base">content_cut</span>
+          <span className="material-symbols-outlined text-base">category</span>
           Gerenciar serviços deste colaborador
         </Link>
       </div>

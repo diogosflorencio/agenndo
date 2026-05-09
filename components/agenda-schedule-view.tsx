@@ -11,6 +11,10 @@ import {
   labelWeekdayShort,
 } from "@/lib/agenda-calendar-helpers";
 import { STATUS_CONFIG, formatCurrency, type AppointmentStatus } from "@/lib/utils";
+import { DashboardFullScreenOverlay } from "@/components/dashboard/dashboard-full-screen-overlay";
+import { HotkeyHint } from "@/lib/dashboard-hotkeys";
+import { computeAgendaGridBounds } from "@/lib/agenda-grid-bounds";
+import type { DaySchedule } from "@/lib/disponibilidade";
 
 export type AgendaApt = {
   id: string;
@@ -29,9 +33,6 @@ export type AgendaApt = {
 export type AgendaCollab = { id: string; name: string };
 
 export type AgendaViewMode = "day" | "week" | "month";
-
-const GRID_START_H = 7;
-const GRID_END_H = 22;
 
 function assignColumns<T extends { id: string; startM: number; endM: number }>(events: T[]) {
   const sorted = [...events].sort((a, b) => a.startM - b.startM || a.endM - b.endM);
@@ -73,6 +74,11 @@ type Props = {
   onShowCancelled: (v: boolean) => void;
   canCreate: boolean;
   onAppointmentClick?: (id: string) => void;
+  /** Horários efetivos (modelo semanal + overrides); define a faixa da grade dia/semana. */
+  availability: {
+    weekly: Record<string, DaySchedule>;
+    overrides: Record<string, DaySchedule>;
+  } | null;
 };
 
 export function AgendaScheduleView({
@@ -88,14 +94,34 @@ export function AgendaScheduleView({
   onShowCancelled,
   canCreate,
   onAppointmentClick,
+  availability,
 }: Props) {
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [stripScroll, setStripScroll] = useState<HTMLDivElement | null>(null);
 
-  const gridStartMin = GRID_START_H * 60;
-  const gridEndMin = GRID_END_H * 60;
-  const totalMin = gridEndMin - gridStartMin;
-  const slots = useMemo(() => generateHalfHourSlots(GRID_START_H, GRID_END_H), []);
+  const { startHour: gridStartHour, endHour: gridEndHour } = useMemo(
+    () =>
+      computeAgendaGridBounds({
+        view,
+        selectedDate,
+        weekly: availability?.weekly ?? {},
+        overrides: availability?.overrides ?? {},
+        appointments: appointments.map((a) => ({
+          date: a.date,
+          time_start: a.time_start,
+          time_end: a.time_end,
+        })),
+      }),
+    [view, selectedDate, availability, appointments]
+  );
+
+  const gridStartMin = gridStartHour * 60;
+  const gridEndMin = gridEndHour * 60;
+  const totalMin = Math.max(1, gridEndMin - gridStartMin);
+  const slots = useMemo(
+    () => generateHalfHourSlots(gridStartHour, gridEndHour),
+    [gridStartHour, gridEndHour]
+  );
 
   const selectedD = useMemo(() => new Date(selectedDate + "T12:00:00"), [selectedDate]);
 
@@ -283,22 +309,6 @@ export function AgendaScheduleView({
             <span className="material-symbols-outlined text-base">block</span>
             Bloquear horário
           </Link>
-          {canCreate ? (
-            <Link
-              href="/dashboard/agendamentos/novo"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-primary px-3 py-2 text-xs font-bold text-black shadow-sm hover:bg-primary/90"
-            >
-              <span className="material-symbols-outlined text-base">add</span>
-              Novo agendamento
-            </Link>
-          ) : (
-            <Link
-              href="/dashboard/conta"
-              className="inline-flex items-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-950"
-            >
-              Plano / assinatura
-            </Link>
-          )}
         </div>
       </div>
 
@@ -443,7 +453,7 @@ export function AgendaScheduleView({
             {dayApts.length === 0 ? "Sem atendimentos" : `${dayApts.length} agendamento(s)`}
           </span>
           <span className="rounded-full bg-gray-100 px-2 py-1 font-medium text-gray-700">
-            {String(GRID_START_H).padStart(2, "0")}:00 - {String(GRID_END_H).padStart(2, "0")}:00
+            {String(gridStartHour).padStart(2, "0")}:00 – {String(gridEndHour).padStart(2, "0")}:00
           </span>
         </div>
       </div>
@@ -616,47 +626,56 @@ export function AgendaScheduleView({
         </div>
       )}
 
-      {/* Métricas modal */}
       {metricsOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setMetricsOpen(false)}
+        <DashboardFullScreenOverlay
+          title="Métricas do dia"
+          subtitle={new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
+          onClose={() => setMetricsOpen(false)}
+          contentMaxWidthClass="max-w-2xl"
+          hotkeys={{
+            cancel: () => setMetricsOpen(false),
+          }}
+          footer={
+            <button
+              type="button"
+              onClick={() => setMetricsOpen(false)}
+              className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-black transition-colors hover:opacity-90 sm:w-auto sm:min-w-[160px] lg:pr-[4.75rem]"
+            >
+              <span className="flex min-w-0 flex-1 justify-center">Fechar</span>
+              <HotkeyHint action="cancel" variant="primary" layout="floating-end" />
+            </button>
+          }
         >
-          <div
-            className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-900">Métricas do dia</h3>
-              <button type="button" onClick={() => setMetricsOpen(false)} className="text-gray-500 hover:text-gray-800">
-                <span className="material-symbols-outlined">close</span>
-              </button>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Total</p>
+              <p className="mt-1 text-3xl font-extrabold tabular-nums text-gray-900">{metrics.total}</p>
+              <p className="mt-1 text-sm text-gray-500">agendamentos no dia</p>
             </div>
-            <p className="text-xs text-gray-500 mb-3">
-              {new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </p>
-            <p className="text-2xl font-extrabold text-gray-900 mb-1">{metrics.total}</p>
-            <p className="text-xs text-gray-500 mb-4">agendamentos totais</p>
-            <p className="text-sm font-semibold text-primary">
-              Receita (compareceu): {formatCurrency(metrics.receita / 100)}
-            </p>
-            <div className="mt-4 space-y-1 text-xs">
-              {Object.entries(metrics.byStatus).map(([st, n]) => (
-                <div key={st} className="flex justify-between text-gray-700">
-                  <span>{STATUS_CONFIG[st as AppointmentStatus]?.label ?? st}</span>
-                  <span className="font-bold">{n}</span>
-                </div>
-              ))}
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Receita (compareceu)</p>
+              <p className="mt-1 text-2xl font-bold tabular-nums text-primary">
+                {formatCurrency(metrics.receita / 100)}
+              </p>
             </div>
           </div>
-        </div>
+          <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Por status</p>
+            <ul className="mt-3 divide-y divide-gray-100">
+              {Object.entries(metrics.byStatus).map(([st, n]) => (
+                <li key={st} className="flex items-center justify-between py-2.5 text-sm first:pt-0">
+                  <span className="text-gray-700">{STATUS_CONFIG[st as AppointmentStatus]?.label ?? st}</span>
+                  <span className="font-bold tabular-nums text-gray-900">{n}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </DashboardFullScreenOverlay>
       )}
 
       <Link

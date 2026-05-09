@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
 import { maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
+import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 
 const COLORS = [
   "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B",
@@ -49,6 +50,11 @@ export default function NovoColaboradorPage() {
     }
     router.push(`/dashboard/colaboradores/${data.id}/servicos`);
   };
+
+  useRegisterDashboardHotkeys(!saving && !!business?.id, "colab-novo", {
+    save: () => void handleSave(),
+    cancel: () => router.push("/dashboard/colaboradores"),
+  });
 
   return (
     <div className="w-full">
@@ -152,18 +158,22 @@ export default function NovoColaboradorPage() {
       <div className="flex gap-3 mt-6">
         <Link
           href="/dashboard/colaboradores"
-          className="flex-1 py-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl text-sm transition-all text-center"
+          className="relative flex flex-1 items-center justify-center gap-2 px-3 py-4 pr-3 text-center text-sm font-semibold text-gray-700 transition-all bg-white border border-gray-200 hover:bg-gray-50 rounded-xl lg:pr-[4.75rem]"
         >
-          Cancelar
+          <span className="flex min-w-0 flex-1 justify-center">Cancelar</span>
+          <HotkeyHint action="cancel" layout="floating-end" />
         </Link>
         <button
           type="button"
           onClick={() => void handleSave()}
           disabled={!form.name.trim() || saving || !business?.id}
-          className="flex-1 py-4 bg-primary hover:bg-primary/90 disabled:bg-primary/40 disabled:cursor-not-allowed text-black font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+          className="relative flex flex-1 items-center justify-center gap-2 px-3 py-4 pr-3 text-sm font-bold text-black transition-all bg-primary hover:bg-primary/90 disabled:bg-primary/40 disabled:cursor-not-allowed rounded-xl lg:pr-[4.75rem]"
         >
-          {saving ? "Salvando…" : "Salvar e vincular serviços"}
-          {!saving && <span className="material-symbols-outlined text-base">arrow_forward</span>}
+          <span className="flex min-w-0 flex-1 items-center justify-center gap-2">
+            {saving ? "Salvando…" : "Salvar e vincular serviços"}
+            {!saving && <span className="material-symbols-outlined shrink-0 text-base">arrow_forward</span>}
+          </span>
+          {!saving && <HotkeyHint action="save" variant="primary" layout="floating-end" />}
         </button>
       </div>
     </div>

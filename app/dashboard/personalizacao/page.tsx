@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useDashboard } from "@/lib/dashboard-context";
@@ -16,17 +16,21 @@ import { compressImageForUpload } from "@/lib/image-compress";
 import {
   GALLERY_COMPRESS_MAX_LONG_EDGE,
   PUBLIC_GALLERY_MAX_IMAGES,
+  normalizeGalleryUrlsFromDb,
 } from "@/lib/public-gallery";
 import { useAppAlert } from "@/components/app-alert-provider";
 import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
+import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
+import { useRegisterDashboardUnsavedNavigation } from "@/lib/dashboard-navigation-guard";
 import { PersonalizationShareQr } from "@/components/personalization-share-qr";
-import { SocialBrandIcon } from "@/components/social-brand-icon";
+import { SocialBrandIcon, socialBrandAccent } from "@/components/social-brand-icon";
 import {
   MAX_SOCIAL_LINKS,
   mergePersonalizationSocialLinks,
   SOCIAL_PLATFORM_OPTIONS,
   socialLinksForDb,
   formatSocialDisplay,
+  socialProfileUrl,
   type SocialLink,
   type SocialPlatformId,
 } from "@/lib/social-links";
@@ -52,6 +56,8 @@ type PreviewServiceRow = {
   duration_minutes: number;
   price_cents: number;
   emoji: string | null;
+  image_url: string | null;
+  description_public: string | null;
 };
 
 type PersonalizationRow = {
@@ -68,21 +74,6 @@ type PersonalizationRow = {
   show_whatsapp_fab: boolean | null;
   address_line: string | null;
 };
-
-function normalizeGalleryUrls(raw: unknown): string[] {
-  let urls: string[] = [];
-  if (Array.isArray(raw)) {
-    urls = raw.filter((u): u is string => typeof u === "string" && u.length > 0);
-  } else if (typeof raw === "string") {
-    try {
-      const p = JSON.parse(raw) as unknown;
-      urls = Array.isArray(p) ? p.filter((u): u is string => typeof u === "string" && u.length > 0) : [];
-    } catch {
-      urls = [];
-    }
-  }
-  return urls.slice(0, PUBLIC_GALLERY_MAX_IMAGES);
-}
 
 function storageFileExt(file: File): string {
   if (file.type === "image/png") return "png";
@@ -148,7 +139,7 @@ export default function PersonalizacaoPage() {
       supabase.from("personalization").select("*").eq("business_id", business.id).maybeSingle(),
       supabase
         .from("services")
-        .select("id, name, duration_minutes, price_cents, emoji")
+        .select("id, name, duration_minutes, price_cents, emoji, image_url, description_public")
         .eq("business_id", business.id)
         .eq("active", true)
         .is("archived_at", null)
@@ -181,7 +172,7 @@ export default function PersonalizacaoPage() {
       darkPage: (p?.public_theme ?? "dark") !== "light",
       logoUrl: business.logo_url ?? null,
       bannerUrl: p?.banner_url ?? null,
-      galleryUrls: normalizeGalleryUrls(p?.gallery_urls),
+      galleryUrls: normalizeGalleryUrlsFromDb(p?.gallery_urls),
     };
     const baseline = JSON.stringify(nextForm);
     setForm(nextForm);
@@ -264,6 +255,67 @@ export default function PersonalizacaoPage() {
     [business?.id, router]
   );
 
+  const mergeGalleryUrlsIntoBaseline = useCallback((urls: string[]) => {
+    setFormBaseline((prev) => {
+      if (prev === null) return null;
+      try {
+        const b = JSON.parse(prev) as Record<string, unknown>;
+        b.galleryUrls = urls;
+        return JSON.stringify(b);
+      } catch {
+        return prev;
+      }
+    });
+  }, []);
+
+  /** Igual ao logo/galeria: capa persiste na hora (evita “sumiu” ao recarregar sem clicar em Salvar). */
+  const persistBannerUrl = useCallback(
+    async (bannerUrl: string | null) => {
+      if (!business?.id) return;
+      const supabase = createClient();
+      const payload = {
+        banner_url: bannerUrl,
+        updated_at: new Date().toISOString(),
+      };
+      const { data: existing, error: selErr } = await supabase
+        .from("personalization")
+        .select("id")
+        .eq("business_id", business.id)
+        .maybeSingle();
+      if (selErr) throw new Error(selErr.message);
+
+      if (existing?.id) {
+        const { error } = await supabase.from("personalization").update(payload).eq("id", existing.id);
+        if (error) throw new Error(error.message);
+        setPersId(existing.id);
+      } else {
+        const { data: ins, error } = await supabase
+          .from("personalization")
+          .insert({
+            business_id: business.id,
+            ...payload,
+          })
+          .select("id")
+          .single();
+        if (error) throw new Error(error.message);
+        if (ins?.id) setPersId(ins.id as string);
+      }
+
+      setFormBaseline((prev) => {
+        if (prev === null) return null;
+        try {
+          const b = JSON.parse(prev) as Record<string, unknown>;
+          b.bannerUrl = bannerUrl;
+          return JSON.stringify(b);
+        } catch {
+          return prev;
+        }
+      });
+      router.refresh();
+    },
+    [business?.id, router]
+  );
+
   const publicUrl =
     typeof window !== "undefined" ? `${window.location.origin}/${business?.slug ?? ""}` : "";
 
@@ -284,7 +336,17 @@ export default function PersonalizacaoPage() {
       const prepared = await compressImageForUpload(file);
       const ext = storageFileExt(prepared);
       const supabase = createClient();
-      const url = await uploadBusinessImage(supabase, business.id, `logo.${ext}`, prepared);
+      if (form.logoUrl) {
+        const relOld = tryRelativePathFromPublicUrl(form.logoUrl, business.id);
+        if (relOld) {
+          try {
+            await removeBusinessObject(supabase, business.id, relOld);
+          } catch {
+            /* arquivo antigo pode já ter sido removido */
+          }
+        }
+      }
+      const url = await uploadBusinessImage(supabase, business.id, `logo/${crypto.randomUUID()}.${ext}`, prepared);
       const { error } = await supabase.from("businesses").update({ logo_url: url }).eq("id", business.id);
       if (error) throw new Error(error.message);
       setForm((f) => ({ ...f, logoUrl: url }));
@@ -307,7 +369,18 @@ export default function PersonalizacaoPage() {
       const prepared = await compressImageForUpload(file);
       const ext = storageFileExt(prepared);
       const supabase = createClient();
-      const url = await uploadBusinessImage(supabase, business.id, `banner.${ext}`, prepared);
+      if (form.bannerUrl) {
+        const relOld = tryRelativePathFromPublicUrl(form.bannerUrl, business.id);
+        if (relOld) {
+          try {
+            await removeBusinessObject(supabase, business.id, relOld);
+          } catch {
+            /* arquivo antigo pode já ter sido removido */
+          }
+        }
+      }
+      const url = await uploadBusinessImage(supabase, business.id, `banner/${crypto.randomUUID()}.${ext}`, prepared);
+      await persistBannerUrl(url);
       setForm((f) => ({ ...f, bannerUrl: url }));
     } catch (err) {
       showAlert(err instanceof Error ? err.message : "Falha no upload", { title: "Upload" });
@@ -327,22 +400,26 @@ export default function PersonalizacaoPage() {
       return;
     }
     setUploading("gallery");
-    const supabase = createClient();
-    let next = [...form.galleryUrls];
     const count = Math.min(files.length, remaining);
     try {
+      const fd = new FormData();
       for (let i = 0; i < count; i++) {
         setUploadLabel(`Otimizando e enviando ${i + 1} de ${count}…`);
         const prepared = await compressImageForUpload(files[i], {
           maxLongEdge: GALLERY_COMPRESS_MAX_LONG_EDGE,
         });
-        const ext = storageFileExt(prepared);
-        const name = `gallery/${crypto.randomUUID()}.${ext}`;
-        const url = await uploadBusinessImage(supabase, business.id, name, prepared);
-        next = [...next, url];
+        fd.append("files", prepared, prepared.name || `foto-${i + 1}.jpg`);
       }
-      setForm((f) => ({ ...f, galleryUrls: next }));
-      await persistGalleryUrls(next, { skipRouterRefresh: true });
+      const res = await fetch("/api/dashboard/personalization/gallery", {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+      });
+      const data = (await res.json()) as { error?: string; urls?: string[] };
+      if (!res.ok) throw new Error(data.error ?? "Falha no upload");
+      const urls = data.urls ?? [];
+      setForm((f) => ({ ...f, galleryUrls: urls }));
+      mergeGalleryUrlsIntoBaseline(urls);
       router.refresh();
     } catch (err) {
       showAlert(err instanceof Error ? err.message : "Falha no upload", { title: "Galeria" });
@@ -361,27 +438,24 @@ export default function PersonalizacaoPage() {
     if (index < 0 || index >= form.galleryUrls.length) return;
     setUploading("gallery");
     setUploadLabel("Substituindo foto da galeria…");
-    const supabase = createClient();
-    const oldUrl = form.galleryUrls[index];
     try {
       const prepared = await compressImageForUpload(file, {
         maxLongEdge: GALLERY_COMPRESS_MAX_LONG_EDGE,
       });
-      const ext = storageFileExt(prepared);
-      const name = `gallery/${crypto.randomUUID()}.${ext}`;
-      const url = await uploadBusinessImage(supabase, business.id, name, prepared);
-      const next = [...form.galleryUrls];
-      next[index] = url;
-      await persistGalleryUrls(next);
-      const rel = tryRelativePathFromPublicUrl(oldUrl, business.id);
-      if (rel) {
-        try {
-          await removeBusinessObject(supabase, business.id, rel);
-        } catch {
-          /* arquivo antigo pode já ter sido removido */
-        }
-      }
-      setForm((f) => ({ ...f, galleryUrls: next }));
+      const fd = new FormData();
+      fd.append("replaceIndex", String(index));
+      fd.append("files", prepared, prepared.name || "foto.jpg");
+      const res = await fetch("/api/dashboard/personalization/gallery", {
+        method: "POST",
+        body: fd,
+        credentials: "include",
+      });
+      const data = (await res.json()) as { error?: string; urls?: string[] };
+      if (!res.ok) throw new Error(data.error ?? "Falha ao substituir");
+      const urls = data.urls ?? [];
+      setForm((f) => ({ ...f, galleryUrls: urls }));
+      mergeGalleryUrlsIntoBaseline(urls);
+      router.refresh();
     } catch (err) {
       showAlert(err instanceof Error ? err.message : "Falha ao substituir", { title: "Galeria" });
     } finally {
@@ -448,13 +522,14 @@ export default function PersonalizacaoPage() {
     setUploading("banner");
     setUploadLabel("Removendo capa…");
     try {
+      await persistBannerUrl(null);
       const supabase = createClient();
       const rel = tryRelativePathFromPublicUrl(url, business.id);
       if (rel) {
         try {
           await removeBusinessObject(supabase, business.id, rel);
         } catch {
-          /* remove só do formulário */
+          /* arquivo pode já ter sido removido */
         }
       }
       setForm((f) => ({ ...f, bannerUrl: null }));
@@ -466,8 +541,8 @@ export default function PersonalizacaoPage() {
     }
   };
 
-  const saveAll = async () => {
-    if (!business?.id || uploading !== null) return;
+  const saveAll = async (): Promise<boolean> => {
+    if (!business?.id || uploading !== null) return false;
     setSaving(true);
     setSaveMsg(null);
     const supabase = createClient();
@@ -485,7 +560,7 @@ export default function PersonalizacaoPage() {
     if (bizErr) {
       setSaveMsg(bizErr.message);
       setSaving(false);
-      return;
+      return false;
     }
 
     const payload = {
@@ -511,14 +586,14 @@ export default function PersonalizacaoPage() {
       if (error) {
         setSaveMsg(error.message);
         setSaving(false);
-        return;
+        return false;
       }
     } else {
       const { data: ins, error } = await supabase.from("personalization").insert(payload).select("id").single();
       if (error) {
         setSaveMsg(error.message);
         setSaving(false);
-        return;
+        return false;
       }
       if (ins?.id) setPersId(ins.id as string);
     }
@@ -528,7 +603,19 @@ export default function PersonalizacaoPage() {
     setSaving(false);
     router.refresh();
     setTimeout(() => setSaveMsg(null), 4000);
+    return true;
   };
+
+  const saveAllRef = useRef(saveAll);
+  saveAllRef.current = saveAll;
+
+  useRegisterDashboardHotkeys(!(saving || uploading !== null), "personalizacao-save", {
+    save: () => void saveAllRef.current(),
+  });
+
+  const saveForNavigation = useCallback(async () => saveAllRef.current(), []);
+
+  useRegisterDashboardUnsavedNavigation(formDirty, saveForNavigation, !loading && !!business);
 
   if (!business) {
     return (
@@ -609,7 +696,7 @@ export default function PersonalizacaoPage() {
                 <div className="flex flex-wrap items-start gap-4">
                   <div className="size-16 rounded-xl overflow-hidden border-2 shrink-0 bg-gray-50 flex items-center justify-center">
                     {form.logoUrl ? (
-                      <Image src={form.logoUrl} alt="" width={64} height={64} className="size-16 object-cover" unoptimized />
+                      <Image key={form.logoUrl} src={form.logoUrl} alt="" width={64} height={64} className="size-16 object-cover" unoptimized />
                     ) : (
                       <span
                         className="text-2xl font-bold"
@@ -658,7 +745,7 @@ export default function PersonalizacaoPage() {
                 {form.bannerUrl ? (
                   <div className="space-y-3">
                     <div className="relative w-full h-28 rounded-xl border border-gray-200 overflow-hidden bg-gray-100">
-                      <Image src={form.bannerUrl} alt="" fill className="object-cover" unoptimized />
+                      <Image key={form.bannerUrl} src={form.bannerUrl} alt="" fill className="object-cover" unoptimized />
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button
@@ -1008,12 +1095,17 @@ export default function PersonalizacaoPage() {
             disabled={saving || uploading !== null}
             onClick={() => void saveAll()}
             className={cn(
-              "w-full mt-3 py-4 bg-primary hover:bg-primary/90 disabled:opacity-60 text-black font-bold rounded-xl transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)] flex items-center justify-center gap-2",
+              "relative mt-3 flex w-full items-center justify-center gap-3 px-4 py-4 text-black shadow-[0_0_15px_rgba(19,236,91,0.2)] transition-all bg-primary hover:bg-primary/90 disabled:opacity-60 font-bold rounded-xl lg:pr-[4.75rem]",
               formDirty && "ring-2 ring-amber-500/45"
             )}
           >
-            <span className="material-symbols-outlined text-base">save</span>
-            {saving ? "Salvando…" : "Salvar alterações"}
+            <span className="flex min-w-0 flex-1 items-center justify-center gap-2">
+              <span className="material-symbols-outlined shrink-0 text-base">save</span>
+              {saving ? "Salvando…" : "Salvar alterações"}
+            </span>
+            {!(saving || uploading !== null) ? (
+              <HotkeyHint action="save" variant="primary" layout="floating-end" />
+            ) : null}
           </button>
         </div>
 
@@ -1038,7 +1130,7 @@ export default function PersonalizacaoPage() {
               <p className="mb-3 text-xs font-bold uppercase tracking-wider text-gray-500">
                 Preview da página pública
               </p>
-              <PagePreview form={form} services={previewServices} />
+              <PagePreview form={form} services={previewServices} segment={business.segment ?? null} />
             </>
           )}
         </aside>
@@ -1080,172 +1172,261 @@ type PreviewForm = {
 
 const PREVIEW_MAX_SERVICES = 8;
 
-function PagePreview({ form, services }: { form: PreviewForm; services: PreviewServiceRow[] }) {
-  /* Modo claro: cores literais (dashboard usa data-theme=dark; globals.css força .bg-white/.text-gray-* etc.) */
-  const bg = form.darkPage ? "bg-[#020403]" : "bg-[#f9fafb]";
-  const cardBg = form.darkPage ? "bg-[#14221A] border-[#213428]" : "bg-[#ffffff] border-[#e5e7eb]";
-  const cardBgSoft = form.darkPage ? "bg-[#0f1c15] border-white/5" : "bg-[#f9fafb] border-[#e5e7eb]";
-  const text = form.darkPage ? "text-white" : "text-[#111827]";
-  const subtext = form.darkPage ? "text-gray-400" : "text-[#6b7280]";
-  const avatarBorder = form.darkPage ? "border-[#020403]" : "border-[#f9fafb]";
+function PagePreview({
+  form,
+  services,
+  segment,
+}: {
+  form: PreviewForm;
+  services: PreviewServiceRow[];
+  segment: string | null;
+}) {
+  const accent = form.primaryColor;
+  const isDark = form.darkPage;
+  const titleCls = isDark ? "text-white" : "text-gray-900";
+  const subCls = isDark ? "text-gray-400" : "text-gray-600";
+  const mutedCls = isDark ? "text-gray-500" : "text-gray-500";
+  const cardCls = isDark ? "bg-[#14221A] border-[#213428]" : "bg-white border-gray-200";
+  const cardHover = isDark ? "hover:border-white/25" : "hover:border-gray-300";
+  const avatarBorder = isDark ? "border-[#020403]" : "border-gray-50";
+  const floatBtn =
+    "text-[9px] font-semibold px-2.5 py-1 rounded-full bg-black/45 backdrop-blur-md text-white border border-white/25 shadow-md";
+
+  const hasBanner = Boolean(form.bannerUrl);
   const shown = services.slice(0, PREVIEW_MAX_SERVICES);
   const restCount = Math.max(0, services.length - shown.length);
 
   return (
     <div
+      data-public-preview-theme={isDark ? "dark" : "light"}
       className={cn(
-        "rounded-2xl border shadow-[0_12px_40px_-8px_rgba(0,0,0,0.25)] overflow-visible",
-        form.darkPage ? "border-white/10" : "border-[#e5e7eb]",
-        bg
+        "relative flex max-h-[min(78vh,860px)] flex-col overflow-hidden overflow-y-auto overscroll-contain rounded-2xl border shadow-[0_16px_48px_-12px_rgba(0,0,0,0.35)]",
+        isDark ? "border-white/10 bg-[#020403]" : "border-gray-200 bg-gray-50"
       )}
+      style={{ ["--public-accent"]: accent } as CSSProperties}
     >
-      <div className="relative">
-        <div
-          className={cn(
-            "relative h-32 w-full overflow-hidden rounded-t-2xl",
-            form.darkPage ? "ring-1 ring-white/10" : "ring-1 ring-black/5"
-          )}
-        >
-          {form.bannerUrl ? (
-            <Image src={form.bannerUrl} alt="" fill className="object-cover" sizes="400px" unoptimized />
-          ) : (
-            <div
-              className="absolute inset-0"
-              style={{
-                background: `linear-gradient(145deg, ${form.primaryColor}40 0%, ${form.darkPage ? "#0a120e" : "#e8f0ec"} 50%, ${form.darkPage ? "#020403" : "#f3f4f6"} 100%)`,
-              }}
-            />
-          )}
-          <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black/35 via-black/5 to-transparent pointer-events-none" />
-          <div className="absolute top-2 right-2 z-[5] flex items-center gap-1.5">
-            <span className="text-[9px] font-semibold px-2.5 py-1 rounded-full bg-black/45 text-white border border-white/20 backdrop-blur-sm">
-              Entrar
-            </span>
-          </div>
-        </div>
+      <div
+        className={cn("pointer-events-none absolute inset-0", isDark ? "opacity-[0.12]" : "opacity-[0.06]")}
+        style={{
+          background: `radial-gradient(ellipse 80% 50% at 50% -20%, ${accent}, transparent)`,
+        }}
+      />
 
-        <div className="relative z-10 px-3 -mt-7 pb-2">
-          <div className="flex gap-2.5 items-end">
-            <div
-              className={cn(
-                "size-[3.75rem] rounded-xl border-[3px] shadow-lg overflow-hidden shrink-0 flex items-center justify-center text-lg font-bold",
-                avatarBorder
-              )}
-              style={{
-                backgroundColor: form.logoUrl ? undefined : form.primaryColor + "25",
-                color: form.primaryColor,
-              }}
-            >
-              {form.logoUrl ? (
-                <Image src={form.logoUrl} alt="" width={60} height={60} className="size-full object-cover" unoptimized />
-              ) : (
-                form.businessName[0]?.toUpperCase() ?? "?"
-              )}
-            </div>
-            <div className="flex-1 min-w-0 pb-0.5 pt-5">
-              <h2 className={cn("font-bold text-sm leading-tight truncate", text)}>{form.businessName}</h2>
-              {form.tagline ? <p className={cn("text-[11px] mt-0.5 line-clamp-2", subtext)}>{form.tagline}</p> : null}
-            </div>
-            <span
-              className="shrink-0 px-2.5 py-1 text-[10px] font-bold rounded-lg text-black mb-0.5"
-              style={{ backgroundColor: form.primaryColor }}
-            >
-              Agendar
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className={cn("px-3 pb-2 space-y-1.5 border-b", cardBgSoft)}>
-        {form.address && (
-          <div className="flex items-center gap-1">
-            <span className={cn("material-symbols-outlined text-[14px]", subtext)}>location_on</span>
-            <p className={cn("text-[11px] truncate", subtext)}>{form.address}</p>
-          </div>
-        )}
-        {form.socialLinks.length > 0 && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            {form.socialLinks.map((link, i) => (
-              <span key={`${link.platform}-${i}`} className={cn("inline-flex items-center gap-1.5 text-[10px]", subtext)}>
-                <SocialBrandIcon platform={link.platform} size={14} className="shrink-0 opacity-90" />
-                <span className="truncate max-w-[140px]">{formatSocialDisplay(link)}</span>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {form.about ? (
-        <div className={cn("px-3 py-2.5 border-b text-[11px] leading-relaxed", cardBgSoft, subtext)}>{form.about}</div>
-      ) : null}
-
-      {form.galleryUrls.length > 0 && (
-        <div className="p-2 border-b border-transparent columns-2 gap-1 [column-fill:_balance]">
-          {form.galleryUrls.slice(0, PUBLIC_GALLERY_MAX_IMAGES).map((u, i) => (
-            <div key={`${i}-${u.slice(-24)}`} className="mb-1 break-inside-avoid">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={u} alt="" className="w-full h-auto rounded-md block ring-1 ring-black/10" loading="lazy" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="p-3 max-h-[280px] overflow-y-auto overscroll-contain">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <p className={cn("text-[11px] font-bold uppercase tracking-wide", subtext)}>Serviços</p>
-          {services.length > 0 && (
-            <span className={cn("text-[9px] tabular-nums", subtext)}>{services.length} ativo{services.length !== 1 ? "s" : ""}</span>
-          )}
-        </div>
-        {services.length === 0 ? (
-          <p className={cn("text-[11px] leading-relaxed py-2", subtext)}>
-            Nenhum serviço ativo. Cadastre em <span className={cn("font-semibold", text)}>Serviços</span> no menu para
-            aparecer na página pública.
-          </p>
-        ) : (
-          <div className="space-y-1.5">
-            {shown.map((s) => (
+      <div className="relative z-[2] shrink-0">
+        <div className="relative w-full overflow-visible">
+          <div
+            className={cn(
+              "relative isolate h-[118px] w-full overflow-hidden rounded-t-2xl sm:h-[132px]",
+              isDark ? "ring-1 ring-white/[0.1]" : "ring-1 ring-black/[0.07]"
+            )}
+          >
+            {hasBanner && form.bannerUrl ? (
+              <Image
+                key={form.bannerUrl}
+                src={form.bannerUrl}
+                alt=""
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 480px"
+                unoptimized
+              />
+            ) : (
               <div
-                key={s.id}
-                className={cn("flex items-center gap-2 p-2 rounded-xl border", cardBg)}
+                className="absolute inset-0"
+                style={{
+                  background: `linear-gradient(145deg, ${accent}35 0%, ${isDark ? "#0a120e" : "#e8f5ef"} 55%, ${isDark ? "#020403" : "#f3f4f6"} 100%)`,
+                }}
+              />
+            )}
+            <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-t from-black/30 via-black/5 to-transparent" />
+            <div className="absolute right-2 top-2 z-[6] flex gap-1.5">
+              <span className={floatBtn}>Entrar</span>
+            </div>
+          </div>
+
+          <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[15]">
+            <div className="relative mx-auto h-0 w-full px-3">
+              <div
+                className={cn(
+                  "pointer-events-auto absolute bottom-0 left-1 translate-y-1/2 overflow-hidden rounded-2xl border-[3px] shadow-xl",
+                  "flex size-[3.75rem] items-center justify-center text-xl font-bold text-black",
+                  avatarBorder
+                )}
+                style={{
+                  backgroundColor: form.logoUrl ? undefined : accent,
+                  boxShadow: `0 12px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.12)`,
+                }}
               >
-                <div
+                {form.logoUrl ? (
+                  <Image key={form.logoUrl} src={form.logoUrl} alt="" width={60} height={60} className="size-full object-cover" unoptimized />
+                ) : (
+                  form.businessName[0]?.toUpperCase() ?? "?"
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <main className="relative z-[5] flex-1 space-y-5 px-3 pb-16 pt-10">
+        <section>
+          <div className="flex flex-col gap-3">
+            <div className="min-w-0 space-y-1.5">
+              <h1 className={cn("text-[17px] font-extrabold leading-tight tracking-tight sm:text-lg", titleCls)}>
+                {form.businessName}
+              </h1>
+              {form.tagline?.trim() ? (
+                <p className={cn("text-[11px] font-medium leading-relaxed sm:text-xs", subCls)}>{form.tagline.trim()}</p>
+              ) : null}
+              {segment ? (
+                <p
                   className={cn(
-                    "size-9 rounded-lg flex items-center justify-center text-base shrink-0",
-                    form.darkPage ? "bg-[#213428]" : "bg-[#f3f4f6]"
+                    "inline-flex items-center rounded-lg px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide",
+                    isDark ? "bg-white/10 text-gray-300" : "bg-gray-200/80 text-gray-700"
                   )}
                 >
-                  {s.emoji ? (
-                    <span className="leading-none">{s.emoji}</span>
-                  ) : (
-                    <span className="material-symbols-outlined text-[#6b7280] text-lg">category</span>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={cn("text-[11px] font-semibold truncate", text)}>{s.name}</p>
-                  <p className={cn("text-[10px]", subtext)}>
-                    {s.duration_minutes} min
-                  </p>
-                </div>
-                <span className="text-[11px] font-bold shrink-0" style={{ color: form.primaryColor }}>
-                  {formatCurrency(s.price_cents / 100)}
-                </span>
-              </div>
-            ))}
-            {restCount > 0 && (
-              <p className={cn("text-[10px] text-center pt-1", subtext)}>+{restCount} na página pública</p>
-            )}
-          </div>
-        )}
-      </div>
+                  {segment}
+                </p>
+              ) : null}
+            </div>
 
-      {form.floatingWhatsapp && (
-        <div className="px-3 pb-3 flex justify-end">
-          <div className="size-9 rounded-full flex items-center justify-center shadow-lg bg-[#25D366] ring-2 ring-black/10">
-            <span className="material-symbols-outlined text-white text-lg">chat</span>
+            {form.address?.trim() ? (
+              <div className={cn("flex items-start gap-1 text-[10px]", mutedCls)}>
+                <span className="material-symbols-outlined shrink-0 text-sm leading-none">location_on</span>
+                <span className="leading-snug">{form.address.trim()}</span>
+              </div>
+            ) : null}
+
+            {form.socialLinks.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {form.socialLinks.map((link, i) => {
+                  const href = socialProfileUrl(link);
+                  if (!href) return null;
+                  const iconColor =
+                    isDark && (link.platform === "x" || link.platform === "tiktok") ? "#f3f4f6" : socialBrandAccent(link.platform);
+                  return (
+                    <span
+                      key={`${link.platform}-${i}`}
+                      className={cn(
+                        "inline-flex max-w-full items-center gap-1.5 rounded-xl border px-2 py-1.5 text-[10px] font-semibold",
+                        isDark ? "border-white/15 bg-white/[0.04]" : "border-gray-200 bg-white"
+                      )}
+                    >
+                      <SocialBrandIcon platform={link.platform} size={14} className="shrink-0" style={{ color: iconColor }} />
+                      <span className={cn("truncate", isDark ? "text-gray-200" : "text-gray-800")}>{formatSocialDisplay(link)}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            <div>
+              <button
+                type="button"
+                className={cn(
+                  "w-full rounded-xl px-4 py-3 text-xs font-bold text-black shadow-lg transition-transform",
+                  "hover:scale-[1.02] active:scale-[0.98]"
+                )}
+                style={{ backgroundColor: accent, boxShadow: `0 0 24px ${accent}55` }}
+              >
+                Novo agendamento
+              </button>
+              <p className={cn("mt-1.5 text-[9px] leading-relaxed", mutedCls)}>
+                Escolha serviço, profissional, data e horário
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {form.about?.trim() ? (
+          <section>
+            <h2 className={cn("mb-2 text-[11px] font-bold uppercase tracking-wider", subCls)}>Sobre</h2>
+            <p className={cn("rounded-xl border p-3 text-[11px] leading-relaxed", cardCls, mutedCls)}>{form.about.trim()}</p>
+          </section>
+        ) : null}
+
+        <section>
+          <h2 className={cn("mb-3 text-[11px] font-bold uppercase tracking-wider", subCls)}>Serviços</h2>
+          {services.length === 0 ? (
+            <p className={cn("text-[11px] leading-relaxed", mutedCls)}>
+              Nenhum serviço disponível no momento. Cadastre em{" "}
+              <span className={cn("font-semibold", titleCls)}>Serviços</span> no menu.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-2">
+              {shown.map((s) => (
+                <div
+                  key={s.id}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl border p-3 text-left transition-colors",
+                    cardCls,
+                    cardHover
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-black/5 text-xl",
+                      isDark ? "bg-[#213428]" : "bg-gray-100"
+                    )}
+                  >
+                    {s.image_url ? (
+                      <Image src={s.image_url} alt="" width={40} height={40} className="size-full object-cover" unoptimized />
+                    ) : s.emoji ? (
+                      <span className="leading-none">{s.emoji}</span>
+                    ) : (
+                      <span className="material-symbols-outlined text-gray-500 text-[22px]">category</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("text-[12px] font-semibold leading-tight line-clamp-2", titleCls)}>{s.name}</p>
+                    <p className={cn("mt-0.5 text-[10px]", subCls)}>
+                      {s.duration_minutes} min · {formatCurrency(s.price_cents / 100)}
+                    </p>
+                    {s.description_public?.trim() ? (
+                      <p className={cn("mt-1 line-clamp-2 text-[10px] leading-snug", mutedCls)}>{s.description_public.trim()}</p>
+                    ) : null}
+                  </div>
+                  <span className="material-symbols-outlined shrink-0 text-base text-gray-500">calendar_add_on</span>
+                </div>
+              ))}
+              {restCount > 0 ? (
+                <p className={cn("pt-1 text-center text-[10px]", mutedCls)}>+{restCount} na página pública</p>
+              ) : null}
+            </div>
+          )}
+        </section>
+
+        {form.galleryUrls.length > 0 ? (
+          <section className="pb-2">
+            <h2 className={cn("mb-3 text-[11px] font-bold uppercase tracking-wider", subCls)}>Galeria</h2>
+            <div className="columns-2 gap-x-2 [column-fill:_balance]">
+              {form.galleryUrls.slice(0, PUBLIC_GALLERY_MAX_IMAGES).map((src, gi) => (
+                <div key={`${gi}-${src.slice(-40)}`} className="mb-2 break-inside-avoid">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- mosaico fluido como na página pública */}
+                  <img
+                    src={src}
+                    alt=""
+                    className={cn(
+                      "block w-full rounded-xl border",
+                      isDark ? "border-white/10" : "border-gray-200/80"
+                    )}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </main>
+
+      {form.floatingWhatsapp ? (
+        <div className="pointer-events-none sticky bottom-0 z-20 flex justify-end px-3 pb-3 pt-1">
+          <div className="pointer-events-auto flex size-11 items-center justify-center rounded-full bg-[#25D366] shadow-xl ring-2 ring-black/10">
+            <span className="material-symbols-outlined text-lg text-white">chat</span>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

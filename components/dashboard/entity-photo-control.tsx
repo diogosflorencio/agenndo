@@ -39,7 +39,7 @@ export type EntityPhotoControlProps = {
 
 /**
  * Upload/remove de foto para colaborador (avatar_url) ou serviço (image_url).
- * Arquivos em `{businessId}/collaborators|services/{entityId}.{ext}`.
+ * Cada upload usa caminho único (`…/{entityId}/{uuid}.{ext}`) para não reusar a mesma URL (cache do browser/CDN).
  */
 export function EntityPhotoControl({
   businessId,
@@ -86,11 +86,7 @@ export function EntityPhotoControl({
       });
       const ext = extFromFile(prepared);
       const folder = kind === "collaborator" ? "collaborators" : "services";
-      /** Serviço: arquivo único por upload evita conflito de extensão/cache no storage; colaborador mantém path fixo. */
-      const relativePath =
-        kind === "collaborator"
-          ? `${folder}/${entityId}.${ext}`
-          : `${folder}/${entityId}/${crypto.randomUUID()}.${ext}`;
+      const relativePath = `${folder}/${entityId}/${crypto.randomUUID()}.${ext}`;
 
       if (imageUrl) await removeRemote(imageUrl);
 
@@ -131,7 +127,15 @@ export function EntityPhotoControl({
           style={imageUrl ? undefined : { borderColor: `${accentColor}55` }}
         >
           {imageUrl ? (
-            <Image src={imageUrl} alt="" width={112} height={112} className="size-full object-cover" unoptimized />
+            <Image
+              key={imageUrl}
+              src={imageUrl}
+              alt=""
+              width={112}
+              height={112}
+              className="size-full object-cover"
+              unoptimized
+            />
           ) : (
             <div className="size-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-50">
               {fallback}
