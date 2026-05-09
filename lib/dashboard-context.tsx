@@ -56,6 +56,10 @@ type DashboardContextValue = {
   business: BusinessRow | null;
   loading: boolean;
   refetch: () => void;
+  /** Colaborador com conta vinculada sem negócio próprio — navegação restrita. */
+  isStaffDashboard: boolean;
+  /** ID do registro em `collaborators` quando `isStaffDashboard`. */
+  staffCollaboratorId: string | null;
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -72,10 +76,22 @@ export function DashboardProvider({
   business,
   loading,
   refetch,
+  isStaffDashboard,
+  staffCollaboratorId,
   children,
 }: DashboardContextValue & { children: ReactNode }) {
   return (
-    <DashboardContext.Provider value={{ user, profile, business, loading, refetch }}>
+    <DashboardContext.Provider
+      value={{
+        user,
+        profile,
+        business,
+        loading,
+        refetch,
+        isStaffDashboard,
+        staffCollaboratorId,
+      }}
+    >
       {children}
     </DashboardContext.Provider>
   );

@@ -22,8 +22,27 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .maybeSingle();
   if (!profile) redirect("/setup");
 
-  const { data: business } = await supabase.from("businesses").select("*").eq("profile_id", profile.id).maybeSingle();
+  const { data: ownedBusiness } = await supabase.from("businesses").select("*").eq("profile_id", profile.id).maybeSingle();
+
+  let business = ownedBusiness;
+  let staffCollaboratorId: string | null = null;
+
+  if (!ownedBusiness) {
+    const { data: collabRow } = await supabase
+      .from("collaborators")
+      .select("id, business_id")
+      .eq("auth_user_id", effectiveUserId)
+      .maybeSingle();
+    if (collabRow?.business_id) {
+      staffCollaboratorId = collabRow.id;
+      const { data: empBiz } = await supabase.from("businesses").select("*").eq("id", collabRow.business_id).maybeSingle();
+      business = empBiz;
+    }
+  }
+
   if (!business) redirect("/setup");
+
+  const isStaffDashboard = !ownedBusiness && !!staffCollaboratorId;
 
   const userInfo: UserInfo = {
     id: profile.id,
@@ -47,7 +66,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
     : profile;
 
   return (
-    <DashboardShell user={userInfo} profile={profileNormalized} business={businessNormalized}>
+    <DashboardShell
+      user={userInfo}
+      profile={profileNormalized}
+      business={businessNormalized}
+      isStaffDashboard={isStaffDashboard}
+      staffCollaboratorId={staffCollaboratorId}
+    >
       {children}
     </DashboardShell>
   );

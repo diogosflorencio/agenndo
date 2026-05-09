@@ -717,3 +717,6 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+
+-- ========== COMISSÕES (módulo opcional) ==========
+-- DDL completo, RLS e políticas: supabase/migrations/20260509120000_commissions_module.sql

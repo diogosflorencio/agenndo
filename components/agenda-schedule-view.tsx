@@ -681,10 +681,12 @@ export function AgendaScheduleView({
       <Link
         href="/dashboard/clientes"
         title="Ir para clientes"
-        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-4 z-[45] inline-flex max-w-[min(18rem,calc(100vw-6rem))] items-center gap-2 rounded-full border border-gray-200 bg-white py-2.5 pl-3 pr-3.5 text-sm font-bold text-gray-900 shadow-lg hover:bg-gray-50 lg:bottom-8 lg:left-auto lg:right-[5.75rem] lg:py-3 lg:pl-4 lg:pr-4"
+        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-4 z-[25] inline-flex max-w-[min(18rem,calc(100vw-6rem))] items-center gap-2 rounded-full border border-gray-200 bg-white py-2.5 pl-3 pr-3.5 text-sm font-bold text-gray-900 shadow-lg hover:bg-gray-50 lg:bottom-8 lg:left-auto lg:right-[5.75rem] lg:z-[30] lg:py-3 lg:pl-4 lg:pr-4"
       >
-        <span className="material-symbols-outlined shrink-0 text-primary text-xl">search</span>
-        <span className="min-w-0 truncate">Buscar cliente</span>
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/12">
+          <span className="material-symbols-outlined text-primary text-[22px] leading-none">search</span>
+        </span>
+        <span className="min-w-0 truncate leading-none">Buscar cliente</span>
       </Link>
     </div>
   );

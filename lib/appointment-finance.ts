@@ -1,4 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  recalculateCommissionAmountForAppointment,
+  upsertCommissionForCompletedAppointment,
+  voidCommissionForAppointment,
+} from "@/lib/commission-sync";
 
 export function parseMoneyInputToCents(value: string): number | null {
   const t = value.trim().replace(/\s/g, "").replace(",", ".");
@@ -83,6 +88,12 @@ export async function setAppointmentAttendance(opts: {
   if (selErr) return { error: selErr.message };
 
   if (nextStatus === "faltou") {
+    const voidComm = await voidCommissionForAppointment({
+      supabase,
+      businessId,
+      appointmentId: appointment.id,
+    });
+    if ("error" in voidComm) return voidComm;
     if (existingFr?.id) {
       const oldCid = existingFr.client_id as string | null;
       const { error: delErr } = await supabase.from("financial_records").delete().eq("id", existingFr.id);
@@ -134,6 +145,13 @@ export async function setAppointmentAttendance(opts: {
       if (r.error) return { error: r.error };
     }
   }
+
+  const comm = await upsertCommissionForCompletedAppointment({
+    supabase,
+    businessId,
+    appointmentId: appointment.id,
+  });
+  if ("error" in comm) return comm;
 
   return { ok: true };
 }
@@ -196,6 +214,13 @@ export async function updateCompareceuPaidAmount(opts: {
       if (r.error) return { error: r.error };
     }
   }
+
+  const rc = await recalculateCommissionAmountForAppointment({
+    supabase,
+    businessId,
+    appointmentId,
+  });
+  if ("error" in rc) return rc;
 
   return { ok: true };
 }
