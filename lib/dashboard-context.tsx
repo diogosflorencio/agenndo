@@ -37,6 +37,13 @@ export type BusinessRow = {
   updated_at: string;
 };
 
+/** Vínculos do profissional (mesmo login em vários negócios). */
+export type StaffLink = {
+  collaboratorId: string;
+  businessId: string;
+  businessName: string;
+};
+
 export type ProfileRow = {
   id: string;
   email: string | null;
@@ -56,10 +63,12 @@ type DashboardContextValue = {
   business: BusinessRow | null;
   loading: boolean;
   refetch: () => void;
-  /** Colaborador com conta vinculada sem negócio próprio — navegação restrita. */
+  /** Colaborador com conta vinculada sem negócio próprio - navegação restrita. */
   isStaffDashboard: boolean;
-  /** ID do registro em `collaborators` quando `isStaffDashboard`. */
+  /** Primeiro vínculo (retrocompat); preferir `staffContexts`. */
   staffCollaboratorId: string | null;
+  /** Todos os negócios em que este login está na equipe (comissões unificadas). */
+  staffContexts: StaffLink[];
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -78,6 +87,7 @@ export function DashboardProvider({
   refetch,
   isStaffDashboard,
   staffCollaboratorId,
+  staffContexts,
   children,
 }: DashboardContextValue & { children: ReactNode }) {
   return (
@@ -90,6 +100,7 @@ export function DashboardProvider({
         refetch,
         isStaffDashboard,
         staffCollaboratorId,
+        staffContexts,
       }}
     >
       {children}

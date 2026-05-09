@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
   if (!targetUserId) {
     return NextResponse.json(
-      { error: "Nenhuma conta Agendo encontrada com este e-mail. O profissional precisa criar conta antes." },
+      { error: "Nenhuma conta Agenndo encontrada com este e-mail. O profissional precisa criar conta antes (ex.: entrar em /colaborador e usar Google com esse e-mail)." },
       { status: 404 }
     );
   }

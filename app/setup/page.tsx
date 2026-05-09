@@ -117,6 +117,38 @@ export default function SetupPage() {
     }));
   }, [profileRec?.onboarding_inputs]);
 
+  /** Dono com negócio ou profissional já vinculado na equipe: não mostrar onboarding de criar negócio. */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+
+      const { data: ownedBiz } = await supabase.from("businesses").select("id").eq("profile_id", user.id).maybeSingle();
+      if (cancelled) return;
+      if (ownedBiz?.id) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      const { data: staffRows } = await supabase
+        .from("collaborators")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .limit(1);
+      if (cancelled) return;
+      if (staffRows && staffRows.length > 0) {
+        router.replace("/dashboard/minhas-comissoes");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
   useEffect(() => {
     const raw = data.slug.trim();
     if (!raw || raw.length < 2) {
@@ -691,7 +723,7 @@ function Step4({ data, update, colors }: { data: { primaryColor: string; busines
   );
 }
 
-// Step 5 — teste primeiro (`effectivePlan` via `resolveEffectiveDynamicPlan`, sem microcopiar regra técnica)
+// Step 5 - teste primeiro (`effectivePlan` via `resolveEffectiveDynamicPlan`, sem microcopiar regra técnica)
 function Step5({
   data,
   dynamicPlan,

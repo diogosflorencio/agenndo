@@ -610,6 +610,11 @@ CREATE POLICY "businesses_public_read" ON public.businesses FOR SELECT USING (tr
 CREATE POLICY "services_public_read" ON public.services FOR SELECT USING (active = true AND archived_at IS NULL);
 CREATE POLICY "collaborators_public_read" ON public.collaborators FOR SELECT USING (active = true);
 
+DROP POLICY IF EXISTS "collaborators_linked_account_read" ON public.collaborators;
+CREATE POLICY "collaborators_linked_account_read" ON public.collaborators FOR SELECT TO authenticated USING (
+  auth_user_id = auth.uid()
+);
+
 -- Cliente com conta: leitura dos próprios dados e agendamentos
 CREATE POLICY "clients_self" ON public.clients FOR ALL USING (auth_user_id = auth.uid());
 

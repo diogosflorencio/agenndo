@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
@@ -9,6 +9,12 @@ import { SwitchToggle } from "@/components/switch-toggle";
 import { EntityPhotoControl } from "@/components/dashboard/entity-photo-control";
 import { formatBrazilPhoneFromDigits, getAuthHeaders, maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
 import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
+import { getSiteUrl } from "@/lib/site-url";
+import { useAppAlert } from "@/components/app-alert-provider";
+
+function inviteEmailStorageKey(collaboratorId: string) {
+  return `agenndo-collab-invite-email:${collaboratorId}`;
+}
 
 const COLORS = [
   "#3B82F6", "#8B5CF6", "#EC4899", "#F59E0B",
@@ -31,6 +37,7 @@ export default function EditarColaboradorPage() {
   const params = useParams();
   const id = typeof params?.id === "string" ? params.id : "";
   const { business } = useDashboard();
+  const { showAlert } = useAppAlert();
 
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -47,6 +54,9 @@ export default function EditarColaboradorPage() {
   const [linkEmail, setLinkEmail] = useState("");
   const [linkBusy, setLinkBusy] = useState(false);
   const [linkedUser, setLinkedUser] = useState(false);
+  /** E-mail usado no vínculo (persistido no navegador para a mensagem copiável após recarregar). */
+  const [storedInviteEmail, setStoredInviteEmail] = useState<string | null>(null);
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   const load = useCallback(async () => {
     if (!id || !business?.id) {
@@ -76,13 +86,56 @@ export default function EditarColaboradorPage() {
       active: row.active,
     });
     setAvatarUrl(row.avatar_url ?? null);
-    setLinkedUser(!!row.auth_user_id);
+    const linked = !!row.auth_user_id;
+    setLinkedUser(linked);
+    if (linked && typeof window !== "undefined") {
+      setStoredInviteEmail(sessionStorage.getItem(inviteEmailStorageKey(id)));
+    } else {
+      setStoredInviteEmail(null);
+    }
     setNotFound(false);
   }, [id, business?.id]);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  const inviteMessageText = useMemo(() => {
+    const nomeDisplay = form.name.trim() || "profissional(a)";
+    const empresa = business?.name?.trim() || "nosso estabelecimento";
+    const portalUrl = `${getSiteUrl()}/colaborador`;
+    const emailEffective = linkedUser ? (storedInviteEmail?.trim() ?? "") : linkEmail.trim();
+
+    const emailInIntro = emailEffective ? ` com o e-mail ${emailEffective}` : "";
+
+    const emailBlock = emailEffective
+      ? `• Confirme no Google o mesmo e-mail: ${emailEffective}`
+      : linkedUser
+        ? `• E-mail para usar no login com Google: o mesmo que foi cadastrado no vínculo da sua conta na equipe. Se não lembrar qual foi, fale comigo para confirmarmos.`
+        : `• E-mail para usar no login com Google: primeiro preencha o campo de e-mail na área acima e copie esta mensagem de novo - precisa ser exatamente o da conta Google que o colaborador usará.`;
+
+    return (
+      `Olá, ${nomeDisplay}!\n\n` +
+      `Seguem os dados para você acessar o Agenndo (YWP) e acompanhar suas comissões.\n` +
+      `Negócio: ${empresa}.\n\n` +
+      `${emailBlock}\n` +
+      `• Link para começar: ${portalUrl}\n` +
+      `• Depois de abrir o link, use "Entrar com Google" com esse mesmo e-mail.\n\n` +
+      `Qualquer dúvida, fale comigo.`
+    );
+  }, [form.name, business?.name, linkEmail, linkedUser, storedInviteEmail]);
+
+  const copyInviteMessage = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteMessageText);
+      setInviteCopied(true);
+      window.setTimeout(() => setInviteCopied(false), 2800);
+    } catch {
+      showAlert("Não foi possível copiar. Selecione o texto manualmente ou verifique as permissões do navegador.", {
+        title: "Área de transferência",
+      });
+    }
+  };
 
   const handleSave = async () => {
     if (!form.name.trim() || !id) return;
@@ -279,82 +332,113 @@ export default function EditarColaboradorPage() {
       </div>
 
       <div className="mt-6 bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-        <h2 className="text-sm font-bold text-gray-900 mb-1">Conta para “Minhas comissões”</h2>
-        <p className="text-xs text-gray-500 mb-4">
-          Vincule o e-mail da conta Agendo do profissional para ele acessar{" "}
-          <span className="font-semibold text-gray-700">Financeiro → Minhas comissões</span> e ver apenas os próprios
-          valores.
-        </p>
-        {linkedUser ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-primary font-semibold">Conta vinculada</span>
-            <button
-              type="button"
-              disabled={linkBusy}
-              onClick={async () => {
-                setLinkBusy(true);
-                try {
-                  const res = await fetch(`/api/dashboard/collaborator-link?collaboratorId=${encodeURIComponent(id)}`, {
-                    method: "DELETE",
-                    credentials: "include",
-                    headers: { ...getAuthHeaders() },
-                  });
-                  const j = (await res.json()) as { error?: string };
-                  if (!res.ok) throw new Error(j.error ?? "Erro");
-                  setLinkedUser(false);
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : "Erro ao desvincular");
-                } finally {
-                  setLinkBusy(false);
-                }
-              }}
-              className="text-sm font-semibold text-red-600 hover:underline disabled:opacity-50"
-            >
-              Desvincular
-            </button>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-2 items-end">
-            <label className="flex-1 min-w-[12rem] text-xs font-medium text-gray-600">
-              E-mail da conta Agendo (profissional)
-              <input
-                type="email"
-                value={linkEmail}
-                onChange={(e) => setLinkEmail(e.target.value)}
-                placeholder="nome@email.com"
-                className="mt-1 w-full h-11 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm text-gray-900"
-              />
-            </label>
-            <button
-              type="button"
-              disabled={linkBusy || !linkEmail.trim()}
-              onClick={async () => {
-                setLinkBusy(true);
-                setError(null);
-                try {
-                  const res = await fetch("/api/dashboard/collaborator-link", {
-                    method: "POST",
-                    credentials: "include",
-                    headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-                    body: JSON.stringify({ collaboratorId: id, email: linkEmail.trim() }),
-                  });
-                  const j = (await res.json()) as { error?: string };
-                  if (!res.ok) throw new Error(j.error ?? "Erro");
-                  setLinkedUser(true);
-                  setLinkEmail("");
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : "Erro ao vincular");
-                } finally {
-                  setLinkBusy(false);
-                }
-              }}
-              className="h-11 px-4 rounded-xl bg-gray-900 text-white text-sm font-bold disabled:opacity-50"
-            >
-              {linkBusy ? "…" : "Vincular"}
-            </button>
-          </div>
-        )}
+  <h2 className="text-sm font-bold text-gray-900 mb-1">Acesso do profissional</h2>
+  <p className="text-xs text-gray-500 mb-5">
+    Vincule a conta do profissional para que ele acesse o painel <span className="font-semibold text-gray-700">Minhas comissões</span> e visualize apenas os próprios dados.
+  </p>
+
+  {linkedUser ? (
+    <div className="flex items-center gap-3">
+      <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
+        <span className="material-symbols-outlined text-base leading-none">check_circle</span>
+        Conta vinculada
+      </span>
+      <button
+        type="button"
+        disabled={linkBusy}
+        onClick={async () => {
+          setLinkBusy(true);
+          try {
+            const res = await fetch(`/api/dashboard/collaborator-link?collaboratorId=${encodeURIComponent(id)}`, {
+              method: "DELETE",
+              credentials: "include",
+              headers: { ...getAuthHeaders() },
+            });
+            const j = (await res.json()) as { error?: string };
+            if (!res.ok) throw new Error(j.error ?? "Erro");
+            setLinkedUser(false);
+            try { sessionStorage.removeItem(inviteEmailStorageKey(id)); } catch { /* ignore */ }
+            setStoredInviteEmail(null);
+          } catch (e) {
+            setError(e instanceof Error ? e.message : "Erro ao desvincular");
+          } finally {
+            setLinkBusy(false);
+          }
+        }}
+        className="text-sm font-semibold text-red-500 hover:underline disabled:opacity-50"
+      >
+        Desvincular
+      </button>
+    </div>
+  ) : (
+    <div className="flex flex-wrap gap-2 items-end">
+      <label className="flex-1 min-w-[12rem] text-xs font-medium text-gray-600">
+        E-mail Google do profissional
+        <input
+          type="email"
+          value={linkEmail}
+          onChange={(e) => setLinkEmail(e.target.value)}
+          placeholder="nome@gmail.com"
+          className="mt-1 w-full h-11 bg-gray-50 border border-gray-200 rounded-xl px-4 text-sm text-gray-900 outline-none focus:border-primary transition-colors"
+        />
+      </label>
+      <button
+        type="button"
+        disabled={linkBusy || !linkEmail.trim()}
+        onClick={async () => {
+          setLinkBusy(true);
+          setError(null);
+          try {
+            const res = await fetch("/api/dashboard/collaborator-link", {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+              body: JSON.stringify({ collaboratorId: id, email: linkEmail.trim() }),
+            });
+            const j = (await res.json()) as { error?: string };
+            if (!res.ok) throw new Error(j.error ?? "Erro");
+            const em = linkEmail.trim();
+            try { sessionStorage.setItem(inviteEmailStorageKey(id), em); } catch { /* ignore */ }
+            setStoredInviteEmail(em);
+            setLinkedUser(true);
+            setLinkEmail("");
+          } catch (e) {
+            setError(e instanceof Error ? e.message : "Erro ao vincular");
+          } finally {
+            setLinkBusy(false);
+          }
+        }}
+        className="h-11 px-5 rounded-xl bg-gray-900 text-white text-sm font-bold disabled:opacity-50 transition-opacity"
+      >
+        {linkBusy ? "…" : "Vincular"}
+      </button>
+    </div>
+  )}
+
+  <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-4">
+    <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+      <div>
+        <p className="text-xs font-bold text-gray-900">Mensagem pronta para enviar</p>
+        <p className="text-[11px] text-gray-500 mt-0.5">Cole no WhatsApp ou e-mail.</p>
       </div>
+      <button
+        type="button"
+        onClick={() => void copyInviteMessage()}
+        className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gray-900 text-white text-xs font-bold hover:bg-gray-800 transition-colors"
+      >
+        <span className="material-symbols-outlined text-base leading-none">content_copy</span>
+        {inviteCopied ? "Copiado!" : "Copiar"}
+      </button>
+    </div>
+    <textarea
+      readOnly
+      value={inviteMessageText}
+      rows={10}
+      className="w-full resize-y min-h-[10rem] rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-xs text-gray-800 leading-relaxed font-sans outline-none"
+      aria-label="Mensagem para o profissional"
+    />
+  </div>
+</div>
     </div>
   );
 }

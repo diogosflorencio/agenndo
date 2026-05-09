@@ -390,7 +390,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
   const exportPdfSummary = () => {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     doc.setFontSize(14);
-    doc.text("Relatório de comissões — Agenndo", 14, 18);
+    doc.text("Relatório de comissões - Agenndo", 14, 18);
     doc.setFontSize(10);
     doc.text(`Período: ${dateRange.from} a ${dateRange.to}`, 14, 26);
     let y = 34;
@@ -782,7 +782,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
                 <div>
                   <p className="text-sm font-semibold text-gray-900">{new Date(b.created_at).toLocaleString("pt-BR")}</p>
                   <p className="text-xs text-gray-500">
-                    Registrado por perfil {b.approved_by ? `${b.approved_by.slice(0, 8)}…` : "—"} · {b.notes ?? ""}
+                    Registrado por perfil {b.approved_by ? `${b.approved_by.slice(0, 8)}…` : "-"} · {b.notes ?? ""}
                   </p>
                 </div>
                 <p className="text-sm font-bold text-primary">{formatCurrency(b.total_cents / 100)}</p>

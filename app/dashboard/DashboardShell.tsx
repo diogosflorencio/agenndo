@@ -7,9 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ThemeProvider, useTheme } from "@/lib/theme-context";
 import { DashboardProvider, useDashboard } from "@/lib/dashboard-context";
 import { hasFullServiceAccess } from "@/lib/billing-access";
-import type { UserInfo } from "@/lib/dashboard-context";
-import type { BusinessRow } from "@/lib/dashboard-context";
-import type { ProfileRow } from "@/lib/dashboard-context";
+import type { BusinessRow, ProfileRow, StaffLink, UserInfo } from "@/lib/dashboard-context";
 import { WhatsAppSupportWidget } from "@/components/whatsapp-support-widget";
 import { StaffDashboardBoundary } from "@/components/dashboard/staff-dashboard-boundary";
 import { stopImpersonation } from "@/lib/auth/impersonation-client";
@@ -56,7 +54,6 @@ const MOBILE_NAV_ITEMS: MobileNavItem[] = [
 
 const MOBILE_STAFF_NAV: MobileNavItem[] = [
   { type: "link", href: "/dashboard/minhas-comissoes", icon: "savings", label: "Comissões", exact: false },
-  { type: "link", href: "/dashboard/conta", icon: "manage_accounts", label: "Conta", exact: false },
 ];
 
 const MOBILE_GROUP_TITLE: Record<GroupKey, string> = {
@@ -96,7 +93,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const { showAlert } = useAppAlert();
-  const { business, user, profile, isStaffDashboard } = useDashboard();
+  const { business, user, profile, isStaffDashboard, staffContexts } = useDashboard();
   const [impersonationExitLoading, setImpersonationExitLoading] = useState(false);
   /** Apenas um grupo aberto por vez; Início e Conta fecham todos. */
   const [openSidebarGroup, setOpenSidebarGroup] = useState<GroupKey | null>(null);
@@ -175,7 +172,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     );
   };
 
-  const slug = business?.slug ?? "";
+  const slug = isStaffDashboard ? "" : (business?.slug ?? "");
 
   return (
     <div className={`min-h-screen flex flex-col lg:flex-row ${bgMain}`} data-theme={theme}>
@@ -230,7 +227,21 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           <GuardedDashboardLink href="/" className={`block font-bold tracking-tight text-lg transition-opacity hover:opacity-90 ${isLight ? "text-gray-900" : "text-white"}`}>
             Agenndo
           </GuardedDashboardLink>
-          {business?.name && <p className="text-xs text-gray-500 mt-1 truncate" title={business.name}>{business.name}</p>}
+          {isStaffDashboard ? (
+            staffContexts.length > 1 ? (
+              <p className="text-xs text-gray-500 mt-1 leading-snug" title={staffContexts.map((s) => s.businessName).join(", ")}>
+                {staffContexts.length} negócios · comissões unificadas
+              </p>
+            ) : business?.name ? (
+              <p className="text-xs text-gray-500 mt-1 truncate" title={business.name}>
+                {business.name}
+              </p>
+            ) : null
+          ) : business?.name ? (
+            <p className="text-xs text-gray-500 mt-1 truncate" title={business.name}>
+              {business.name}
+            </p>
+          ) : null}
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4 min-h-0">
           {isStaffDashboard ? (
@@ -254,21 +265,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   savings
                 </span>
                 Minhas comissões
-              </GuardedDashboardLink>
-              <GuardedDashboardLink
-                href="/dashboard/conta"
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  pathname.startsWith("/dashboard/conta")
-                    ? "bg-primary/10 text-primary"
-                    : isLight
-                      ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                      : "text-gray-400 hover:bg-white/5 hover:text-white"
-                }`}
-              >
-                <span className={`material-symbols-outlined text-[20px] ${pathname.startsWith("/dashboard/conta") ? "filled" : ""}`}>
-                  manage_accounts
-                </span>
-                Conta
               </GuardedDashboardLink>
             </>
           ) : (
@@ -309,7 +305,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           )}
         </nav>
         <div className={`p-3 border-t border-inherit space-y-1 shrink-0 ${isLight ? "bg-gray-50/80" : "bg-black/20"}`}>
-          {slug && (
+          {!isStaffDashboard && slug ? (
             <Link
               href={`/${slug}`}
               target="_blank"
@@ -318,7 +314,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               <span className="material-symbols-outlined text-base">open_in_new</span>
               Página pública
             </Link>
-          )}
+          ) : null}
           <button
             type="button"
             onClick={toggleTheme}
@@ -342,18 +338,20 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 <span className="text-lg font-bold tracking-tight">Agenndo</span>
               </GuardedDashboardLink>
               <div className="flex items-center gap-2 shrink-0">
-                {slug && (
+                {!isStaffDashboard && slug ? (
                   <Link href={`/${slug}`} target="_blank" className={`flex items-center gap-1.5 px-2 py-2 rounded-lg text-sm font-medium transition-colors ${isLight ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900" : "text-gray-400 hover:bg-white/10 hover:text-white"}`} title="Ver página pública">
                     <span className="material-symbols-outlined text-base">open_in_new</span>
                   </Link>
-                )}
+                ) : null}
                 <button type="button" onClick={toggleTheme} className={`size-9 flex items-center justify-center rounded-lg transition-colors ${isLight ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900" : "text-gray-400 hover:bg-white/10 hover:text-white"}`} title={theme === "light" ? "Usar tema escuro" : "Usar tema claro"} aria-label={theme === "light" ? "Tema escuro" : "Tema claro"}>
                   <span className="material-symbols-outlined text-xl">{theme === "light" ? "dark_mode" : "light_mode"}</span>
                 </button>
-                <GuardedDashboardLink href="/dashboard/notificacoes" className="size-9 flex items-center justify-center rounded-lg relative">
-                  <span className="material-symbols-outlined text-xl">notifications</span>
-                  <span className="absolute top-1.5 right-1.5 size-2 bg-primary rounded-full" />
-                </GuardedDashboardLink>
+                {!isStaffDashboard ? (
+                  <GuardedDashboardLink href="/dashboard/notificacoes" className="size-9 flex items-center justify-center rounded-lg relative">
+                    <span className="material-symbols-outlined text-xl">notifications</span>
+                    <span className="absolute top-1.5 right-1.5 size-2 bg-primary rounded-full" />
+                  </GuardedDashboardLink>
+                ) : null}
               </div>
             </div>
           </div>
@@ -549,7 +547,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      <WhatsAppSupportWidget context="dashboard" />
+      {!isStaffDashboard ? <WhatsAppSupportWidget context="dashboard" /> : null}
     </div>
   );
 }
@@ -561,6 +559,7 @@ type DashboardShellProps = {
   children: React.ReactNode;
   isStaffDashboard?: boolean;
   staffCollaboratorId?: string | null;
+  staffContexts?: StaffLink[];
 };
 
 export function DashboardShell({
@@ -570,6 +569,7 @@ export function DashboardShell({
   children,
   isStaffDashboard = false,
   staffCollaboratorId = null,
+  staffContexts = [],
 }: DashboardShellProps) {
   return (
     <ThemeProvider>
@@ -581,6 +581,7 @@ export function DashboardShell({
         refetch={() => {}}
         isStaffDashboard={isStaffDashboard}
         staffCollaboratorId={staffCollaboratorId}
+        staffContexts={staffContexts}
       >
         <DashboardHotkeyProvider>
           <DashboardNavigationGuardProvider>
