@@ -848,7 +848,7 @@ export default function DisponibilidadePage() {
       setSaveError(null);
       setSaveState("idle");
     } catch {
-      /* snapshot inválido — não alterar estado */
+      /* snapshot inválido - não alterar estado */
     }
   }, [savedSnapshot]);
 
@@ -877,7 +877,7 @@ export default function DisponibilidadePage() {
     const ok = await showConfirm({
       title: "Restaurar horários de fábrica?",
       message:
-        "Seu modelo semanal volta para os horários padrão (segunda a sábado 07h–16h com intervalo ao meio-dia; domingo fechado). Todas as personalizações por calendário serão removidas para hoje e para dias futuros — cada uma dessas datas passará a seguir só o modelo semanal.\n\nTambém voltam aos valores iniciais: Regras de agendamento (0 min de folga entre serviços, 0 h de antecedência mínima, até 30 dias à frente) e Página pública: escolha do horário (linha do tempo / slider).\n\nIsso não altera o servidor até você salvar. Alterações locais não salvas nesta tela serão substituídas por esta pré-visualização.",
+        "Seu modelo semanal volta para os horários padrão (segunda a sábado 07h–16h com intervalo ao meio-dia; domingo fechado). Todas as personalizações por calendário serão removidas para hoje e para dias futuros - cada uma dessas datas passará a seguir só o modelo semanal.\n\nTambém voltam aos valores iniciais: Regras de agendamento (0 min de folga entre serviços, 0 h de antecedência mínima, até 30 dias à frente) e Página pública: escolha do horário (linha do tempo / slider).\n\nIsso não altera o servidor até você salvar. Alterações locais não salvas nesta tela serão substituídas por esta pré-visualização.",
       confirmLabel: "Sim, aplicar aqui",
       cancelLabel: "Cancelar",
       variant: "danger",

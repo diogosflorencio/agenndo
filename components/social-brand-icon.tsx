@@ -39,7 +39,7 @@ export function SocialBrandIcon({ platform, size = 20, className, style }: Props
       );
  
     // ─── Facebook ─────────────────────────────────────────────────────────────
-    // Fonte: Meta Brand Resources — ícone "f" sobre fundo redondo
+    // Fonte: Meta Brand Resources - ícone "f" sobre fundo redondo
     // Path único com fill-rule evenodd para o "f" branco recortado no círculo
     case "facebook":
       return (
@@ -59,7 +59,7 @@ export function SocialBrandIcon({ platform, size = 20, className, style }: Props
       );
  
     // ─── TikTok ───────────────────────────────────────────────────────────────
-    // Fonte: TikTok Brand Book — nota musical estilizada
+    // Fonte: TikTok Brand Book - nota musical estilizada
     // Path oficial em viewBox 24×24 (adaptado do simple-icons)
     case "tiktok":
       return (
@@ -77,7 +77,7 @@ export function SocialBrandIcon({ platform, size = 20, className, style }: Props
       );
  
     // ─── YouTube ──────────────────────────────────────────────────────────────
-    // Fonte: YouTube Brand Resources — play button arredondado
+    // Fonte: YouTube Brand Resources - play button arredondado
     // Dois sub-paths: retângulo externo e triângulo de play (fill-rule evenodd)
     case "youtube":
       return (
@@ -98,7 +98,7 @@ export function SocialBrandIcon({ platform, size = 20, className, style }: Props
       );
  
     // ─── LinkedIn ─────────────────────────────────────────────────────────────
-    // Fonte: LinkedIn Brand Guidelines — "in" mark
+    // Fonte: LinkedIn Brand Guidelines - "in" mark
     case "linkedin":
       return (
         <svg
@@ -115,7 +115,7 @@ export function SocialBrandIcon({ platform, size = 20, className, style }: Props
       );
  
     // ─── X (Twitter) ──────────────────────────────────────────────────────────
-    // Fonte: Bootstrap Icons bi-twitter-x — path oficial com dois sub-paths
+    // Fonte: Bootstrap Icons bi-twitter-x - path oficial com dois sub-paths
     // viewBox 0 0 16 16 reescalado para 0 0 24 24 com transformação
     case "x":
       return (

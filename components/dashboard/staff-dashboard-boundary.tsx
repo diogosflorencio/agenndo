@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useDashboard } from "@/lib/dashboard-context";
 
-/** Colaborador sem negócio próprio: só Minhas comissões e Conta. */
+/** Colaborador sem negócio próprio: só Minhas comissões (painel unificado). */
 export function StaffDashboardBoundary({ children }: { children: React.ReactNode }) {
   const { isStaffDashboard } = useDashboard();
   const pathname = usePathname();
@@ -12,8 +12,7 @@ export function StaffDashboardBoundary({ children }: { children: React.ReactNode
 
   useEffect(() => {
     if (!isStaffDashboard) return;
-    const allowed =
-      pathname.startsWith("/dashboard/minhas-comissoes") || pathname.startsWith("/dashboard/conta");
+    const allowed = pathname.startsWith("/dashboard/minhas-comissoes");
     if (!allowed) {
       router.replace("/dashboard/minhas-comissoes");
     }

@@ -105,7 +105,7 @@ export default function AgendamentoOnlinePage() {
         <h2 className="text-xl font-bold text-white mb-4">Comparando com outras ferramentas do mercado</h2>
         <p className="text-gray-400 leading-relaxed mb-8">
           Equipes que pesquisam <strong className="text-white">software de agendamento no Brasil</strong> costumam abrir
-          várias opções — incluindo nomes estabelecidos como{" "}
+          várias opções - incluindo nomes estabelecidos como{" "}
           <strong className="text-white">Agendor</strong> ou <strong className="text-white">Gendo</strong>, entre
           outras. São produtos do mesmo tipo de categoria (reserva online e gestão para negócios). O{" "}
           <strong className="text-white">Agenndo não é afiliado</strong> a essas marcas: você pode avaliar preços,

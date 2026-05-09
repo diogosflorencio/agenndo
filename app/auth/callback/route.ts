@@ -63,14 +63,19 @@ export async function GET(request: NextRequest) {
   }
 
   if (context !== "cliente") {
-    const { data: business } = await supabase
+    const { data: ownedBiz } = await supabase
       .from("businesses")
       .select("id")
       .eq("profile_id", user.id)
       .limit(1)
       .maybeSingle();
-
-    if (!business) {
+    const { data: staffRows } = await supabase
+      .from("collaborators")
+      .select("id")
+      .eq("auth_user_id", user.id)
+      .limit(1);
+    const hasStaffLink = (staffRows?.length ?? 0) > 0;
+    if (!ownedBiz?.id && !hasStaffLink) {
       redirectTo = `${origin}/setup`;
     }
   }

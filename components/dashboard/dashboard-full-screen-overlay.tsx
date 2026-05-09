@@ -25,7 +25,7 @@ export function useFullScreenOverlayRequestClose(): () => Promise<void> {
   return (
     fn ??
     (async () => {
-      /* noop — fora do overlay */
+      /* noop - fora do overlay */
     })
   );
 }
@@ -49,7 +49,7 @@ export type DashboardFullScreenOverlayProps = {
   dirty?: boolean;
   /** Chamado quando o usuário escolhe “Salvar” no diálogo; deve persistir e devolver se salvou com sucesso */
   onSaveBeforeClose?: () => Promise<boolean>;
-  /** Impede fechamento (ex.: salvando) — também ignorado o diálogo de alterações */
+  /** Impede fechamento (ex.: salvando) - também ignorado o diálogo de alterações */
   closeBlocked?: boolean;
 };
 

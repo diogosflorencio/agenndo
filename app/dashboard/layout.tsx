@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { normalizePlanId } from "@/lib/plans";
 import { DashboardShell } from "./DashboardShell";
-import type { UserInfo } from "@/lib/dashboard-context";
+import type { StaffLink, UserInfo } from "@/lib/dashboard-context";
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -26,23 +26,35 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   let business = ownedBusiness;
   let staffCollaboratorId: string | null = null;
+  let staffContexts: StaffLink[] = [];
 
   if (!ownedBusiness) {
-    const { data: collabRow } = await supabase
+    const { data: collabRows } = await supabase
       .from("collaborators")
-      .select("id, business_id")
-      .eq("auth_user_id", effectiveUserId)
-      .maybeSingle();
-    if (collabRow?.business_id) {
-      staffCollaboratorId = collabRow.id;
-      const { data: empBiz } = await supabase.from("businesses").select("*").eq("id", collabRow.business_id).maybeSingle();
+      .select("id, business_id, businesses(name)")
+      .eq("auth_user_id", effectiveUserId);
+    const rows = collabRows ?? [];
+    staffContexts = rows.map((r) => {
+      const biz = r.businesses as { name: string } | { name: string }[] | null | undefined;
+      const name =
+        Array.isArray(biz) ? biz[0]?.name : typeof biz === "object" && biz && "name" in biz ? biz.name : undefined;
+      return {
+        collaboratorId: r.id,
+        businessId: r.business_id,
+        businessName: name?.trim() || "Negócio",
+      };
+    });
+    const first = rows[0];
+    if (first?.business_id) {
+      staffCollaboratorId = first.id;
+      const { data: empBiz } = await supabase.from("businesses").select("*").eq("id", first.business_id).maybeSingle();
       business = empBiz;
     }
   }
 
   if (!business) redirect("/setup");
 
-  const isStaffDashboard = !ownedBusiness && !!staffCollaboratorId;
+  const isStaffDashboard = !ownedBusiness && staffContexts.length > 0;
 
   const userInfo: UserInfo = {
     id: profile.id,
@@ -72,6 +84,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       business={businessNormalized}
       isStaffDashboard={isStaffDashboard}
       staffCollaboratorId={staffCollaboratorId}
+      staffContexts={staffContexts}
     >
       {children}
     </DashboardShell>
