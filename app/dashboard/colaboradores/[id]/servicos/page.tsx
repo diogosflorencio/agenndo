@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
+import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 
 type CollabRow = { id: string; name: string; role: string | null; color: string | null };
 type ServiceRow = {
@@ -101,6 +102,11 @@ export default function ColaboradorServicosPage() {
     setSaving(false);
     router.push("/dashboard/colaboradores");
   };
+
+  useRegisterDashboardHotkeys(!saving && !!id, "colab-servicos-vinculos", {
+    save: () => void handleSave(),
+    cancel: () => router.push("/dashboard/colaboradores"),
+  });
 
   if (loading) {
     return (
@@ -218,18 +224,22 @@ export default function ColaboradorServicosPage() {
       <div className="flex gap-3 mt-6">
         <Link
           href="/dashboard/colaboradores"
-          className="flex-1 py-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl text-sm text-center transition-all"
+          className="relative flex flex-1 items-center justify-center gap-2 px-3 py-4 pr-3 text-center text-sm font-semibold text-gray-700 transition-all bg-white border border-gray-200 hover:bg-gray-50 rounded-xl lg:pr-[4.75rem]"
         >
-          Voltar sem salvar
+          <span className="flex min-w-0 flex-1 justify-center">Voltar sem salvar</span>
+          <HotkeyHint action="cancel" layout="floating-end" />
         </Link>
         <button
           type="button"
           disabled={saving}
           onClick={() => void handleSave()}
-          className="flex-1 py-4 bg-primary hover:bg-primary/90 disabled:opacity-50 text-black font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
+          className="relative flex flex-1 items-center justify-center gap-2 px-3 py-4 pr-3 text-sm font-bold text-black transition-all bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-xl lg:pr-[4.75rem]"
         >
-          <span className="material-symbols-outlined text-base">save</span>
-          {saving ? "Salvando…" : "Salvar vínculos"}
+          <span className="flex min-w-0 flex-1 items-center justify-center gap-2">
+            <span className="material-symbols-outlined shrink-0 text-base">save</span>
+            {saving ? "Salvando…" : "Salvar vínculos"}
+          </span>
+          {!saving ? <HotkeyHint action="save" variant="primary" layout="floating-end" /> : null}
         </button>
       </div>
     </div>

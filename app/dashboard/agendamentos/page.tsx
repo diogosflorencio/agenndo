@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
-import { STATUS_CONFIG, formatCurrency, phoneToWhatsAppHref, type AppointmentStatus } from "@/lib/utils";
+import { STATUS_CONFIG, formatCurrency, getAuthHeaders, phoneToWhatsAppHref, type AppointmentStatus } from "@/lib/utils";
 import { hasFullServiceAccess } from "@/lib/billing-access";
 import {
   setAppointmentAttendance,
@@ -15,6 +15,7 @@ import { AppointmentValueModal } from "@/components/appointment-value-modal";
 import { useAppAlert } from "@/components/app-alert-provider";
 import { AgendaScheduleView, type AgendaViewMode } from "@/components/agenda-schedule-view";
 import { localISODate } from "@/lib/agenda-calendar-helpers";
+import type { DaySchedule } from "@/lib/disponibilidade";
 
 const STATUSES: AppointmentStatus[] = ["agendado", "confirmado", "compareceu", "faltou", "cancelado"];
 
@@ -57,6 +58,10 @@ export default function AgendamentosPage() {
   const [selected, setSelected] = useState<string[]>([]);
   const [actionMessage, setActionMessage] = useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [availability, setAvailability] = useState<{
+    weekly: Record<string, DaySchedule>;
+    overrides: Record<string, DaySchedule>;
+  } | null>(null);
   const [moneyModal, setMoneyModal] = useState<{
     apt: AptRow;
     mode: "compareceu" | "edit_paid";
@@ -96,6 +101,29 @@ export default function AgendamentosPage() {
       setLoading(false);
     });
   }, [business?.id, fetchRange.from, fetchRange.to]);
+
+  useEffect(() => {
+    if (!business?.id) return;
+    let cancelled = false;
+    void fetch("/api/dashboard/availability", {
+      credentials: "include",
+      headers: { ...getAuthHeaders() },
+    })
+      .then((r) => r.json())
+      .then((data: { weekly?: Record<string, DaySchedule>; overrides?: Record<string, DaySchedule> }) => {
+        if (cancelled || !data?.weekly) return;
+        setAvailability({
+          weekly: data.weekly,
+          overrides: data.overrides ?? {},
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setAvailability(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [business?.id]);
 
   const filtered = appointments.filter((a) => {
     if (a.date !== selectedDate) return false;
@@ -302,7 +330,7 @@ export default function AgendamentosPage() {
             className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
           >
             <span className="material-symbols-outlined text-base">add</span>
-            Novo
+            Novo agendamento
           </Link>
         ) : (
           <Link
@@ -367,6 +395,7 @@ export default function AgendamentosPage() {
         showCancelled={showCancelled}
         onShowCancelled={setShowCancelled}
         canCreate={canCreateAppointments}
+        availability={availability}
         onAppointmentClick={(id) => {
           document.getElementById(`apt-row-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
         }}

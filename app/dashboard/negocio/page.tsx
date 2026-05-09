@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, forwardRef, useCallback } from "react";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
 import { formatBrazilPhoneFromDigits, maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
 import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
+import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
+import { useRegisterDashboardUnsavedNavigation } from "@/lib/dashboard-navigation-guard";
 
 export default function NegocioPage() {
   const { business } = useDashboard();
@@ -36,6 +38,12 @@ export default function NegocioPage() {
     if (!business || savedBaseline === null) return false;
     return JSON.stringify(form) !== savedBaseline;
   }, [business, form, savedBaseline]);
+
+  const saveBtnRef = useRef<HTMLButtonElement>(null);
+
+  useRegisterDashboardHotkeys(!!business?.id, "negocio-save", {
+    save: () => saveBtnRef.current?.click(),
+  });
 
   return (
     <div className="w-full">
@@ -95,6 +103,7 @@ export default function NegocioPage() {
         </div>
 
         <SaveNegocioButton
+          ref={saveBtnRef}
           businessId={business?.id}
           form={form}
           onSaved={() => {
@@ -107,23 +116,22 @@ export default function NegocioPage() {
   );
 }
 
-function SaveNegocioButton({
-  businessId,
-  form,
-  onSaved,
-  isDirty,
-}: {
-  businessId: string | undefined;
-  form: { businessName: string; phone: string; city: string; slug: string; segment: string };
-  onSaved?: () => void;
-  isDirty: boolean;
-}) {
+const SaveNegocioButton = forwardRef<
+  HTMLButtonElement,
+  {
+    businessId: string | undefined;
+    form: { businessName: string; phone: string; city: string; slug: string; segment: string };
+    onSaved?: () => void;
+    isDirty: boolean;
+  }
+>(function SaveNegocioButton({ businessId, form, onSaved, isDirty }, ref) {
   const [saving, setSaving] = useState(false);
-  if (!businessId) return null;
-  const handleSave = async () => {
+
+  const handleSave = useCallback(async (): Promise<boolean> => {
+    if (!businessId) return false;
     setSaving(true);
     const supabase = createClient();
-    await supabase
+    const { error } = await supabase
       .from("businesses")
       .update({
         name: form.businessName || undefined,
@@ -134,19 +142,29 @@ function SaveNegocioButton({
       })
       .eq("id", businessId);
     setSaving(false);
+    if (error) return false;
     onSaved?.();
-  };
+    return true;
+  }, [businessId, form, onSaved]);
+
+  useRegisterDashboardUnsavedNavigation(isDirty, handleSave, !!businessId);
+
+  if (!businessId) return null;
   return (
     <button
+      ref={ref}
       type="button"
-      onClick={handleSave}
+      onClick={() => void handleSave()}
       disabled={saving}
-      className={`w-full py-4 bg-primary hover:bg-primary/90 disabled:opacity-70 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${
+      className={`relative flex w-full items-center justify-center gap-2 px-4 py-4 text-black font-bold rounded-xl transition-all bg-primary hover:bg-primary/90 disabled:opacity-70 lg:pr-[4.75rem] ${
         isDirty ? "ring-2 ring-amber-500/45" : ""
       }`}
     >
-      <span className="material-symbols-outlined text-base">save</span>
-      {saving ? "Salvando..." : "Salvar alterações"}
+      <span className="flex min-w-0 flex-1 items-center justify-center gap-2">
+        <span className="material-symbols-outlined shrink-0 text-base">save</span>
+        {saving ? "Salvando..." : "Salvar alterações"}
+      </span>
+      {!saving ? <HotkeyHint action="save" variant="primary" layout="floating-end" /> : null}
     </button>
   );
-}
+});

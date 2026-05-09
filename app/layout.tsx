@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { getSiteUrl } from "@/lib/site-url";
 import { AppAlertProvider } from "@/components/app-alert-provider";
+import { MaterialSymbolsFontReady } from "@/components/material-symbols-font-ready";
+import { MATERIAL_SYMBOLS_STYLESHEET_HREF } from "@/lib/material-symbols-font";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -203,6 +205,15 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className="scroll-smooth">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.classList.add('material-symbols-fonts-pending');`,
+          }}
+        />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preload" href={MATERIAL_SYMBOLS_STYLESHEET_HREF} as="style" />
+        <link rel="stylesheet" href={MATERIAL_SYMBOLS_STYLESHEET_HREF} />
         {supabaseOrigin ? <link rel="dns-prefetch" href={supabaseOrigin} /> : null}
       </head>
       <body
@@ -212,6 +223,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+        <MaterialSymbolsFontReady />
         <AppAlertProvider>{children}</AppAlertProvider>
       </body>
     </html>

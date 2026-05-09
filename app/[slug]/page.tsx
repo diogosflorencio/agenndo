@@ -649,6 +649,7 @@ function PublicPageInner() {
                   >
                     {business.logo_url ? (
                       <Image
+                        key={business.logo_url}
                         src={business.logo_url}
                         alt=""
                         width={112}
@@ -962,7 +963,15 @@ function PublicPageInner() {
               )}
             >
               {business.logo_url ? (
-                <Image src={business.logo_url} alt="" width={44} height={44} className="size-11 object-cover" unoptimized />
+                <Image
+                  key={business.logo_url}
+                  src={business.logo_url}
+                  alt=""
+                  width={44}
+                  height={44}
+                  className="size-11 object-cover"
+                  unoptimized
+                />
               ) : (
                 business.name[0]
               )}
@@ -1141,7 +1150,7 @@ function PublicPageInner() {
                     Sem opção específica · {formatCurrency(selectedService.price_cents / 100)}
                   </span>
                 </button>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 min-w-0">
                   {normalizeVariantGallery(selectedService.variant_gallery).map((opt: ServiceVariantItem, i: number) => {
                     const optPrice = variantEffectivePriceCents(opt, selectedService.price_cents);
                     return (
@@ -1150,23 +1159,39 @@ function PublicPageInner() {
                         type="button"
                         onClick={() => setSelectedVariantIndex(i)}
                         className={cn(
-                          "rounded-xl border text-left overflow-hidden transition-all flex flex-col",
+                          "min-w-0 rounded-lg sm:rounded-xl border text-left overflow-hidden transition-all flex flex-col",
                           selectedVariantIndex === i
                             ? "border-[var(--public-accent)] ring-2 ring-[color-mix(in_srgb,var(--public-accent)_35%,transparent)]"
                             : cn(bookUi.card, bookUi.cardHover)
                         )}
                       >
-                        <div className="aspect-square relative bg-black/10 w-full shrink-0">
+                        <div className="relative w-full shrink-0 bg-black/10 aspect-[3/4]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={opt.url} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                          <img src={opt.url} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" />
                         </div>
-                        <div className="p-3 space-y-1 flex-1 flex flex-col">
-                          {opt.title ? <p className={cn("text-sm font-bold", bookUi.title)}>{opt.title}</p> : null}
-                          <p className={cn("text-xs font-semibold tabular-nums", bookUi.subtitle)}>
+                        <div className="p-1.5 sm:p-3 space-y-0.5 sm:space-y-1 flex-1 flex flex-col min-w-0">
+                          {opt.title ? (
+                            <p className={cn("text-[10px] sm:text-sm font-bold leading-tight line-clamp-2", bookUi.title)}>
+                              {opt.title}
+                            </p>
+                          ) : null}
+                          <p
+                            className={cn(
+                              "text-[10px] sm:text-xs font-semibold tabular-nums leading-tight",
+                              bookUi.subtitle
+                            )}
+                          >
                             {formatCurrency(optPrice / 100)}
                           </p>
                           {opt.description ? (
-                            <p className={cn("text-xs leading-snug line-clamp-3 mt-0.5", bookUi.muted)}>{opt.description}</p>
+                            <p
+                              className={cn(
+                                "hidden sm:block text-xs leading-snug line-clamp-3 mt-0.5",
+                                bookUi.muted
+                              )}
+                            >
+                              {opt.description}
+                            </p>
                           ) : null}
                         </div>
                       </button>
@@ -1736,7 +1761,7 @@ function PublicPageInner() {
               >
                 <div className="space-y-3">
                   {[
-                    { icon: "content_cut", label: "Serviço", value: selectedService?.name ?? "" },
+                    { icon: "category", label: "Serviço", value: selectedService?.name ?? "" },
                     ...(selectedService && selectedVariantIndex != null
                       ? [
                           {

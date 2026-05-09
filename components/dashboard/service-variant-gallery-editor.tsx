@@ -190,7 +190,7 @@ export function ServiceVariantGalleryEditor({
                   disabled={disabled}
                   maxLength={80}
                   onChange={(e) => updateRow(index, { title: e.target.value })}
-                  className="w-full h-9 text-sm bg-white border border-gray-200 rounded-lg px-3 outline-none focus:border-primary"
+                  className="w-full h-9 text-sm bg-white border border-gray-200 rounded-lg px-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary"
                 />
                 <textarea
                   placeholder="Descrição opcional para o cliente"
@@ -199,7 +199,7 @@ export function ServiceVariantGalleryEditor({
                   maxLength={200}
                   rows={2}
                   onChange={(e) => updateRow(index, { description: e.target.value })}
-                  className="w-full text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-primary resize-none"
+                  className="w-full text-sm bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary resize-none"
                 />
                 {slot.url ? (
                   <div>
@@ -223,7 +223,7 @@ export function ServiceVariantGalleryEditor({
                         if (!Number.isFinite(n) || n < 0) return;
                         updateRow(index, { price_cents: Math.round(n * 100) });
                       }}
-                      className="mt-0.5 w-full h-9 text-sm bg-white border border-gray-200 rounded-lg px-3 outline-none focus:border-primary"
+                      className="mt-0.5 w-full h-9 text-sm bg-white border border-gray-200 rounded-lg px-3 text-gray-900 placeholder:text-gray-400 outline-none focus:border-primary"
                     />
                     <p className="text-[10px] text-gray-400 mt-0.5">Vazio = mesmo preço do serviço acima.</p>
                   </div>

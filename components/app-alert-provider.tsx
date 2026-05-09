@@ -21,6 +21,11 @@ export type ConfirmOptions = {
   cancelLabel?: string;
   /** `danger` = botão de confirmação vermelho */
   variant?: "default" | "danger";
+  /**
+   * `dialog` = cartão central (confirmações curtas).
+   * `sheet` = painel alto estilo mobile (legado).
+   */
+  presentation?: "dialog" | "sheet";
 };
 
 export type PhraseConfirmOptions = {
@@ -33,6 +38,16 @@ export type PhraseConfirmOptions = {
   inputPlaceholder?: string;
 };
 
+export type UnsavedChangesChoice = "save" | "discard" | "cancel";
+
+export type UnsavedChangesPromptOptions = {
+  title?: string;
+  message?: string;
+  saveLabel?: string;
+  discardLabel?: string;
+  cancelLabel?: string;
+};
+
 type ModalState =
   | { type: "alert"; title: string; message: string }
   | {
@@ -42,7 +57,17 @@ type ModalState =
       confirmLabel: string;
       cancelLabel: string;
       variant: "default" | "danger";
+      presentation: "dialog" | "sheet";
       resolve: (v: boolean) => void;
+    }
+  | {
+      type: "unsaved";
+      title: string;
+      message: string;
+      saveLabel: string;
+      discardLabel: string;
+      cancelLabel: string;
+      resolve: (v: UnsavedChangesChoice) => void;
     }
   | {
       type: "phrase";
@@ -59,6 +84,7 @@ type AlertContextValue = {
   showAlert: (message: string, options?: ShowOptions) => void;
   showConfirm: (options: ConfirmOptions) => Promise<boolean>;
   showPhraseConfirm: (options: PhraseConfirmOptions) => Promise<boolean>;
+  showUnsavedChangesPrompt: (options?: UnsavedChangesPromptOptions) => Promise<UnsavedChangesChoice>;
 };
 
 const AppAlertContext = createContext<AlertContextValue | null>(null);
@@ -71,8 +97,9 @@ export function useAppAlert() {
   return ctx;
 }
 
-const shellClass =
-  "relative mb-[max(0px,env(safe-area-inset-bottom))] sm:mb-0 w-full max-w-[min(100%,24rem)] rounded-2xl border border-white/10 bg-[#14221A] shadow-2xl shadow-black/50 outline-none ring-1 ring-white/5 animate-fade-in";
+/** Painel tela cheia (mobile e desktop); tema escuro fixo para contraste sobre qualquer página. */
+const panelClass =
+  "relative z-[1] mt-auto flex w-full max-h-[96dvh] min-h-[80dvh] flex-1 flex-col overflow-hidden rounded-t-2xl border border-white/10 border-b-0 bg-[#14221A] shadow-[0_-12px_48px_rgba(0,0,0,0.45)] outline-none animate-fade-in sm:mt-0 sm:h-[100dvh] sm:max-h-none sm:min-h-0 sm:rounded-none sm:border-0 sm:shadow-none";
 
 export function AppAlertProvider({ children }: { children: React.ReactNode }) {
   const [modal, setModal] = useState<ModalState | null>(null);
@@ -103,7 +130,11 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
+        e.stopPropagation();
         if (modal.type === "alert") {
+          setModal(null);
+        } else if (modal.type === "unsaved") {
+          modal.resolve("cancel");
           setModal(null);
         } else {
           modal.resolve(false);
@@ -111,10 +142,10 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
         }
       }
     };
-    window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey, true);
     return () => {
       window.clearTimeout(t);
-      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keydown", onKey, true);
     };
   }, [modal]);
 
@@ -135,6 +166,7 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
         confirmLabel: options.confirmLabel?.trim() || "Confirmar",
         cancelLabel: options.cancelLabel?.trim() || "Cancelar",
         variant: options.variant ?? "default",
+        presentation: options.presentation ?? "dialog",
         resolve,
       });
     });
@@ -155,10 +187,26 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const showUnsavedChangesPrompt = useCallback((options?: UnsavedChangesPromptOptions) => {
+    return new Promise<UnsavedChangesChoice>((resolve) => {
+      setModal({
+        type: "unsaved",
+        title: options?.title?.trim() || "Alterações não salvas",
+        message:
+          options?.message?.trim() ||
+          "Você alterou este formulário. O que deseja fazer antes de sair?",
+        saveLabel: options?.saveLabel?.trim() || "Salvar",
+        discardLabel: options?.discardLabel?.trim() || "Descartar",
+        cancelLabel: options?.cancelLabel?.trim() || "Continuar editando",
+        resolve,
+      });
+    });
+  }, []);
+
   const closeAlert = useCallback(() => setModal(null), []);
 
   const handleConfirmCancel = useCallback(() => {
-    if (!modal || modal.type === "alert") return;
+    if (!modal || modal.type !== "confirm") return;
     modal.resolve(false);
     setModal(null);
   }, [modal]);
@@ -182,67 +230,87 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
     setModal(null);
   }, [modal, phraseInput]);
 
+  const handleUnsavedCancel = useCallback(() => {
+    if (!modal || modal.type !== "unsaved") return;
+    modal.resolve("cancel");
+    setModal(null);
+  }, [modal]);
+
+  const handleUnsavedDiscard = useCallback(() => {
+    if (!modal || modal.type !== "unsaved") return;
+    modal.resolve("discard");
+    setModal(null);
+  }, [modal]);
+
+  const handleUnsavedSave = useCallback(() => {
+    if (!modal || modal.type !== "unsaved") return;
+    modal.resolve("save");
+    setModal(null);
+  }, [modal]);
+
   const dialog =
     modal && mounted ? (
-      <div className="fixed inset-0 z-[300] flex items-end justify-center sm:items-center p-4 sm:p-6">
+      <div
+        className={cn(
+          "fixed inset-0 z-[300] flex min-h-[100dvh] flex-col",
+          modal.type === "unsaved" ||
+            (modal.type === "confirm" && modal.presentation === "dialog")
+            ? "items-center justify-center p-4 sm:p-6"
+            : ""
+        )}
+        data-app-alert-dialog=""
+      >
         <button
           type="button"
-          className="absolute inset-0 bg-black/55 backdrop-blur-[2px] transition-opacity"
+          className="absolute inset-0 z-0 bg-black/55 backdrop-blur-[2px] transition-opacity"
           aria-label="Fechar"
           onClick={() => {
             if (modal.type === "alert") closeAlert();
-            else {
+            else if (modal.type === "unsaved") {
+              modal.resolve("cancel");
+              setModal(null);
+            } else {
               modal.resolve(false);
               setModal(null);
             }
           }}
         />
         {modal.type === "alert" ? (
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            className={shellClass}
-          >
-            <div className="px-5 pt-5 pb-1 sm:px-6 sm:pt-6 max-h-[min(70vh,28rem)] overflow-y-auto overscroll-contain">
-              <h2 id={titleId} className="text-base font-semibold text-white tracking-tight">
+          <div role="alertdialog" aria-modal="true" aria-labelledby={titleId} className={panelClass}>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-10 sm:pb-8 sm:pt-10">
+              <h2 id={titleId} className="text-xl font-bold tracking-tight text-white sm:text-2xl">
                 {modal.title}
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-gray-300 whitespace-pre-wrap break-words">
+              <p className="mt-4 max-w-prose text-base leading-relaxed text-gray-300 whitespace-pre-wrap break-words sm:text-lg">
                 {modal.message}
               </p>
             </div>
-            <div className="flex justify-stretch sm:justify-end px-5 py-4 sm:px-6 border-t border-white/10">
+            <div className="flex shrink-0 justify-stretch border-t border-white/10 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-10 sm:py-6">
               <button
                 ref={primaryBtnRef}
                 type="button"
                 onClick={closeAlert}
-                className="w-full sm:w-auto min-h-11 min-w-[5.5rem] px-6 rounded-xl bg-primary text-black text-sm font-bold hover:opacity-90 active:opacity-80 transition-opacity"
+                className="min-h-12 w-full rounded-xl bg-primary px-6 text-base font-bold text-black transition-opacity hover:opacity-90 active:opacity-80 sm:min-h-11 sm:max-w-xs sm:mx-auto"
               >
                 OK
               </button>
             </div>
           </div>
-        ) : modal.type === "confirm" ? (
-          <div
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            className={shellClass}
-          >
-            <div className="px-5 pt-5 pb-1 sm:px-6 sm:pt-6 max-h-[min(70vh,28rem)] overflow-y-auto overscroll-contain">
-              <h2 id={titleId} className="text-base font-semibold text-white tracking-tight">
+        ) : modal.type === "confirm" && modal.presentation === "sheet" ? (
+          <div role="alertdialog" aria-modal="true" aria-labelledby={titleId} className={panelClass}>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-10 sm:pb-8 sm:pt-10">
+              <h2 id={titleId} className="text-xl font-bold tracking-tight text-white sm:text-2xl">
                 {modal.title}
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-gray-300 whitespace-pre-wrap break-words">
+              <p className="mt-4 max-w-prose text-base leading-relaxed text-gray-300 whitespace-pre-wrap break-words sm:text-lg">
                 {modal.message}
               </p>
             </div>
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-5 py-4 sm:px-6 border-t border-white/10">
+            <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-white/10 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:px-10 sm:py-6">
               <button
                 type="button"
                 onClick={handleConfirmCancel}
-                className="w-full sm:w-auto min-h-11 px-5 rounded-xl border border-white/20 text-white text-sm font-semibold hover:bg-white/5"
+                className="min-h-12 w-full rounded-xl border border-white/20 px-5 text-base font-semibold text-white hover:bg-white/5 sm:w-auto sm:min-w-[140px]"
               >
                 {modal.cancelLabel}
               </button>
@@ -251,7 +319,7 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={handleConfirmOk}
                 className={cn(
-                  "w-full sm:w-auto min-h-11 min-w-[5.5rem] px-6 rounded-xl text-sm font-bold transition-opacity",
+                  "min-h-12 w-full rounded-xl px-6 text-base font-bold transition-opacity sm:w-auto sm:min-w-[160px]",
                   modal.variant === "danger"
                     ? "bg-red-600 text-white hover:opacity-90"
                     : "bg-primary text-black hover:opacity-90"
@@ -261,37 +329,112 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
               </button>
             </div>
           </div>
-        ) : (
+        ) : modal.type === "confirm" && modal.presentation === "dialog" ? (
           <div
             role="alertdialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className={shellClass}
+            className="relative z-[2] w-[min(100%,26rem)] rounded-2xl border border-white/12 bg-[#14221A] shadow-[0_24px_80px_rgba(0,0,0,0.55)] outline-none animate-fade-in"
           >
-            <div className="px-5 pt-5 pb-3 sm:px-6 sm:pt-6 max-h-[min(70vh,28rem)] overflow-y-auto overscroll-contain">
-              <h2 id={titleId} className="text-base font-semibold text-white tracking-tight">
+            <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
+              <h2 id={titleId} className="text-lg font-bold tracking-tight text-white sm:text-xl">
                 {modal.title}
               </h2>
               <p className="mt-3 text-sm leading-relaxed text-gray-300 whitespace-pre-wrap break-words">
                 {modal.message}
               </p>
-              <label className="block mt-4">
-                <span className="text-[11px] font-medium text-gray-400">{modal.inputPlaceholder}</span>
+            </div>
+            <div className="flex flex-col-reverse gap-2 border-t border-white/10 px-5 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-6 sm:pb-5">
+              <button
+                type="button"
+                onClick={handleConfirmCancel}
+                className="min-h-11 w-full rounded-xl border border-white/20 px-4 text-sm font-semibold text-white hover:bg-white/5 sm:w-auto sm:min-w-[120px]"
+              >
+                {modal.cancelLabel}
+              </button>
+              <button
+                ref={primaryBtnRef}
+                type="button"
+                onClick={handleConfirmOk}
+                className={cn(
+                  "min-h-11 w-full rounded-xl px-5 text-sm font-bold transition-opacity sm:w-auto sm:min-w-[140px]",
+                  modal.variant === "danger"
+                    ? "bg-red-600 text-white hover:opacity-90"
+                    : "bg-primary text-black hover:opacity-90"
+                )}
+              >
+                {modal.confirmLabel}
+              </button>
+            </div>
+          </div>
+        ) : modal.type === "unsaved" ? (
+          <div
+            className="relative z-[2] flex min-h-0 w-[min(100%,26rem)] flex-col rounded-2xl border border-white/12 bg-[#14221A] shadow-[0_24px_80px_rgba(0,0,0,0.55)] outline-none animate-fade-in"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+          >
+            <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
+              <h2 id={titleId} className="text-lg font-bold tracking-tight text-white">
+                {modal.title}
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-gray-300">{modal.message}</p>
+              <p className="mt-2 text-xs text-gray-500">
+                <kbd className="rounded border border-white/15 px-1 py-0.5 font-mono text-[11px] text-gray-400">Esc</kbd>{" "}
+                continua editando
+              </p>
+            </div>
+            <div className="flex flex-col-reverse gap-2 border-t border-white/10 px-5 py-4 sm:flex-row sm:flex-wrap sm:justify-end sm:px-6">
+              <button
+                ref={primaryBtnRef}
+                type="button"
+                onClick={handleUnsavedCancel}
+                className="min-h-11 w-full rounded-xl border border-white/20 px-4 text-sm font-semibold text-white hover:bg-white/5 sm:w-auto sm:min-w-[9rem]"
+              >
+                {modal.cancelLabel}
+              </button>
+              <button
+                type="button"
+                onClick={handleUnsavedDiscard}
+                className="min-h-11 w-full rounded-xl border border-red-500/45 bg-red-950/35 px-4 text-sm font-semibold text-red-100 hover:bg-red-950/55 sm:w-auto sm:min-w-[8rem]"
+              >
+                {modal.discardLabel}
+              </button>
+              <button
+                type="button"
+                onClick={handleUnsavedSave}
+                className="min-h-11 w-full rounded-xl bg-primary px-5 text-sm font-bold text-black transition-opacity hover:opacity-90 sm:w-auto sm:min-w-[8rem]"
+              >
+                {modal.saveLabel}
+              </button>
+            </div>
+          </div>
+        ) : modal.type === "phrase" ? (
+          <div role="alertdialog" aria-modal="true" aria-labelledby={titleId} className={panelClass}>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-10 sm:pb-8 sm:pt-10">
+              <h2 id={titleId} className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+                {modal.title}
+              </h2>
+              <p className="mt-4 max-w-prose text-base leading-relaxed text-gray-300 whitespace-pre-wrap break-words sm:text-lg">
+                {modal.message}
+              </p>
+              <label className="mt-6 block max-w-md">
+                <span className="text-xs font-medium text-gray-400">{modal.inputPlaceholder}</span>
                 <input
                   type="text"
                   value={phraseInput}
                   onChange={(e) => setPhraseInput(e.target.value)}
                   autoComplete="off"
-                  className="mt-1.5 w-full rounded-xl border border-white/15 bg-black/25 px-3 py-2.5 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="mt-2 w-full rounded-xl border border-white/15 bg-black/25 px-4 py-3 text-base text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/50"
                   placeholder={modal.phrase}
                 />
               </label>
             </div>
-            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 px-5 py-4 sm:px-6 border-t border-white/10">
+            <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-white/10 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:px-10 sm:py-6">
               <button
                 type="button"
                 onClick={handlePhraseCancel}
-                className="w-full sm:w-auto min-h-11 px-5 rounded-xl border border-white/20 text-white text-sm font-semibold hover:bg-white/5"
+                className="min-h-12 w-full rounded-xl border border-white/20 px-5 text-base font-semibold text-white hover:bg-white/5 sm:w-auto sm:min-w-[140px]"
               >
                 {modal.cancelLabel}
               </button>
@@ -300,18 +443,20 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
                 type="button"
                 disabled={phraseInput.trim() !== modal.phrase}
                 onClick={handlePhraseOk}
-                className="w-full sm:w-auto min-h-11 min-w-[5.5rem] px-6 rounded-xl bg-red-600 text-white text-sm font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="min-h-12 w-full rounded-xl bg-red-600 px-6 text-base font-bold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:min-w-[160px]"
               >
                 {modal.confirmLabel}
               </button>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     ) : null;
 
   return (
-    <AppAlertContext.Provider value={{ showAlert, showConfirm, showPhraseConfirm }}>
+    <AppAlertContext.Provider
+      value={{ showAlert, showConfirm, showPhraseConfirm, showUnsavedChangesPrompt }}
+    >
       {children}
       {mounted && dialog ? createPortal(dialog, document.body) : null}
     </AppAlertContext.Provider>

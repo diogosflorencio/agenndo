@@ -339,7 +339,7 @@ export default function ProviderPage() {
             <div className="bg-[#14221A] border border-primary/30 rounded-xl p-5 mb-5">
               <div className="space-y-3">
                 {[
-                  { icon: "content_cut", label: "Serviço", value: selectedService?.name ?? "" },
+                  { icon: "category", label: "Serviço", value: selectedService?.name ?? "" },
                   {
                     icon: "person",
                     label: "Profissional",

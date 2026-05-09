@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
+import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 
 type CollabRow = {
   id: string;
@@ -16,6 +18,7 @@ type CollabRow = {
 };
 
 export default function ColaboradoresPage() {
+  const router = useRouter();
   const { business } = useDashboard();
   const [collaborators, setCollaborators] = useState<CollabRow[]>([]);
   const [countsToday, setCountsToday] = useState<Record<string, number>>({});
@@ -77,6 +80,10 @@ export default function ColaboradoresPage() {
     load();
   }, [load]);
 
+  useRegisterDashboardHotkeys(!!business?.id, "colaboradores-novo", {
+    novo: () => router.push("/dashboard/colaboradores/novo"),
+  });
+
   const toggleActive = async (c: CollabRow) => {
     setBusyId(c.id);
     setListError(null);
@@ -113,10 +120,11 @@ export default function ColaboradoresPage() {
         </div>
         <Link
           href="/dashboard/colaboradores/novo"
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
         >
-          <span className="material-symbols-outlined text-base">person_add</span>
-          Adicionar
+          <span className="material-symbols-outlined shrink-0 text-base">person_add</span>
+          <span className="min-w-0 flex-1 text-left">Adicionar</span>
+          <HotkeyHint action="novo" variant="primary" />
         </Link>
       </div>
 
@@ -172,7 +180,7 @@ export default function ColaboradoresPage() {
                   <span className="material-symbols-outlined text-xs">edit</span> Editar
                 </Link>
                 <Link href={`/dashboard/colaboradores/${collab.id}/servicos`} className="bg-white hover:bg-gray-50 text-xs font-semibold text-gray-600 py-3 transition-colors flex items-center justify-center gap-1">
-                  <span className="material-symbols-outlined text-xs">content_cut</span> Serviços
+                  <span className="material-symbols-outlined text-xs">category</span> Serviços
                 </Link>
                 <button
                   type="button"
