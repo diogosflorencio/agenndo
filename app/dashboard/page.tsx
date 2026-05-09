@@ -17,6 +17,11 @@ import { setAppointmentAttendance, centsToMoneyInput } from "@/lib/appointment-f
 import { AppointmentValueModal } from "@/components/appointment-value-modal";
 import { localISODate } from "@/lib/agenda-calendar-helpers";
 import { formatDate } from "@/lib/utils";
+import {
+  DashboardStatCarousel,
+  type DashboardStatSlide,
+} from "@/components/dashboard/dashboard-stat-carousel";
+import { useDashboardNotifications } from "@/lib/dashboard-notifications";
 
 type AppointmentRow = {
   id: string;
@@ -58,11 +63,25 @@ const defaultSetupSnapshot: SetupProgressSnapshot = {
   hasSubscriptionAccess: false,
 };
 
+function formatRelativeShort(iso: string) {
+  const d = new Date(iso);
+  const diffMs = Date.now() - d.getTime();
+  const m = Math.floor(diffMs / 60000);
+  if (m < 1) return "agora";
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} h`;
+  return d.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
+}
+
 export default function DashboardHome() {
   const { theme } = useTheme();
   const { business, profile } = useDashboard();
+  const { unreadCount: inboxUnread, latestUnread, refresh: refreshInbox } = useDashboardNotifications(business?.id);
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [setupSnapshot, setSetupSnapshot] = useState<SetupProgressSnapshot>(defaultSetupSnapshot);
+  const [clientCount, setClientCount] = useState(0);
+  const [pendingCommissionsCount, setPendingCommissionsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   /** Dia exibido na lista e no gráfico (clique na barra). */ 
   const [selectedDate, setSelectedDate] = useState(() => localISODate(new Date()));
@@ -179,8 +198,17 @@ export default function DashboardHome() {
         .select("tagline, banner_url, about, social_links, instagram_url, facebook_url, whatsapp_number")
         .eq("business_id", business.id)
         .maybeSingle(),
+      supabase
+        .from("clients")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", business.id),
+      supabase
+        .from("appointment_commissions")
+        .select("id", { count: "exact", head: true })
+        .eq("business_id", business.id)
+        .eq("status", "pending"),
     ]).then(
-      ([aptsRes, svcRes, colRes, avRes, csRes, perRes]) => {
+      ([aptsRes, svcRes, colRes, avRes, csRes, perRes, cliRes, commRes]) => {
         setAppointments((aptsRes.data as unknown as AppointmentRow[]) ?? []);
         const avRows = avRes.data ?? [];
         const hasOpenAvailabilityDay = avRows.some(
@@ -216,7 +244,10 @@ export default function DashboardHome() {
           hasPersonalizationExtras,
           hasSubscriptionAccess: hasFullServiceAccess(business),
         });
+        setClientCount(cliRes.count ?? 0);
+        setPendingCommissionsCount(commRes.error ? 0 : commRes.count ?? 0);
         setLoading(false);
+        queueMicrotask(() => void refreshInbox());
       }
     );
   }, [
@@ -229,6 +260,7 @@ export default function DashboardHome() {
     business?.trial_ends_at,
     business?.billing_issue_deadline,
     business?.created_at,
+    refreshInbox,
   ]);
 
   const todayStr = localISODate(new Date());
@@ -291,6 +323,123 @@ export default function DashboardHome() {
   const receitaWeek = weekData.reduce((s, d) => s + d.receita, 0);
   const maxDay = weekData.reduce((best, d) => (d.agendamentos > (best?.agendamentos ?? 0) ? d : best), weekData[0]);
 
+  const statSlides = useMemo((): DashboardStatSlide[] => {
+    const todayApts = appointments.filter((a) => a.date === todayStr);
+    const yesterdayApts = appointments.filter((a) => a.date === yesterdayStr);
+    const canc = todayApts.filter((a) => a.status === "cancelado").length;
+    const falt = todayApts.filter((a) => a.status === "faltou").length;
+    const deltaAg = todayApts.length - yesterdayApts.length;
+    const trendAg =
+      yesterdayApts.length === 0 && todayApts.length === 0
+        ? "—"
+        : deltaAg > 0
+          ? `+${deltaAg} vs ontem`
+          : deltaAg < 0
+            ? `${deltaAg} vs ontem`
+            : "igual a ontem";
+    const trendAgColor =
+      deltaAg > 0 ? "text-primary" : deltaAg < 0 ? "text-red-500 dark:text-red-400" : "text-gray-500 dark:text-gray-400";
+
+    const todayRev = todayApts.filter((a) => a.status === "compareceu").reduce((s, a) => s + (a.price_cents || 0), 0);
+    const commTrend = pendingCommissionsCount > 0 ? `${pendingCommissionsCount} pendente(s)` : "nenhuma pendente";
+    const commColor =
+      pendingCommissionsCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-400 dark:text-gray-500";
+
+    return [
+      {
+        key: "operacao",
+        hint: "Operação do dia",
+        items: [
+          {
+            icon: "calendar_today",
+            label: "Agend.",
+            value: String(todayApts.length),
+            trend: trendAg,
+            trendColor: trendAgColor,
+          },
+          {
+            icon: "cancel",
+            label: "Canc.",
+            value: String(canc),
+            trend: "hoje",
+            trendColor: "text-gray-500 dark:text-gray-400",
+          },
+          {
+            icon: "person_off",
+            label: "Faltas",
+            value: String(falt),
+            trend: "hoje",
+            trendColor: "text-gray-500 dark:text-gray-400",
+          },
+        ],
+      },
+      {
+        key: "financeiro",
+        hint: "Financeiro & serviços",
+        items: [
+          {
+            icon: "payments",
+            label: "Hoje R$",
+            value: formatCurrency(todayRev / 100),
+            trend: "compareceram",
+            trendColor: "text-primary",
+          },
+          {
+            icon: "savings",
+            label: "Comissões",
+            value: String(pendingCommissionsCount),
+            trend: commTrend,
+            trendColor: commColor,
+          },
+          {
+            icon: "category",
+            label: "Serviços",
+            value: String(setupSnapshot.serviceCount),
+            trend: "ativos",
+            trendColor: "text-gray-500 dark:text-gray-400",
+          },
+        ],
+      },
+      {
+        key: "equipe",
+        hint: "Equipe & clientes",
+        items: [
+          {
+            icon: "groups",
+            label: "Na equipe",
+            value: String(setupSnapshot.collaboratorCount),
+            trend: "ativos",
+            trendColor: "text-primary",
+          },
+          {
+            icon: "person_search",
+            label: "Clientes",
+            value: String(clientCount),
+            trend: "cadastrados",
+            trendColor: "text-teal-600 dark:text-teal-400",
+          },
+          {
+            icon: "analytics",
+            label: "Taxa ok",
+            value: `${taxaComparecimento}%`,
+            trend: totalWithStatus > 0 ? "no período" : "—",
+            trendColor: "text-gray-500 dark:text-gray-400",
+          },
+        ],
+      },
+    ];
+  }, [
+    appointments,
+    todayStr,
+    yesterdayStr,
+    setupSnapshot.serviceCount,
+    setupSnapshot.collaboratorCount,
+    clientCount,
+    pendingCommissionsCount,
+    taxaComparecimento,
+    totalWithStatus,
+  ]);
+
   const insights: { icon: string; text: string; color: string }[] = [];
   if (maxDay && maxDay.agendamentos > 15) {
     insights.push({
@@ -336,19 +485,6 @@ export default function DashboardHome() {
   const tooltipLabelStyle = { color: isDark ? "#e5e7eb" : "#111827" };
 
   const canCreateAppointments = business ? hasFullServiceAccess(business) : true;
-
-  const metrics = [
-    { label: "Hoje", value: todayAppointments.length.toString(), sub: "agendamentos", subColor: "text-gray-400", icon: "calendar_today" },
-    {
-      label: "Semana (seg–dom)",
-      value: String(weekFromToday.totalWeek),
-      sub: `${weekFromToday.restAfterToday} após hoje`,
-      subColor: "text-gray-400",
-      icon: "date_range",
-    },
-    { label: "Comparecimento", value: `${taxaComparecimento}%`, sub: totalWithStatus > 0 ? `${compareceu}/${totalWithStatus}` : "-", subColor: "text-gray-400", icon: "calendar_month" },
-    { label: "Receita semana", value: formatCurrency(receitaWeek / 100), sub: "últimos 7 dias", subColor: "text-gray-400", icon: "payments" },
-  ];
 
   if (loading) {
     return (
@@ -401,18 +537,41 @@ export default function DashboardHome() {
         </Link>
       )}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        {metrics.map((m) => (
-          <div key={m.label} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-            <div className="flex items-center gap-2 text-gray-500 mb-3">
-              <span className="material-symbols-outlined text-[18px]">{m.icon}</span>
-              <span className="text-xs font-medium">{m.label}</span>
+      <DashboardStatCarousel slides={statSlides} className="mb-4" />
+
+      {latestUnread ? (
+        <Link
+          href="/dashboard/notificacoes"
+          className="flex items-start gap-3 p-4 mb-6 rounded-xl border border-gray-200 bg-white shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/[0.03]"
+        >
+          <span className="material-symbols-outlined text-primary text-2xl shrink-0 mt-0.5">{latestUnread.icon}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2 gap-y-1">
+              <p className="text-sm font-bold text-gray-900">{latestUnread.title}</p>
+              {inboxUnread > 1 ? (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 tabular-nums">
+                  +{inboxUnread - 1} não lidas
+                </span>
+              ) : null}
             </div>
-            <p className="text-xl md:text-2xl font-bold text-gray-900 mb-1">{m.value}</p>
-            <p className={`text-xs font-medium ${m.subColor}`}>{m.sub}</p>
+            {latestUnread.body ? (
+              <p className="text-xs text-gray-600 mt-1 line-clamp-2 leading-relaxed">{latestUnread.body}</p>
+            ) : null}
           </div>
-        ))}
-      </div>
+          <span className="text-[10px] font-semibold text-primary shrink-0 tabular-nums">{formatRelativeShort(latestUnread.created_at)}</span>
+        </Link>
+      ) : inboxUnread > 0 ? (
+        <Link
+          href="/dashboard/notificacoes"
+          className="flex items-center justify-between gap-3 p-4 mb-6 rounded-xl border border-gray-200 bg-white shadow-sm text-sm font-semibold text-gray-900 hover:border-primary/30"
+        >
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="material-symbols-outlined text-primary shrink-0">notifications</span>
+            <span className="truncate">{inboxUnread} notificações não lidas</span>
+          </span>
+          <span className="material-symbols-outlined text-gray-400 text-lg shrink-0">chevron_right</span>
+        </Link>
+      ) : null}
 
       <div className="mb-6 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-gray-800">
         <p className="font-semibold text-gray-900 flex flex-wrap items-center gap-2">

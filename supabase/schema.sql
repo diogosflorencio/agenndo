@@ -595,6 +595,90 @@ CREATE POLICY "notification_settings_own" ON public.notification_settings FOR AL
     business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
   );
 
+CREATE TABLE IF NOT EXISTS public.dashboard_notifications (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  body TEXT,
+  icon TEXT NOT NULL DEFAULT 'notifications',
+  read_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS dashboard_notifications_business_created_idx ON public.dashboard_notifications(business_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS dashboard_notifications_unread_idx ON public.dashboard_notifications(business_id)
+  WHERE read_at IS NULL;
+
+ALTER TABLE public.dashboard_notifications ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "dashboard_notifications_own" ON public.dashboard_notifications;
+CREATE POLICY "dashboard_notifications_own" ON public.dashboard_notifications FOR ALL
+  USING (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  )
+  WITH CHECK (
+    business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
+  );
+
+CREATE OR REPLACE FUNCTION public.tg_notify_dashboard_on_appointment_insert () RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public AS $$
+DECLARE
+  v_client text;
+  v_service text;
+  v_collab text;
+  d text;
+  t text;
+  body text;
+BEGIN
+  SELECT c.name INTO v_client FROM public.clients c WHERE c.id = NEW.client_id;
+  SELECT s.name INTO v_service FROM public.services s WHERE s.id = NEW.service_id;
+  SELECT col.name INTO v_collab FROM public.collaborators col WHERE col.id = NEW.collaborator_id;
+  d := to_char(NEW.date, 'DD/MM/YYYY');
+  t := substring(NEW.time_start::text, 1, 5);
+  body := COALESCE(NULLIF(trim(BOTH FROM v_client), ''), NULLIF(trim(BOTH FROM NEW.client_name_snapshot), ''), 'Cliente') || ' · ' || COALESCE(v_service, 'Serviço') || ' · ' || d || ' às ' || t;
+  IF v_collab IS NOT NULL AND length(trim(BOTH FROM v_collab)) > 0 THEN
+    body := body || ' · ' || v_collab;
+  END IF;
+  INSERT INTO public.dashboard_notifications (business_id, title, body, icon)
+  VALUES (NEW.business_id, 'Novo agendamento', body, 'event_available');
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.tg_notify_dashboard_on_appointment_cancelled () RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public AS $$
+DECLARE
+  v_client text;
+  v_service text;
+  d text;
+  t text;
+  body text;
+BEGIN
+  IF TG_OP <> 'UPDATE' THEN RETURN NEW; END IF;
+  IF NEW.status::text <> 'cancelado' THEN RETURN NEW; END IF;
+  IF OLD.status::text = 'cancelado' THEN RETURN NEW; END IF;
+  SELECT c.name INTO v_client FROM public.clients c WHERE c.id = NEW.client_id;
+  SELECT s.name INTO v_service FROM public.services s WHERE s.id = NEW.service_id;
+  d := to_char(NEW.date, 'DD/MM/YYYY');
+  t := substring(NEW.time_start::text, 1, 5);
+  body := COALESCE(NULLIF(trim(BOTH FROM v_client), ''), NULLIF(trim(BOTH FROM NEW.client_name_snapshot), ''), 'Cliente') || ' · ' || COALESCE(v_service, 'Serviço') || ' · ' || d || ' às ' || t || ' — cancelado';
+  INSERT INTO public.dashboard_notifications (business_id, title, body, icon)
+  VALUES (NEW.business_id, 'Agendamento cancelado', body, 'event_busy');
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_appointments_dashboard_notify_insert ON public.appointments;
+CREATE TRIGGER trg_appointments_dashboard_notify_insert
+  AFTER INSERT ON public.appointments FOR EACH ROW
+  EXECUTE PROCEDURE public.tg_notify_dashboard_on_appointment_insert ();
+
+DROP TRIGGER IF EXISTS trg_appointments_dashboard_notify_cancel ON public.appointments;
+CREATE TRIGGER trg_appointments_dashboard_notify_cancel
+  AFTER UPDATE OF status ON public.appointments FOR EACH ROW
+  EXECUTE PROCEDURE public.tg_notify_dashboard_on_appointment_cancelled ();
+
 DROP POLICY IF EXISTS "personalization_own" ON public.personalization;
 CREATE POLICY "personalization_own" ON public.personalization FOR ALL
   USING (

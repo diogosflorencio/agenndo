@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useDashboard } from "@/lib/dashboard-context";
 import { formatCurrency } from "@/lib/utils";
@@ -35,6 +36,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function MinhasComissoesPage() {
+  const router = useRouter();
   const { business, user, isStaffDashboard, staffContexts } = useDashboard();
   const [lines, setLines] = useState<LineRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,6 +50,12 @@ export default function MinhasComissoesPage() {
   const [to, setTo] = useState(() => localYmd(new Date()));
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
+  useEffect(() => {
+    if (!isStaffDashboard) {
+      router.replace("/dashboard/financeiro");
+    }
+  }, [isStaffDashboard, router]);
+
   const businessNameById = useMemo(() => {
     const m = new Map<string, string>();
     for (const s of staffContexts) {
@@ -57,7 +65,10 @@ export default function MinhasComissoesPage() {
   }, [staffContexts]);
 
   const load = useCallback(async () => {
-    if (!business?.id || !user?.realUserId) return;
+    if (!isStaffDashboard || !business?.id || !user?.realUserId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const supabase = createClient();
 
@@ -75,47 +86,8 @@ export default function MinhasComissoesPage() {
     const selectCols =
       "id, business_id, collaborator_id, amount_cents, percent_applied, base_amount_cents, status, created_at, paid_at, services(name), appointments(date, price_cents), businesses(name)";
 
-    if (isStaffDashboard) {
-      const ids = staffContexts.map((c) => c.collaboratorId);
-      if (ids.length === 0) {
-        setNoCollaboratorLink(true);
-        setLines([]);
-        setLoading(false);
-        return;
-      }
-      setNoCollaboratorLink(false);
-
-      let q = supabase
-        .from("appointment_commissions")
-        .select(selectCols)
-        .in("collaborator_id", ids)
-        .gte("created_at", fromStr + "T00:00:00")
-        .lte("created_at", toStr + "T23:59:59")
-        .order("created_at", { ascending: false });
-
-      if (filterStatus !== "all") {
-        q = q.eq("status", filterStatus);
-      }
-
-      const { data, error } = await q;
-      if (error) {
-        setLines([]);
-        setLoading(false);
-        return;
-      }
-      setLines((data ?? []) as unknown as LineRow[]);
-      setLoading(false);
-      return;
-    }
-
-    const { data: selfCollab } = await supabase
-      .from("collaborators")
-      .select("id")
-      .eq("business_id", business.id)
-      .eq("auth_user_id", user.realUserId)
-      .maybeSingle();
-
-    if (!selfCollab?.id) {
+    const ids = staffContexts.map((c) => c.collaboratorId);
+    if (ids.length === 0) {
       setNoCollaboratorLink(true);
       setLines([]);
       setLoading(false);
@@ -126,8 +98,7 @@ export default function MinhasComissoesPage() {
     let q = supabase
       .from("appointment_commissions")
       .select(selectCols)
-      .eq("business_id", business.id)
-      .eq("collaborator_id", selfCollab.id)
+      .in("collaborator_id", ids)
       .gte("created_at", fromStr + "T00:00:00")
       .lte("created_at", toStr + "T23:59:59")
       .order("created_at", { ascending: false });
@@ -172,7 +143,7 @@ export default function MinhasComissoesPage() {
   }, [lines]);
 
   const groupedLines = useMemo(() => {
-    if (!isStaffDashboard || lines.length === 0) return null;
+    if (lines.length === 0) return null;
     const map = new Map<string, LineRow[]>();
     for (const l of lines) {
       const bid = l.business_id;
@@ -185,11 +156,19 @@ export default function MinhasComissoesPage() {
       return na.localeCompare(nb, "pt-BR");
     });
     return entries;
-  }, [lines, isStaffDashboard, businessNameById]);
+  }, [lines, businessNameById]);
 
   if (!business) {
     return (
       <div className="flex justify-center py-20">
+        <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isStaffDashboard) {
+    return (
+      <div className="flex justify-center py-24">
         <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
       </div>
     );
@@ -200,11 +179,9 @@ export default function MinhasComissoesPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Minhas comissões</h1>
         <p className="text-gray-600 text-sm mt-1">
-          {isStaffDashboard
-            ? staffContexts.length > 1
-              ? `Painel unificado: ${staffContexts.length} negócios em que você está na equipe.`
-              : `Valores registrados em ${business.name}.`
-            : "Suas comissões quando houver vínculo de conta na Equipe."}
+          {staffContexts.length > 1
+            ? `Painel unificado: ${staffContexts.length} negócios em que você está na equipe.`
+            : `Valores registrados em ${business.name}.`}
         </p>
       </div>
 
@@ -219,7 +196,7 @@ export default function MinhasComissoesPage() {
         </div>
       </div>
 
-      {isStaffDashboard && staffContexts.length > 1 ? (
+      {staffContexts.length > 1 ? (
         <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 mb-6 text-sm text-gray-700">
           <p className="font-semibold text-gray-900 mb-2">Negócios neste painel</p>
           <ul className="list-disc list-inside space-y-0.5 text-xs text-gray-600">

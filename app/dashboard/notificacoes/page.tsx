@@ -73,17 +73,23 @@ export default function NotificacoesPage() {
     <div className="relative w-full min-h-[min(70vh,520px)]">
       <div
         className={cn(
-          "pointer-events-none select-none",
-          isDark ? "opacity-[0.38]" : "opacity-[0.68] blur-[1px]"
+          "mb-6 rounded-xl border px-4 py-3 flex gap-3 items-start",
+          isDark ? "border-primary/30 bg-primary/[0.08]" : "border-primary/25 bg-primary/5"
         )}
-        aria-hidden="true"
+        role="note"
       >
-        <div className="mb-6">
-          <h1 className={cn("text-2xl font-bold", pageTitle)}>Notificações</h1>
-          <p className={cn("text-sm mt-1", pageSub)}>Configure alertas para você e lembretes para seus clientes</p>
-        </div>
+        <span className="material-symbols-outlined text-primary shrink-0 mt-0.5">chat</span>
+        <p className={cn("text-sm leading-relaxed", isDark ? "text-gray-200" : "text-gray-800")}>
+          Essas serão as notificações padrão que chegarão ao WhatsApp cadastrado no futuro, quando implementarmos o envio.
+        </p>
+      </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
+      <div className="mb-6">
+        <h1 className={cn("text-2xl font-bold", pageTitle)}>Notificações</h1>
+        <p className={cn("text-sm mt-1", pageSub)}>Configure alertas para você e lembretes para seus clientes</p>
+      </div>
+
+      <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-5">
           <div className={card}>
             <div className={cn("flex items-center gap-3 p-4 border-b", cardHeadBorder)}>
@@ -359,32 +365,6 @@ export default function NotificacoesPage() {
               </button>
             </div>
           </div>
-        </div>
-      </div>
-      </div>
-
-      <div
-        className={cn(
-          "absolute inset-0 z-10 flex items-center justify-center px-4 py-10",
-          isDark ? "bg-black/50 backdrop-blur-xl" : "bg-slate-900/[0.12] backdrop-blur-md"
-        )}
-        role="status"
-        aria-live="polite"
-      >
-        <div
-          className={cn(
-            "max-w-md w-full rounded-2xl border px-6 py-6 text-center shadow-2xl",
-            isDark ? "border-white/[0.1] bg-[#151921]/95 text-white" : "border-gray-200/90 bg-white/95 text-gray-900"
-          )}
-        >
-          <span className="material-symbols-outlined text-4xl text-primary mb-3 block" aria-hidden>
-            hourglass_top
-          </span>
-          <p className="font-bold text-lg tracking-tight">Em breve</p>
-          <p className={cn("text-sm mt-2 leading-relaxed", isDark ? "text-gray-300" : "text-gray-600")}>
-            Estamos finalizando envio automático, templates e preferências. Em breve você configura tudo por aqui, com
-            a mesma experiência no tema claro e escuro.
-          </p>
         </div>
       </div>
     </div>

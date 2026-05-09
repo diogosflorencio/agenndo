@@ -17,6 +17,8 @@ import {
   DashboardNavigationGuardProvider,
   GuardedDashboardLink,
 } from "@/lib/dashboard-navigation-guard";
+import { cn } from "@/lib/utils";
+import { DashboardNotificationBell } from "@/components/dashboard/dashboard-notification-bell";
 const MENU_AGENDA = [
   { href: "/dashboard/agendamentos", icon: "calendar_month", label: "Agendamentos" },
   { href: "/dashboard/disponibilidade", icon: "schedule", label: "Disponibilidade" },
@@ -28,7 +30,6 @@ const MENU_CADASTROS = [
 const MENU_DADOS = [
   { href: "/dashboard/analytics", icon: "analytics", label: "Analytics" },
   { href: "/dashboard/financeiro", icon: "payments", label: "Financeiro" },
-  { href: "/dashboard/minhas-comissoes", icon: "savings", label: "Minhas comissões" },
   { href: "/dashboard/clientes", icon: "person_search", label: "Clientes" },
 ];
 const MENU_CONFIG = [
@@ -223,10 +224,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           user?.isImpersonating ? "lg:top-14 lg:h-[calc(100vh-3.5rem)]" : "lg:top-0 lg:h-screen"
         }`}
       >
-        <div className="p-4 border-b border-inherit">
-          <GuardedDashboardLink href="/" className={`block font-bold tracking-tight text-lg transition-opacity hover:opacity-90 ${isLight ? "text-gray-900" : "text-white"}`}>
-            Agenndo
-          </GuardedDashboardLink>
+        <div className="p-4 border-b border-inherit flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <GuardedDashboardLink href="/" className={`block font-bold tracking-tight text-lg transition-opacity hover:opacity-90 ${isLight ? "text-gray-900" : "text-white"}`}>
+              Agenndo
+            </GuardedDashboardLink>
           {isStaffDashboard ? (
             staffContexts.length > 1 ? (
               <p className="text-xs text-gray-500 mt-1 leading-snug" title={staffContexts.map((s) => s.businessName).join(", ")}>
@@ -241,6 +243,16 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             <p className="text-xs text-gray-500 mt-1 truncate" title={business.name}>
               {business.name}
             </p>
+          ) : null}
+          </div>
+          {!isStaffDashboard ? (
+            <DashboardNotificationBell
+              className={cn(
+                "size-10 mt-0.5",
+                isLight ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900" : "text-gray-400 hover:bg-white/10 hover:text-white"
+              )}
+              iconClassName="text-[22px]"
+            />
           ) : null}
         </div>
         <nav className="flex-1 overflow-y-auto px-3 py-4 min-h-0">
@@ -347,10 +359,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   <span className="material-symbols-outlined text-xl">{theme === "light" ? "dark_mode" : "light_mode"}</span>
                 </button>
                 {!isStaffDashboard ? (
-                  <GuardedDashboardLink href="/dashboard/notificacoes" className="size-9 flex items-center justify-center rounded-lg relative">
-                    <span className="material-symbols-outlined text-xl">notifications</span>
-                    <span className="absolute top-1.5 right-1.5 size-2 bg-primary rounded-full" />
-                  </GuardedDashboardLink>
+                  <DashboardNotificationBell
+                    className={cn(
+                      "size-9",
+                      isLight ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900" : "text-gray-400 hover:bg-white/10 hover:text-white"
+                    )}
+                  />
                 ) : null}
               </div>
             </div>

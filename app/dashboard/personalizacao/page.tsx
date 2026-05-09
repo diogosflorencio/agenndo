@@ -22,6 +22,7 @@ import { useAppAlert } from "@/components/app-alert-provider";
 import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
 import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 import { useRegisterDashboardUnsavedNavigation } from "@/lib/dashboard-navigation-guard";
+import { useTheme } from "@/lib/theme-context";
 import { PersonalizationShareQr } from "@/components/personalization-share-qr";
 import { SocialBrandIcon, socialBrandAccent } from "@/components/social-brand-icon";
 import {
@@ -102,6 +103,8 @@ function storageFileExt(file: File): string {
 export default function PersonalizacaoPage() {
   const { showAlert } = useAppAlert();
   const router = useRouter();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
   const { business } = useDashboard();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -659,16 +662,23 @@ export default function PersonalizacaoPage() {
     <div className="w-full">
       <div className="mb-6">
         <div className="flex flex-wrap items-center gap-2.5">
-          <h1 className="text-2xl font-bold text-gray-900">Personalização</h1>
+          <h1 className={cn("text-2xl font-bold", isDark ? "text-white" : "text-gray-900")}>Personalização</h1>
           <UnsavedChangesIndicator dirty={formDirty} variant="inline" />
         </div>
-        <p className="text-gray-600 text-sm mt-1">Aparência e conteúdo da página pública (salvos no banco e nos arquivos).</p>
+        <p className={cn("text-sm mt-1", isDark ? "text-gray-400" : "text-gray-600")}>
+          Aparência e conteúdo da página pública (salvos no banco e nos arquivos).
+        </p>
         {loadError && <p className="text-red-600 text-sm mt-2">{loadError}</p>}
       </div>
 
       <div className="flex flex-col gap-6 lg:grid lg:grid-cols-5 lg:gap-6 lg:items-start">
         <div className="order-1 min-w-0 lg:col-span-3">
-          <div className="mb-5 flex gap-1 overflow-x-auto rounded-xl border border-gray-200 bg-white p-1 shadow-sm [-webkit-overflow-scrolling:touch]">
+          <div
+            className={cn(
+              "mb-5 flex gap-1 overflow-x-auto rounded-xl border p-1 shadow-sm [-webkit-overflow-scrolling:touch]",
+              isDark ? "border-white/[0.08] bg-[#111318]" : "border-gray-200 bg-white"
+            )}
+          >
             {[
               { key: "aparencia", label: "Aparência", icon: "palette" },
               { key: "conteudo", label: "Conteúdo", icon: "edit" },
@@ -681,7 +691,11 @@ export default function PersonalizacaoPage() {
                 onClick={() => setActiveTab(tab.key as typeof activeTab)}
                 className={cn(
                   "flex shrink-0 items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:px-3.5",
-                  activeTab === tab.key ? "bg-primary text-black" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  activeTab === tab.key
+                    ? "bg-primary text-black"
+                    : isDark
+                      ? "text-gray-400 hover:bg-white/10 hover:text-white"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 )}
               >
                 <span className="material-symbols-outlined text-sm shrink-0">{tab.icon}</span>
@@ -692,10 +706,15 @@ export default function PersonalizacaoPage() {
 
           {activeTab === "aparencia" && (
             <div className="space-y-5">
-              <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+              <div
+                className={cn(
+                  "rounded-xl border p-5 shadow-sm",
+                  isDark ? "border-white/[0.08] bg-[#111318]" : "border-gray-200 bg-white"
+                )}
+              >
                 <div className="mb-3">
-                  <h3 className="text-sm font-bold text-gray-900">Cor principal</h3>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <h3 className={cn("text-sm font-bold", isDark ? "text-white" : "text-gray-900")}>Cor principal</h3>
+                  <p className={cn("text-xs mt-0.5", isDark ? "text-gray-400" : "text-gray-500")}>
                     Presets compactos ou qualquer cor com o seletor ou o código hexadecimal.
                   </p>
                 </div>
@@ -713,7 +732,10 @@ export default function PersonalizacaoPage() {
                         className={cn(
                           "size-7 shrink-0 rounded-md shadow-sm ring-1 ring-black/10 transition-transform outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                           selected
-                            ? "ring-2 ring-primary ring-offset-2 ring-offset-white scale-105 z-[1]"
+                            ? cn(
+                                "ring-2 ring-primary ring-offset-2 scale-105 z-[1]",
+                                isDark ? "ring-offset-[#111318]" : "ring-offset-white"
+                              )
                             : "hover:scale-110 active:scale-95"
                         )}
                         style={{ backgroundColor: color.value }}
@@ -721,14 +743,26 @@ export default function PersonalizacaoPage() {
                     );
                   })}
                 </div>
-                <div className="rounded-xl border border-gray-200 bg-gradient-to-br from-gray-50/90 to-white p-3.5 shadow-inner">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2.5">
+                <div
+                  className={cn(
+                    "rounded-xl border p-3.5 shadow-inner",
+                    isDark
+                      ? "border-white/[0.08] bg-gradient-to-br from-white/[0.04] to-black/20"
+                      : "border-gray-200 bg-gradient-to-br from-gray-50/90 to-white"
+                  )}
+                >
+                  <p className={cn("text-[11px] font-semibold uppercase tracking-wide mb-2.5", isDark ? "text-gray-400" : "text-gray-500")}>
                     Cor personalizada
                   </p>
                   <div className="flex flex-wrap items-end gap-3">
                     <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-medium text-gray-600">Seletor</span>
-                      <label className="group relative flex size-11 cursor-pointer overflow-hidden rounded-xl border-2 border-gray-200 bg-white shadow-sm transition-colors hover:border-primary/60 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25">
+                      <span className={cn("text-[11px] font-medium", isDark ? "text-gray-400" : "text-gray-600")}>Seletor</span>
+                      <label
+                        className={cn(
+                          "group relative flex size-11 cursor-pointer overflow-hidden rounded-xl border-2 shadow-sm transition-colors hover:border-primary/60 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/25",
+                          isDark ? "border-white/[0.12] bg-[#1a1f26]" : "border-gray-200 bg-white"
+                        )}
+                      >
                         <input
                           type="color"
                           value={primaryColorInputValue(form.primaryColor)}
@@ -746,7 +780,7 @@ export default function PersonalizacaoPage() {
                       </label>
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col gap-1 sm:max-w-[12rem]">
-                      <label htmlFor="primary-hex" className="text-[11px] font-medium text-gray-600">
+                      <label htmlFor="primary-hex" className={cn("text-[11px] font-medium", isDark ? "text-gray-400" : "text-gray-600")}>
                         Hexadecimal
                       </label>
                       <input
@@ -766,7 +800,12 @@ export default function PersonalizacaoPage() {
                             setPrimaryHexDraft(form.primaryColor);
                           }
                         }}
-                        className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 font-mono text-sm uppercase tracking-wide text-gray-900 outline-none transition-shadow focus:border-primary focus:ring-2 focus:ring-primary/20"
+                        className={cn(
+                          "h-10 w-full rounded-lg border px-3 font-mono text-sm uppercase tracking-wide outline-none transition-shadow focus:border-primary focus:ring-2 focus:ring-primary/20",
+                          isDark
+                            ? "border-white/[0.1] bg-black/25 text-white placeholder:text-gray-500"
+                            : "border-gray-200 bg-white text-gray-900"
+                        )}
                       />
                     </div>
                   </div>

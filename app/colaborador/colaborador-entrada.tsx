@@ -89,15 +89,7 @@ export function ColaboradorEntrada({ siteOrigin, linkedStaff, isBusinessOwner }:
           </ol>
         </section>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 mb-8">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Link para enviar ao profissional</p>
-          <p className="text-sm text-gray-400 mb-3">
-            Peça para o colaborador abrir <strong className="text-white">este endereço</strong> antes de entrar:
-          </p>
-          <code className="block break-all rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-sm text-primary font-mono">
-            {siteOrigin}/colaborador
-          </code>
-        </div>
+     
 
         {!isBusinessOwner ? (
           <div className="flex flex-col sm:flex-row gap-3">
