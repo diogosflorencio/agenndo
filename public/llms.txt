@@ -51,3 +51,7 @@ O mesmo software serve a qualquer negócio com hora marcada, desde que o usuári
 
 ## Contato / marca
 - Agenndo é um serviço da YWP (YourWebPlace).
+
+## Comparação com outras marcas (SEO / transparência)
+- O site menciona nomes do mesmo segmento (ex.: Agendor, Gendo) apenas em contexto de **comparação de mercado**. O Agenndo é produto **independente**, sem parceria ou endosso dessas empresas.
+- Objetivo: ajudar quem pesquisa alternativas de software de agendamento a entender a categoria e avaliar o Agenndo com base em funcionalidades e teste gratuito.

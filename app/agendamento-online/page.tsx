@@ -1,44 +1,31 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import {
+  AGENDAMENTO_ONLINE_DESCRIPTION,
+  AGENDAMENTO_ONLINE_TITLE,
+  SITE_KEYWORDS,
+} from "@/lib/seo/site-metadata";
 import { getSiteUrl } from "@/lib/site-url";
 
 const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
-  title: "Software de agendamento online para prestadores de serviço",
-  description:
-    "Agenndo: sistema completo de agendamento online com página pública por link, agenda, equipe, lembretes e painel. Atende salões, clínicas, estética, consultórios, personal trainers, pet shops e qualquer negócio por hora marcada. Serviço YWP (YourWebPlace).",
-  keywords: [
-    "software agendamento online",
-    "sistema de agendamento",
-    "site para agendar horário",
-    "marcar horário online",
-    "agenda online prestador",
-    "agenda para salão de beleza",
-    "agendamento clínica estética",
-    "software para prestador de serviço",
-    "plataforma agendamento",
-    "link de agendamento",
-    "QR code agendamento",
-    "Agenndo",
-    "YWP",
-    "YourWebPlace",
-  ],
+  title: { absolute: AGENDAMENTO_ONLINE_TITLE },
+  description: AGENDAMENTO_ONLINE_DESCRIPTION,
+  keywords: [...SITE_KEYWORDS, "comparar software de agenda", "plataforma agendamento Brasil"],
   alternates: { canonical: `${siteUrl}/agendamento-online` },
   openGraph: {
-    title: "Agenndo - Software de agendamento online (YWP)",
-    description:
-      "Sistema completo de agendamento para diversos tipos de serviço. Configure em minutos; clientes agendam 24h.",
+    title: AGENDAMENTO_ONLINE_TITLE,
+    description: AGENDAMENTO_ONLINE_DESCRIPTION,
     url: `${siteUrl}/agendamento-online`,
     siteName: "Agenndo",
     locale: "pt_BR",
-    type: "article",
+    type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Agenndo - Software de agendamento online (YWP)",
-    description:
-      "Sistema completo de agendamento para diversos tipos de serviço. Configure em minutos; clientes agendam 24h.",
+    title: AGENDAMENTO_ONLINE_TITLE,
+    description: AGENDAMENTO_ONLINE_DESCRIPTION,
   },
 };
 
@@ -64,9 +51,8 @@ const jsonLd = {
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   inLanguage: "pt-BR",
-  description:
-    "Sistema de agendamento online para prestadores: página pública, painel, equipe, financeiro e notificações. Aplicável a múltiplos segmentos de serviço.",
-  url: siteUrl,
+  description: AGENDAMENTO_ONLINE_DESCRIPTION,
+  url: `${siteUrl}/agendamento-online`,
   provider: {
     "@type": "Organization",
     name: "YWP (YourWebPlace)",
@@ -115,6 +101,16 @@ export default function AgendamentoOnlinePage() {
             <li key={item}>{item}</li>
           ))}
         </ul>
+
+        <h2 className="text-xl font-bold text-white mb-4">Comparando com outras ferramentas do mercado</h2>
+        <p className="text-gray-400 leading-relaxed mb-8">
+          Equipes que pesquisam <strong className="text-white">software de agendamento no Brasil</strong> costumam abrir
+          várias opções — incluindo nomes estabelecidos como{" "}
+          <strong className="text-white">Agendor</strong> ou <strong className="text-white">Gendo</strong>, entre
+          outras. São produtos do mesmo tipo de categoria (reserva online e gestão para negócios). O{" "}
+          <strong className="text-white">Agenndo não é afiliado</strong> a essas marcas: você pode avaliar preços,
+          integrações e suporte em paralelo e usar o teste gratuito para medir o que importa no seu dia a dia.
+        </p>
 
         <h2 className="text-xl font-bold text-white mb-4">Por que buscadores e IAs podem classificar o Agenndo assim</h2>
         <p className="text-gray-400 leading-relaxed mb-6">

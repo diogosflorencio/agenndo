@@ -24,4 +24,12 @@ export const HOME_FAQS = [
     q: "Como cancelar minha assinatura?",
     a: "Cancele a qualquer momento diretamente no painel, sem burocracia. Sem multas ou fidelidade.",
   },
+  {
+    q: "Posso comparar o Agenndo com Agendor, Gendo ou outras plataformas de agenda?",
+    a: "Sim — é natural avaliar mais de um software antes de contratar. Agendor e Gendo são exemplos de produtos no mesmo tipo de mercado (agendamento e gestão para negócios). O Agenndo é independente e não tem vínculo com essas marcas: você pode comparar funcionalidades, preço e suporte e usar o período de teste para ver se encaixa na sua operação.",
+  },
+  {
+    q: "O Agenndo é uma alternativa de software de agendamento para o Brasil?",
+    a: "Sim. Foi pensado para prestadores que precisam de página pública de reserva, organização de agenda e equipe e visão financeira em português. Serve salões, clínicas, estética, consultórios e outros serviços por hora marcada.",
+  },
 ] as const;
