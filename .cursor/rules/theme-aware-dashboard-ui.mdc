@@ -1,0 +1,16 @@
+---
+description: Ao criar ou alterar UI no painel, sempre suportar tema claro e escuro.
+globs: app/dashboard/**/*.tsx, components/dashboard/**/*.tsx
+alwaysApply: false
+---
+
+# Tema claro e escuro no dashboard
+
+O layout do painel (`DashboardShell`) alterna entre tema **light** e **dark** (`useTheme()` em `@/lib/theme-context`). Ao adicionar cards, formulários, carrosseis ou novos blocos:
+
+1. **Use `useTheme()`** e derive `const isDark = theme === "dark"` (ou `isLight`) quando o componente tiver cores fixas (`bg-white`, `text-gray-900`, `border-gray-200`).
+2. **Padronize superfícies:** no escuro prefira `border-white/[0.08]` ou `border-white/10`, fundos `bg-[#111318]` ou `bg-white/[0.04]`, texto principal `text-white`, secundário `text-gray-400`.
+3. **Nunca deixe só tokens “light”** (`bg-white`, `ring-offset-white`, `text-gray-900`) em componentes usados dentro do dashboard sem contraparte `dark:` ou ramo condicional — isso quebra no tema escuro.
+4. **Indicadores e chips** (dots, badges): inactive no escuro algo como `bg-white/20`, não `bg-gray-200` sozinho.
+
+Referência visual: `app/dashboard/DashboardShell.tsx` (`isLight` / fundos `bg-[#080c0a]` no escuro).
