@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { HomeFaqJsonLd } from "@/components/home-faq-jsonld";
 import HomePage from "@/components/home-page";
+import { SITE_DESCRIPTION, SITE_TITLE_DEFAULT } from "@/lib/seo/site-metadata";
 import { getSiteUrl } from "@/lib/site-url";
 
 const siteUrl = getSiteUrl();
 
-const titleDefault = "Agenndo - Sistema de agendamento online para prestadores de serviço";
-const description =
-  "Software completo de agendamento online (YWP / YourWebPlace): clientes marcam horário 24h por link ou QR Code; você gerencia agenda, equipe, financeiro e lembretes. Atende salões, clínicas, estética, barbearias, consultórios, personal trainers, pet shops e qualquer negócio por hora marcada. Basta configurar serviços e disponibilidade.";
+const titleDefault = SITE_TITLE_DEFAULT;
+const description = SITE_DESCRIPTION;
 
 export const metadata: Metadata = {
   title: { absolute: titleDefault },

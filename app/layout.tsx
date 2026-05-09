@@ -2,6 +2,11 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { getSiteUrl } from "@/lib/site-url";
+import {
+  SITE_DESCRIPTION,
+  SITE_KEYWORDS,
+  SITE_TITLE_DEFAULT,
+} from "@/lib/seo/site-metadata";
 import { AppAlertProvider } from "@/components/app-alert-provider";
 import { MaterialSymbolsFontReady } from "@/components/material-symbols-font-ready";
 import { MATERIAL_SYMBOLS_STYLESHEET_HREF } from "@/lib/material-symbols-font";
@@ -19,9 +24,8 @@ try {
   metadataBase = new URL("http://localhost:3000");
 }
 
-const titleDefault = "Agenndo - Sistema de agendamento online para prestadores de serviço";
-const description =
-  "Software completo de agendamento online (YWP / YourWebPlace): clientes marcam horário 24h por link ou QR Code; você gerencia agenda, equipe, financeiro e lembretes. Atende salões, clínicas, estética, barbearias, consultórios, personal trainers, pet shops e qualquer negócio por hora marcada. Basta configurar serviços e disponibilidade.";
+const titleDefault = SITE_TITLE_DEFAULT;
+const description = SITE_DESCRIPTION;
 
 const verificationMeta = (() => {
   const google = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
@@ -55,24 +59,7 @@ export const metadata: Metadata = {
     template: "%s | Agenndo",
   },
   description,
-  keywords: [
-    "agendamento online",
-    "software agendamento online",
-    "sistema de agendamento",
-    "site para agendar horário",
-    "marcar horário online",
-    "plataforma de agendamento",
-    "agenda online para prestador",
-    "agenda para salão",
-    "agendamento clínica estética",
-    "software para prestador",
-    "gestão de horários",
-    "link de agendamento",
-    "QR code agendamento",
-    "Agenndo",
-    "YWP",
-    "YourWebPlace",
-  ],
+  keywords: [...SITE_KEYWORDS],
   authors: [{ name: "YWP (YourWebPlace)", url: siteUrl }],
   creator: "YWP (YourWebPlace)",
   publisher: "YWP (YourWebPlace)",
@@ -187,6 +174,8 @@ const jsonLd = {
       publisher: { "@id": `${siteUrl}/#organization` },
       knowsAbout,
       featureList,
+      keywords:
+        "agendamento online, software de agendamento, agenda para prestador, YWP, YourWebPlace",
       offers: {
         "@type": "Offer",
         priceCurrency: "BRL",
