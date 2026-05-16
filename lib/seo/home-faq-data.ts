@@ -10,7 +10,7 @@ export const HOME_FAQS = [
   },
   {
     q: "O que já consigo fazer no painel?",
-    a: "Agenda e disponibilidade, agendamentos com status (compareceu/faltou etc.), serviços e preços, equipe e colaboradores, página pública com link e QR Code, personalização (logo, cores, banner), clientes, financeiro, analytics, notificações e — quando ativado — comissões por profissional com área dedicada ao colaborador.",
+    a: "Agenda e disponibilidade, agendamentos com status (compareceu/faltou etc.), serviços e preços, equipe e colaboradores, página pública com link e QR Code, personalização (logo, cores, banner), clientes, financeiro, analytics, notificações e - quando ativado - comissões por profissional com área dedicada ao colaborador.",
   },
   {
     q: "Profissionais da minha equipe veem comissões?",
@@ -18,7 +18,7 @@ export const HOME_FAQS = [
   },
   {
     q: "Posso personalizar minha página pública?",
-    a: "Sim: logo, cores, banner, galeria, redes sociais e texto — cada negócio tem sua URL por slug. Clientes agendam por ali 24h.",
+    a: "Sim: logo, cores, banner, galeria, redes sociais e texto - cada negócio tem sua URL por slug. Clientes agendam por ali 24h.",
   },
   {
     q: "Funciona no celular?",
@@ -30,7 +30,7 @@ export const HOME_FAQS = [
   },
   {
     q: "Vão aceitar pagamento dos meus clientes pelo app?",
-    a: "Está no roadmap: integração com Mercado Pago para você receber valores dos clientes (incluindo ideia de sinal/caução no agendamento) e evolução para NF automática por agendamento — sem data fixa anunciada aqui.",
+    a: "Está no roadmap: integração com Mercado Pago para você receber valores dos clientes (incluindo ideia de sinal/caução no agendamento) e evolução para NF automática por agendamento - sem data fixa anunciada aqui.",
   },
   {
     q: "Como cancelar minha assinatura?",

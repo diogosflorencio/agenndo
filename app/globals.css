@@ -54,7 +54,7 @@ body {
   display: none;
 }
 
-/* Material Symbols Outlined — carregados via <link> no layout (preload + display=block); ligadura até a fonte estar pronta */
+/* Material Symbols Outlined - carregados via <link> no layout (preload + display=block); ligadura até a fonte estar pronta */
 .material-symbols-outlined {
   font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
   user-select: none;

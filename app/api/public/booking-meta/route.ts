@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublicBookingLockInfo } from "@/lib/billing-access";
+import {
+  buildMergedWeeklyAvailabilityRows,
+  normalizeAvailabilityOverrideRows,
+  type AvailabilityDbRow,
+  type OverrideDbRow,
+} from "@/lib/public-booking";
 
 export const runtime = "nodejs";
 
@@ -56,7 +62,7 @@ export async function GET(req: Request) {
     publicBookingTimeUi: n?.public_booking_time_ui === "blocks" ? "blocks" : "slider",
     publicBookingLocked: lock.blocked,
     publicBookingLockMessage: lock.message,
-    weeklyAvailability: avRows ?? [],
-    availabilityOverrides: ovRows ?? [],
+    weeklyAvailability: buildMergedWeeklyAvailabilityRows((avRows ?? []) as AvailabilityDbRow[]),
+    availabilityOverrides: normalizeAvailabilityOverrideRows((ovRows ?? []) as OverrideDbRow[]),
   });
 }

@@ -104,72 +104,79 @@ export function PublicPwaInstallPrompt({
   const showAndroid = Boolean(deferred);
 
   return (
-    <div
-      className={cn(
-        "fixed z-[38] max-w-[min(100vw-1.5rem,20rem)] rounded-2xl border shadow-xl backdrop-blur-md p-3.5",
-        "bottom-[5.25rem] left-3 sm:left-4",
-        isDark ? "bg-[#0c1210]/95 border-white/10 text-white" : "bg-white/95 border-gray-200 text-gray-900"
-      )}
-      role="dialog"
-      aria-label="Instalar atalho no celular"
-    >
-      <div className="flex items-start gap-2.5">
-        <span
-          className="material-symbols-outlined text-xl shrink-0 mt-0.5"
-          style={{ color: accentColor }}
-          aria-hidden
-        >
-          install_mobile
-        </span>
-        <div className="min-w-0 flex-1 space-y-2">
-          <p className="text-[13px] font-bold leading-tight">
-            Acesso rápido no celular
-          </p>
-          <p className={cn("text-[11px] leading-snug", isDark ? "text-white/65" : "text-gray-600")}>
-            {showAndroid
-              ? `Instale o atalho de ${businessName.slice(0, 36)}${businessName.length > 36 ? "…" : ""} para abrir o agendamento em tela cheia com um toque.`
-              : showIOS
-                ? "No iPhone/iPad: toque em Compartilhar (□↑) e em Adicionar à Tela de Início. Assim você volta ao agendamento como um app."
-                : "Use o menu do navegador (⋮ ou Compartilhar) e escolha Instalar app ou Adicionar à tela inicial, se aparecer."}
-          </p>
-          <p className={cn("text-[10px] leading-snug", isDark ? "text-white/45" : "text-gray-500")}>
-            Notificação de lembrete depende do negócio e do navegador; o atalho deixa esta página sempre à mão.
-          </p>
-          <div className="flex flex-wrap gap-2 pt-0.5">
-            {showAndroid && (
+    <>
+      <button
+        type="button"
+        className="fixed inset-0 z-[37] bg-black/40 backdrop-blur-[2px] cursor-default"
+        aria-label="Fechar aviso"
+        onClick={dismiss}
+      />
+      <div
+        className={cn(
+          "fixed z-[38] max-w-[min(100vw-1.5rem,20rem)] rounded-2xl border shadow-xl backdrop-blur-md p-3.5",
+          "bottom-[5.25rem] left-3 sm:left-4",
+          isDark ? "bg-[#0c1210]/95 border-white/10 text-white" : "bg-white/95 border-gray-200 text-gray-900"
+        )}
+        role="dialog"
+        aria-label="Instalar atalho no celular"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-2.5">
+          <span
+            className="material-symbols-outlined text-xl shrink-0 mt-0.5"
+            style={{ color: accentColor }}
+            aria-hidden
+          >
+            install_mobile
+          </span>
+          <div className="min-w-0 flex-1 space-y-2">
+            <p className="text-[13px] font-bold leading-tight">Acesso rápido no celular</p>
+            <p className={cn("text-[11px] leading-snug", isDark ? "text-white/65" : "text-gray-600")}>
+              {showAndroid
+                ? `Instale o atalho de ${businessName.slice(0, 36)}${businessName.length > 36 ? "…" : ""} para abrir o agendamento em tela cheia com um toque.`
+                : showIOS
+                  ? "No iPhone/iPad: toque em Compartilhar (□↑) e em Adicionar à Tela de Início. Assim você volta ao agendamento como um app."
+                  : "Use o menu do navegador (⋮ ou Compartilhar) e escolha Instalar app ou Adicionar à tela inicial, se aparecer."}
+            </p>
+            <p className={cn("text-[10px] leading-snug", isDark ? "text-white/45" : "text-gray-500")}>
+              Notificação de lembrete depende do negócio e do navegador; o atalho deixa esta página sempre à mão.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-0.5">
+              {showAndroid && (
+                <button
+                  type="button"
+                  onClick={() => void runInstall()}
+                  className="px-3 py-2 rounded-xl text-xs font-bold text-black"
+                  style={{ backgroundColor: accentColor }}
+                >
+                  Instalar atalho
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => void runInstall()}
-                className="px-3 py-2 rounded-xl text-xs font-bold text-black"
-                style={{ backgroundColor: accentColor }}
+                onClick={dismiss}
+                className={cn(
+                  "px-3 py-2 rounded-xl text-xs font-semibold",
+                  isDark ? "bg-white/10 text-white" : "bg-gray-100 text-gray-800"
+                )}
               >
-                Instalar atalho
+                Agora não
               </button>
-            )}
-            <button
-              type="button"
-              onClick={dismiss}
-              className={cn(
-                "px-3 py-2 rounded-xl text-xs font-semibold",
-                isDark ? "bg-white/10 text-white" : "bg-gray-100 text-gray-800"
-              )}
-            >
-              Agora não
-            </button>
+            </div>
           </div>
+          <button
+            type="button"
+            onClick={dismiss}
+            className={cn(
+              "shrink-0 rounded-lg p-1 -mr-1 -mt-1",
+              isDark ? "hover:bg-white/10 text-white/50" : "hover:bg-gray-100 text-gray-400"
+            )}
+            aria-label="Fechar"
+          >
+            <span className="material-symbols-outlined text-lg">close</span>
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={dismiss}
-          className={cn(
-            "shrink-0 rounded-lg p-1 -mr-1 -mt-1",
-            isDark ? "hover:bg-white/10 text-white/50" : "hover:bg-gray-100 text-gray-400"
-          )}
-          aria-label="Fechar"
-        >
-          <span className="material-symbols-outlined text-lg">close</span>
-        </button>
       </div>
-    </div>
+    </>
   );
 }

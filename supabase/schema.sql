@@ -1,11 +1,11 @@
--- Agenndo — Schema Supabase (estado alinhado às migrations em supabase/migrations)
+-- Agenndo - Schema Supabase (estado alinhado às migrations em supabase/migrations)
 -- Use no SQL Editor para bootstrap de projeto novo. Projetos existentes: preferir apenas migrations.
 
 -- Extensões
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ========== PERFIL / AUTH ==========
--- Contas de prestadores (donos do negócio) — vinculadas ao auth.users do Supabase
+-- Contas de prestadores (donos do negócio) - vinculadas ao auth.users do Supabase
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT,
@@ -662,7 +662,7 @@ BEGIN
   SELECT s.name INTO v_service FROM public.services s WHERE s.id = NEW.service_id;
   d := to_char(NEW.date, 'DD/MM/YYYY');
   t := substring(NEW.time_start::text, 1, 5);
-  body := COALESCE(NULLIF(trim(BOTH FROM v_client), ''), NULLIF(trim(BOTH FROM NEW.client_name_snapshot), ''), 'Cliente') || ' · ' || COALESCE(v_service, 'Serviço') || ' · ' || d || ' às ' || t || ' — cancelado';
+  body := COALESCE(NULLIF(trim(BOTH FROM v_client), ''), NULLIF(trim(BOTH FROM NEW.client_name_snapshot), ''), 'Cliente') || ' · ' || COALESCE(v_service, 'Serviço') || ' · ' || d || ' às ' || t || ' - cancelado';
   INSERT INTO public.dashboard_notifications (business_id, title, body, icon)
   VALUES (NEW.business_id, 'Agendamento cancelado', body, 'event_busy');
   RETURN NEW;

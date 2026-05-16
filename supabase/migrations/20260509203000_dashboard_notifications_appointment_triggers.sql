@@ -101,7 +101,7 @@ BEGIN
 
   t := substring(NEW.time_start::text, 1, 5);
 
-  body := COALESCE(NULLIF(trim(BOTH FROM v_client), ''), NULLIF(trim(BOTH FROM NEW.client_name_snapshot), ''), 'Cliente') || ' · ' || COALESCE(v_service, 'Serviço') || ' · ' || d || ' às ' || t || ' — cancelado';
+  body := COALESCE(NULLIF(trim(BOTH FROM v_client), ''), NULLIF(trim(BOTH FROM NEW.client_name_snapshot), ''), 'Cliente') || ' · ' || COALESCE(v_service, 'Serviço') || ' · ' || d || ' às ' || t || ' - cancelado';
 
   INSERT INTO
     public.dashboard_notifications (business_id, title, body, icon)

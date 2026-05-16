@@ -68,7 +68,7 @@ export async function POST(req: Request) {
   }
 
   if (targetUserId === user.id) {
-    return NextResponse.json({ error: "Use outro e-mail — não vincule o colaborador à sua própria conta de dono." }, { status: 400 });
+    return NextResponse.json({ error: "Use outro e-mail - não vincule o colaborador à sua própria conta de dono." }, { status: 400 });
   }
 
   const { error: upErr } = await supabase

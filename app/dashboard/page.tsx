@@ -331,7 +331,7 @@ export default function DashboardHome() {
     const deltaAg = todayApts.length - yesterdayApts.length;
     const trendAg =
       yesterdayApts.length === 0 && todayApts.length === 0
-        ? "—"
+        ? "-"
         : deltaAg > 0
           ? `+${deltaAg} vs ontem`
           : deltaAg < 0
@@ -422,7 +422,7 @@ export default function DashboardHome() {
             icon: "analytics",
             label: "Taxa ok",
             value: `${taxaComparecimento}%`,
-            trend: totalWithStatus > 0 ? "no período" : "—",
+            trend: totalWithStatus > 0 ? "no período" : "-",
             trendColor: "text-gray-500 dark:text-gray-400",
           },
         ],
