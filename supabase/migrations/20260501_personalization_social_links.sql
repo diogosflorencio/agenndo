@@ -3,4 +3,4 @@
 
 ALTER TABLE public.personalization ADD COLUMN IF NOT EXISTS social_links JSONB NOT NULL DEFAULT '[]'::jsonb;
 
-COMMENT ON COLUMN public.personalization.social_links IS 'JSON [{ "platform": "instagram"|..., "handle": "..." }] — URLs derivadas no front.';
+COMMENT ON COLUMN public.personalization.social_links IS 'JSON [{ "platform": "instagram"|..., "handle": "..." }] - URLs derivadas no front.';

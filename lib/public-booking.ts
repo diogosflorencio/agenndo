@@ -3,10 +3,13 @@ import { toDate } from "date-fns-tz";
 import {
   type DaySchedule,
   scheduleRowToDaySchedule,
+  dayScheduleToRow,
   timeToMinutes,
   minutesToTime,
   DEFAULT_WEEKLY_SCHEDULE,
   dowToWeekdayKey,
+  weekdayKeyToDow,
+  WEEKDAY_KEYS,
 } from "@/lib/disponibilidade";
 
 export const BOOKING_TZ = "America/Sao_Paulo";
@@ -74,16 +77,47 @@ export type BlockDbRow = {
   ends_at: string;
 };
 
+/** Mesma lógica do painel (GET /api/dashboard/availability): 7 dias sempre definidos. */
+export function buildMergedWeeklyAvailabilityRows(avRows: AvailabilityDbRow[]): AvailabilityDbRow[] {
+  const byDow = new Map<number, AvailabilityDbRow>();
+  for (const row of avRows) {
+    byDow.set(Number(row.day_of_week), row);
+  }
+  return WEEKDAY_KEYS.map((key) => {
+    const dow = weekdayKeyToDow(key);
+    const existing = byDow.get(dow);
+    if (existing) return existing;
+    const sched = DEFAULT_WEEKLY_SCHEDULE[key];
+    const dbRow = dayScheduleToRow(sched);
+    return {
+      day_of_week: dow,
+      closed: dbRow.closed,
+      open_time: dbRow.open_time,
+      close_time: dbRow.close_time,
+      breaks: dbRow.breaks,
+    };
+  });
+}
+
+export function normalizeAvailabilityOverrideRows(ovRows: OverrideDbRow[]): OverrideDbRow[] {
+  return ovRows.map((r) => ({
+    ...r,
+    date: String(r.date ?? "").slice(0, 10),
+  }));
+}
+
 export function effectiveDaySchedule(
   dateStr: string,
   avRows: AvailabilityDbRow[],
   ovRows: OverrideDbRow[]
 ): DaySchedule {
-  const ov = ovRows.find((r) => String(r.date ?? "").slice(0, 10) === dateStr);
+  const normalizedOv = normalizeAvailabilityOverrideRows(ovRows);
+  const ov = normalizedOv.find((r) => r.date === dateStr);
   if (ov) return scheduleRowToDaySchedule(ov);
   const d = new Date(dateStr + "T12:00:00");
   const dow = d.getDay();
-  const row = avRows.find((r) => r.day_of_week === dow);
+  const mergedWeekly = avRows.length > 0 ? buildMergedWeeklyAvailabilityRows(avRows) : avRows;
+  const row = mergedWeekly.find((r) => r.day_of_week === dow);
   if (!row) {
     const key = dowToWeekdayKey(dow);
     return DEFAULT_WEEKLY_SCHEDULE[key];
@@ -97,7 +131,38 @@ export function isDateOpenForPublicBooking(
   avRows: AvailabilityDbRow[],
   ovRows: OverrideDbRow[]
 ): boolean {
-  return effectiveDaySchedule(dateStr, avRows, ovRows).active;
+  const mergedWeekly = avRows.length > 0 ? buildMergedWeeklyAvailabilityRows(avRows) : avRows;
+  return effectiveDaySchedule(dateStr, mergedWeekly, normalizeAvailabilityOverrideRows(ovRows)).active;
+}
+
+export type PublicDateDisabledReason = "loading" | "past" | "tooFar" | "closed";
+
+export function getPublicDateDisabledReason(
+  dateStr: string,
+  opts: {
+    metaLoaded: boolean;
+    today: Date;
+    maxFutureDays: number;
+    weeklyAvailability: AvailabilityDbRow[];
+    availabilityOverrides: OverrideDbRow[];
+  }
+): PublicDateDisabledReason | null {
+  if (!opts.metaLoaded) return "loading";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const cellDate = new Date(y, m - 1, d);
+  cellDate.setHours(0, 0, 0, 0);
+  const today0 = new Date(opts.today);
+  today0.setHours(0, 0, 0, 0);
+  if (cellDate.getTime() < today0.getTime()) return "past";
+  const limitDate = new Date(today0);
+  limitDate.setDate(limitDate.getDate() + opts.maxFutureDays);
+  if (cellDate.getTime() > limitDate.getTime()) return "tooFar";
+  if (
+    !isDateOpenForPublicBooking(dateStr, opts.weeklyAvailability, opts.availabilityOverrides)
+  ) {
+    return "closed";
+  }
+  return null;
 }
 
 function intervalMinutesOnDay(

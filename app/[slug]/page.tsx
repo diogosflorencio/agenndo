@@ -18,6 +18,8 @@ import {
 } from "@/lib/public-booking";
 import { PublicBookingDayTimeline, type PublicDayTimelinePayload } from "@/components/public-booking-day-timeline";
 import { PublicPwaInstallPrompt } from "@/components/public-pwa-install-prompt";
+import { PublicDatePicker } from "@/components/public/public-date-picker";
+import { getPublicBookUi, getPublicHomeUi } from "@/lib/public-book-ui";
 import { minutesToTime, timeToMinutes, type DaySchedule } from "@/lib/disponibilidade";
 import { PUBLIC_GALLERY_MAX_IMAGES } from "@/lib/public-gallery";
 import { normalizeVariantGallery, variantEffectivePriceCents, type ServiceVariantItem } from "@/lib/service-variants";
@@ -90,16 +92,6 @@ type ServiceRow = {
   collaborator_services: { collaborator_id: string }[];
 };
 type CollabRow = { id: string; name: string; role: string | null; color: string | null; avatar_url: string | null };
-
-const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
-function getDaysInMonth(year: number, month: number) {
-  return new Date(year, month + 1, 0).getDate();
-}
-function getFirstDay(year: number, month: number) {
-  return new Date(year, month, 1).getDay();
-}
 
 function PublicPageInner() {
   const params = useParams();
@@ -399,13 +391,7 @@ function PublicPageInner() {
     [resetBookingForm, bookingMeta?.publicBookingLocked]
   );
 
-  const daysInMonth = getDaysInMonth(calYear, calMonth);
-  const firstDay = getFirstDay(calYear, calMonth);
-
   const maxFutureDays = bookingMeta?.maxFutureDays ?? 30;
-  const limitDate = new Date(today);
-  limitDate.setHours(0, 0, 0, 0);
-  limitDate.setDate(limitDate.getDate() + maxFutureDays);
 
   const slotGroups = (() => {
     const morning = slotTimeline.filter((c) => Number(c.start.split(":")[0]) < 12);
@@ -510,24 +496,7 @@ function PublicPageInner() {
   );
   const displayAddress = personalization?.address_line?.trim() || business?.city || "";
 
-  const bookUi = {
-    page: isDark ? "min-h-screen bg-[#020403]" : "min-h-screen bg-gray-100",
-    header: isDark ? "border-white/5 bg-[#080c0a]/90" : "border-gray-200 bg-white/90",
-    sticky: isDark ? "bg-[#020403]/95 border-white/5" : "bg-gray-50/95 border-gray-200",
-    title: isDark ? "text-white" : "text-gray-900",
-    subtitle: isDark ? "text-gray-400" : "text-gray-600",
-    muted: isDark ? "text-gray-500" : "text-gray-500",
-    card: isDark ? "border-[#213428] bg-[#14221A]" : "border-gray-200 bg-white",
-    cardHover: isDark ? "hover:border-white/20" : "hover:border-gray-300",
-    input: isDark
-      ? "bg-[#14221A] border-[#213428] text-white placeholder-gray-600"
-      : "bg-white border-gray-200 text-gray-900 placeholder-gray-400",
-    bottomBar: isDark ? "bg-[#020403]/95 border-white/5" : "bg-white/95 border-gray-200",
-    stepIdle: isDark ? "bg-white/5 text-gray-500" : "bg-gray-200 text-gray-500",
-    stepLine: isDark ? "bg-white/10" : "bg-gray-200",
-    label: isDark ? "text-gray-300" : "text-gray-700",
-    chip: isDark ? "bg-[#14221A] border-[#213428]" : "bg-gray-50 border-gray-200",
-  };
+  const bookUi = getPublicBookUi(isDark);
 
   if (loading) {
     return (
@@ -567,11 +536,8 @@ function PublicPageInner() {
 
   if (view === "home") {
     const hasBanner = Boolean(personalization?.banner_url);
-    const titleCls = isDark ? "text-white" : "text-gray-900";
-    const subCls = isDark ? "text-gray-400" : "text-gray-600";
-    const mutedCls = isDark ? "text-gray-500" : "text-gray-500";
-    const cardCls = isDark ? "bg-[#14221A] border border-[#213428]" : "bg-white border border-gray-200";
-    const cardHover = isDark ? "hover:border-white/25" : "hover:border-gray-300";
+    const homeUi = getPublicHomeUi(isDark);
+    const { title: titleCls, subtitle: subCls, muted: mutedCls, card: cardCls, cardHover, surfaceMuted } = homeUi;
     const avatarBorder = isDark ? "border-[#020403]" : "border-gray-50";
     const floatBtn =
       "text-xs font-semibold px-3.5 py-2 rounded-full bg-black/45 backdrop-blur-md text-white border border-white/25 shadow-lg hover:bg-black/55 transition-colors";
@@ -800,28 +766,41 @@ function PublicPageInner() {
           {personalization?.about?.trim() && (
             <section className="mb-10">
               <h2 className={cn("text-sm font-bold uppercase tracking-wider mb-3", subCls)}>Sobre</h2>
-              <p className={cn("text-sm leading-relaxed rounded-2xl p-4", cardCls)}>{personalization.about.trim()}</p>
+              <div className={cn("rounded-2xl border p-4 sm:p-5", cardCls)}>
+                <div className="flex gap-3">
+                  <span
+                    className={cn(
+                      "material-symbols-outlined text-xl shrink-0 size-10 rounded-xl flex items-center justify-center",
+                      surfaceMuted
+                    )}
+                    style={{ color: accent }}
+                  >
+                    info
+                  </span>
+                  <p className={cn("text-sm leading-relaxed flex-1", titleCls)}>{personalization.about.trim()}</p>
+                </div>
+              </div>
             </section>
           )}
 
           {collaborators.length > 0 && (
             <section className="mb-10">
-              <h2 className={cn("text-sm font-bold uppercase tracking-wider mb-4", subCls)}>Equipe Disponível</h2>
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
+              <h2 className={cn("text-sm font-bold uppercase tracking-wider mb-4", subCls)}>Equipe disponível</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {collaborators.map((c) => {
                   const col = c.color ?? "#3B82F6";
                   return (
-                    <div key={c.id} className={cn("flex-shrink-0 flex items-center gap-3 p-3 rounded-xl border min-w-[160px]", cardCls)}>
+                    <div key={c.id} className={cn("flex items-center gap-3 p-3.5 rounded-2xl border", cardCls)}>
                       <div
-                        className="size-10 rounded-full overflow-hidden flex items-center justify-center text-sm font-bold shrink-0 border border-white/10"
+                        className="size-11 rounded-xl overflow-hidden flex items-center justify-center text-sm font-bold shrink-0"
                         style={
                           c.avatar_url
-                            ? undefined
-                            : { backgroundColor: `${col}35`, color: col }
+                            ? { boxShadow: `0 0 0 2px ${col}55` }
+                            : { backgroundColor: `${col}22`, color: col, boxShadow: `0 0 0 2px ${col}33` }
                         }
                       >
                         {c.avatar_url ? (
-                          <Image src={c.avatar_url} alt="" width={40} height={40} className="size-full object-cover" unoptimized />
+                          <Image src={c.avatar_url} alt="" width={44} height={44} className="size-full object-cover" unoptimized />
                         ) : (
                           c.name[0]?.toUpperCase()
                         )}
@@ -850,29 +829,30 @@ function PublicPageInner() {
                     disabled={bookingBlocked}
                     onClick={() => startBooking(service)}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-xl border text-left transition-all",
+                      "group relative flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl border text-left transition-all overflow-hidden",
                       cardCls,
                       bookingBlocked ? "opacity-60 cursor-not-allowed" : `${cardHover} hover:-translate-y-0.5`
                     )}
                   >
-                    <div
-                      className={cn(
-                        "size-12 rounded-xl overflow-hidden flex items-center justify-center text-2xl shrink-0 border border-black/5",
-                        isDark ? "bg-[#213428]" : "bg-gray-100"
-                      )}
-                    >
+                    <span
+                      className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl opacity-80"
+                      style={{ backgroundColor: accent }}
+                      aria-hidden
+                    />
+                    <div className={cn("size-14 rounded-xl overflow-hidden flex items-center justify-center text-2xl shrink-0 ml-2", surfaceMuted)}>
                       {service.image_url ? (
-                        <Image src={service.image_url} alt="" width={48} height={48} className="size-full object-cover" unoptimized />
+                        <Image src={service.image_url} alt="" width={56} height={56} className="size-full object-cover" unoptimized />
                       ) : service.emoji ? (
                         <span className="leading-none">{service.emoji}</span>
                       ) : (
-                        <span className="material-symbols-outlined text-gray-500 text-[26px]">category</span>
+                        <span className="material-symbols-outlined text-gray-500 text-[28px]">spa</span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={cn("font-semibold line-clamp-2", titleCls)}>{service.name}</p>
-                      <p className={cn("text-xs mt-0.5", subCls)}>
-                        {service.duration_minutes} min · {formatCurrency(service.price_cents / 100)}
+                      <p className={cn("text-xs mt-1 font-medium", subCls)}>
+                        {service.duration_minutes} min ·{" "}
+                        <span style={{ color: accent }}>{formatCurrency(service.price_cents / 100)}</span>
                       </p>
                       {service.description_public?.trim() ? (
                         <p className={cn("text-[11px] mt-1.5 line-clamp-2 leading-snug", mutedCls)}>
@@ -880,7 +860,9 @@ function PublicPageInner() {
                         </p>
                       ) : null}
                     </div>
-                    <span className="material-symbols-outlined text-gray-500 text-lg shrink-0">calendar_add_on</span>
+                    <span className={cn("material-symbols-outlined text-lg shrink-0 opacity-60 group-hover:opacity-100", mutedCls)}>
+                      arrow_forward
+                    </span>
                   </button>
                 ))}
               </div>
@@ -1235,21 +1217,17 @@ function PublicPageInner() {
                   setStep(3);
                 }}
                 className={cn(
-                  "flex items-center gap-4 p-4 rounded-xl border hover:border-[color-mix(in_srgb,var(--public-accent)_40%,transparent)] text-left transition-all",
-                  bookUi.card
+                  "flex items-center gap-4 p-4 rounded-2xl border hover:border-[color-mix(in_srgb,var(--public-accent)_35%,transparent)] text-left transition-all",
+                  bookUi.card,
+                  bookUi.cardHover
                 )}
               >
-                <div
-                  className={cn(
-                    "size-12 rounded-xl flex items-center justify-center flex-shrink-0",
-                    isDark ? "bg-[#213428]" : "bg-gray-100"
-                  )}
-                >
-                  <span className="material-symbols-outlined text-[var(--public-accent)] text-2xl">shuffle</span>
+                <div className={cn("size-12 rounded-xl flex items-center justify-center flex-shrink-0", bookUi.surfaceMuted)}>
+                  <span className="material-symbols-outlined text-[var(--public-accent)] text-2xl">groups</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={cn("font-semibold", bookUi.title)}>Tanto faz / Primeiro disponível</p>
-                  <p className={cn("text-xs mt-0.5", bookUi.subtitle)}>Entre os que fazem este serviço</p>
+                  <p className={cn("font-semibold", bookUi.title)}>Primeiro disponível</p>
+                  <p className={cn("text-xs mt-0.5", bookUi.subtitle)}>Quem atender mais cedo neste dia</p>
                 </div>
                 <span className="material-symbols-outlined text-gray-500 text-base flex-shrink-0">chevron_right</span>
               </button>
@@ -1264,8 +1242,9 @@ function PublicPageInner() {
                       setStep(3);
                     }}
                     className={cn(
-                      "flex items-center gap-4 p-4 rounded-xl border hover:border-[color-mix(in_srgb,var(--public-accent)_40%,transparent)] text-left transition-all",
-                      bookUi.card
+                      "flex items-center gap-4 p-4 rounded-2xl border hover:border-[color-mix(in_srgb,var(--public-accent)_35%,transparent)] text-left transition-all",
+                      bookUi.card,
+                      bookUi.cardHover
                     )}
                   >
                     <div
@@ -1301,179 +1280,28 @@ function PublicPageInner() {
               <div className="lg:col-span-7 xl:col-span-8 min-w-0">
                 <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Escolha a data</h2>
                 <p className={cn("text-sm mb-5 lg:mb-6", bookUi.subtitle)}>Selecione o dia do seu atendimento</p>
-                <div
-                  className={cn(
-                    "rounded-2xl border p-5 sm:p-6 lg:p-8 lg:min-h-[min(28rem,calc(100vh-16rem))] flex flex-col",
-                    bookUi.card
-                  )}
-                >
-                  <div className="flex items-center justify-between mb-4 lg:mb-5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (calMonth === 0) {
-                          setCalMonth(11);
-                          setCalYear(calYear - 1);
-                        } else setCalMonth(calMonth - 1);
-                      }}
-                      className={cn(
-                        "size-9 lg:size-10 rounded-xl flex items-center justify-center transition-colors",
-                        isDark
-                          ? "bg-[#213428] hover:bg-white/10 text-gray-400 hover:text-white"
-                          : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900"
-                      )}
-                    >
-                      <span className="material-symbols-outlined text-base">chevron_left</span>
-                    </button>
-                    <h3 className={cn("font-bold text-base lg:text-lg", bookUi.title)}>
-                      {MONTHS[calMonth]} {calYear}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (calMonth === 11) {
-                          setCalMonth(0);
-                          setCalYear(calYear + 1);
-                        } else setCalMonth(calMonth + 1);
-                      }}
-                      className={cn(
-                        "size-9 lg:size-10 rounded-xl flex items-center justify-center transition-colors",
-                        isDark
-                          ? "bg-[#213428] hover:bg-white/10 text-gray-400 hover:text-white"
-                          : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900"
-                      )}
-                    >
-                      <span className="material-symbols-outlined text-base">chevron_right</span>
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-7 mb-2 lg:mb-3">
-                    {WEEKDAYS.map((d) => (
-                      <div
-                        key={d}
-                        className="text-center text-[11px] lg:text-xs text-gray-500 font-semibold py-1 lg:tracking-wide"
-                      >
-                        {d}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-7 gap-1.5 lg:gap-2 flex-1 content-start">
-                {Array.from({ length: firstDay }).map((_, i) => (
-                  <div key={`empty-${i}`} />
-                ))}
-                {Array.from({ length: daysInMonth }, (_, i) => {
-                  const day = i + 1;
-                  const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                  const cellDate = new Date(calYear, calMonth, day);
-                  cellDate.setHours(0, 0, 0, 0);
-                  const today0 = new Date(today);
-                  today0.setHours(0, 0, 0, 0);
-                  const isPast = cellDate.getTime() < today0.getTime();
-                  const isTooFar = cellDate.getTime() > limitDate.getTime();
-                  const isClosedBySchedule =
-                    bookingMeta != null &&
-                    !isDateOpenForPublicBooking(
-                      dateStr,
-                      bookingMeta.weeklyAvailability,
-                      bookingMeta.availabilityOverrides
-                    );
-                  const isDisabled = isPast || isTooFar || isClosedBySchedule;
-                  const disableKind: "past" | "tooFar" | "closed" | null = isDisabled
-                    ? isPast
-                      ? "past"
-                      : isTooFar
-                        ? "tooFar"
-                        : "closed"
-                    : null;
-                  const maxDays = bookingMeta?.maxFutureDays ?? maxFutureDays;
-                  const dayTitle =
-                    disableKind === "past"
-                      ? "Dia já passou. Não é possível agendar"
-                      : disableKind === "tooFar"
-                        ? `Fora do período permitido (máx. ${maxDays} dias à frente)`
-                        : disableKind === "closed"
-                          ? "Sem atendimento neste dia (fechado ou folga no calendário do negócio)"
-                          : `Dia ${day}: toque para agendar`;
-                  const isSelected = selectedDate === dateStr;
-                  return (
-                    <button
-                      key={day}
-                      type="button"
-                      disabled={isDisabled}
-                      title={dayTitle}
-                      aria-label={dayTitle}
-                      onClick={() => {
-                        setSelectedDate(dateStr);
-                        setSelectedTime(null);
-                        setStep(4);
-                      }}
-                      style={isSelected ? { boxShadow: `0 0 0 2px ${rgbaFromHex(accent, 0.35)}` } : undefined}
-                      className={cn(
-                        "aspect-square min-h-[2.5rem] sm:min-h-[2.75rem] lg:aspect-auto lg:min-h-[3.25rem] xl:min-h-[3.5rem] flex items-center justify-center rounded-xl text-sm lg:text-base font-semibold transition-all relative",
-                        isSelected
-                          ? "bg-[var(--public-accent)] text-black"
-                          : isDisabled
-                            ? disableKind === "past"
-                              ? isDark
-                                ? "text-white/25 cursor-not-allowed line-through decoration-white/20"
-                                : "text-gray-400 cursor-not-allowed line-through decoration-gray-300"
-                              : disableKind === "tooFar"
-                                ? isDark
-                                  ? "text-white/35 cursor-not-allowed ring-1 ring-inset ring-dashed ring-white/25"
-                                  : "text-gray-500 cursor-not-allowed ring-1 ring-inset ring-dashed ring-gray-300"
-                                : isDark
-                                  ? "text-white/40 cursor-not-allowed bg-white/[0.07]"
-                                  : "text-gray-500 cursor-not-allowed bg-gray-100"
-                            : isDark
-                              ? "text-white hover:bg-[color-mix(in_srgb,var(--public-accent)_20%,transparent)] hover:text-[var(--public-accent)]"
-                              : "text-gray-900 hover:bg-[color-mix(in_srgb,var(--public-accent)_15%,transparent)] hover:text-[var(--public-accent)]"
-                      )}
-                    >
-                      {day}
-                    </button>
-                  );
-                })}
-              </div>
-                  <div
-                    className={cn(
-                      "mt-auto pt-4 lg:pt-5 border-t flex flex-wrap gap-x-5 gap-y-2.5 text-[11px] lg:text-xs leading-tight",
-                      isDark ? "border-white/10 text-white/55" : "border-gray-100 text-gray-600"
-                    )}
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "size-6 lg:size-7 shrink-0 rounded-lg text-[10px] font-semibold flex items-center justify-center line-through",
-                          isDark ? "text-white/25 bg-transparent ring-1 ring-white/15" : "text-gray-400 ring-1 ring-gray-200"
-                        )}
-                      >
-                        9
-                      </span>
-                      Passou
-                    </span>
-                    <span className="inline-flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "size-6 lg:size-7 shrink-0 rounded-lg text-[10px] font-semibold flex items-center justify-center ring-1 ring-inset ring-dashed",
-                          isDark ? "text-white/35 ring-white/25" : "text-gray-500 ring-gray-300"
-                        )}
-                      >
-                        9
-                      </span>
-                      Limite de dias
-                    </span>
-                    <span className="inline-flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "size-6 lg:size-7 shrink-0 rounded-lg text-[10px] font-semibold flex items-center justify-center",
-                          isDark ? "text-white/40 bg-white/[0.07]" : "text-gray-500 bg-gray-100"
-                        )}
-                      >
-                        9
-                      </span>
-                      Fechado / folga
-                    </span>
-                  </div>
-                </div>
+                <PublicDatePicker
+                  calMonth={calMonth}
+                  calYear={calYear}
+                  onNavigate={(y, m) => {
+                    setCalYear(y);
+                    setCalMonth(m);
+                  }}
+                  selectedDate={selectedDate}
+                  onSelectDate={(dateStr) => {
+                    setSelectedDate(dateStr);
+                    setSelectedTime(null);
+                    setStep(4);
+                  }}
+                  bookingMeta={bookingMeta}
+                  maxFutureDaysFallback={maxFutureDays}
+                  accentColor={accent}
+                  isDark={isDark}
+                  today={today}
+                  cardClass={bookUi.card}
+                  titleClass={bookUi.title}
+                  navBtnClass={bookUi.navBtn}
+                />
                 <p
                   className={cn(
                     "text-xs mt-3 lg:mt-4 text-center lg:text-left",
@@ -1748,18 +1576,21 @@ function PublicPageInner() {
         )}
 
         {step === 5 && (
-          <div className="max-w-2xl lg:max-w-3xl">
+          <div className="max-w-2xl lg:max-w-4xl mx-auto">
             <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Confirmar agendamento</h2>
             <p className={cn("text-sm mb-6", bookUi.subtitle)}>Revise os detalhes antes de confirmar</p>
 
-            <div className="lg:grid lg:grid-cols-2 lg:gap-8 lg:items-start">
-              <div
-                className={cn(
-                  "border border-[color-mix(in_srgb,var(--public-accent)_30%,transparent)] rounded-2xl p-5 sm:p-6 mb-5",
-                  bookUi.card
-                )}
-              >
-                <div className="space-y-3">
+            <div className="lg:grid lg:grid-cols-5 lg:gap-8 lg:items-start">
+              <div className="lg:col-span-2 mb-5 lg:mb-0">
+                <div
+                  className={cn(
+                    "rounded-2xl border overflow-hidden mb-5 lg:mb-0",
+                    bookUi.card,
+                    "border-[color-mix(in_srgb,var(--public-accent)_25%,transparent)]"
+                  )}
+                >
+                  <div className="h-1 bg-[var(--public-accent)]" />
+                  <div className="p-5 sm:p-6 space-y-3">
                   {[
                     { icon: "category", label: "Serviço", value: selectedService?.name ?? "" },
                     ...(selectedService && selectedVariantIndex != null
@@ -1778,7 +1609,7 @@ function PublicPageInner() {
                       label: "Profissional",
                       value:
                         selectedCollab === "any"
-                          ? "Definido automaticamente (primeiro disponível no horário)"
+                          ? "Primeiro disponível no horário"
                           : (selectedCollab as CollabRow)?.name ?? "",
                     },
                     {
@@ -1801,23 +1632,40 @@ function PublicPageInner() {
                       highlight: true,
                     },
                   ].map((item) => (
-                    <div key={item.label} className="flex items-center gap-3">
-                      <span className={cn("material-symbols-outlined text-base w-5", bookUi.muted)}>{item.icon}</span>
-                      <span className={cn("text-sm w-24 flex-shrink-0", bookUi.muted)}>{item.label}</span>
+                    <div
+                      key={item.label}
+                      className={cn(
+                        "flex items-start gap-3 rounded-xl p-3 border",
+                        isDark ? "border-white/8 bg-white/[0.03]" : "border-gray-100 bg-gray-50/80"
+                      )}
+                    >
                       <span
                         className={cn(
-                          "text-sm font-semibold",
-                          item.highlight ? "text-[var(--public-accent)]" : bookUi.title
+                          "material-symbols-outlined text-lg shrink-0 size-9 rounded-lg flex items-center justify-center",
+                          bookUi.surfaceMuted,
+                          item.highlight ? "text-[var(--public-accent)]" : bookUi.muted
                         )}
                       >
-                        {item.value}
+                        {item.icon}
                       </span>
+                      <div className="min-w-0 flex-1">
+                        <p className={cn("text-[11px] font-semibold uppercase tracking-wide", bookUi.muted)}>{item.label}</p>
+                        <p
+                          className={cn(
+                            "text-sm font-semibold mt-0.5 leading-snug",
+                            item.highlight ? "text-[var(--public-accent)]" : bookUi.title
+                          )}
+                        >
+                          {item.value}
+                        </p>
+                      </div>
                     </div>
                   ))}
+                  </div>
                 </div>
               </div>
 
-              <div>
+              <div className="lg:col-span-3">
                 <div className="mb-5">
                   <label className={cn("text-sm font-medium block mb-2", bookUi.label)}>
                     Seu nome <span className={bookUi.muted}>(obrigatório)</span>
@@ -1916,9 +1764,9 @@ function PublicPageInner() {
         )}
       </main>
 
-      {step > 1 && (
-        <div className={cn("fixed bottom-0 left-0 right-0 z-30 p-4 backdrop-blur-md border-t", bookUi.bottomBar)}>
-          <div className="max-w-4xl lg:max-w-5xl mx-auto flex gap-3">
+      {step > 1 && selectedService && (
+        <div className={cn("fixed bottom-0 left-0 right-0 z-30 border-t backdrop-blur-md", bookUi.bottomBar)}>
+          <div className="max-w-4xl lg:max-w-5xl mx-auto px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={() => {
@@ -1931,23 +1779,27 @@ function PublicPageInner() {
                 setStep((step - 1) as Step);
               }}
               className={cn(
-                "flex items-center gap-2 px-5 py-3 border font-semibold rounded-xl text-sm transition-all",
+                "shrink-0 flex items-center justify-center size-10 rounded-xl border transition-colors",
                 isDark
                   ? "bg-white/5 border-white/10 hover:bg-white/10 text-white"
                   : "bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-900"
               )}
+              aria-label="Voltar"
             >
-              <span className="material-symbols-outlined text-base">arrow_back</span>
-              Voltar
+              <span className="material-symbols-outlined text-lg">arrow_back</span>
             </button>
-            <div className={cn("flex-1 flex items-center gap-2 rounded-xl px-4 text-sm overflow-hidden border", bookUi.chip)}>
-              {selectedService && (
-                <span className={cn("truncate", bookUi.muted)}>
-                  {selectedService.emoji ? `${selectedService.emoji} ` : ""}
-                  {selectedService.name}
-                  {selectedTime && ` · ${selectedTime}`}
-                </span>
-              )}
+            <div className={cn("flex-1 min-w-0 flex items-center gap-2 rounded-xl px-3 py-2 border text-xs sm:text-sm", bookUi.chip)}>
+              <span className="material-symbols-outlined text-base shrink-0 text-[var(--public-accent)]">spa</span>
+              <div className="min-w-0 flex-1">
+                <p className={cn("font-semibold truncate", bookUi.title)}>{selectedService.name}</p>
+                <p className={cn("text-[11px] truncate", bookUi.muted)}>
+                  {selectedTime
+                    ? `${selectedTime}${selectedDate ? ` · ${new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}` : ""}`
+                    : selectedDate
+                      ? new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+                      : formatCurrency(selectedBookingPriceCents / 100)}
+                </p>
+              </div>
             </div>
           </div>
         </div>

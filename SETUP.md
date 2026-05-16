@@ -104,7 +104,7 @@ No app o cliente vê **Plano**; no banco/código a assinatura paga usa **`paid_0
 
 ### 6.1 Projeto Stripe
 
-1. [Dashboard Stripe](https://dashboard.stripe.com) → **Products** → crie **20 preços** recorrentes mensais (BRL), ou um produto com 20 prices — como preferir organizar.
+1. [Dashboard Stripe](https://dashboard.stripe.com) → **Products** → crie **20 preços** recorrentes mensais (BRL), ou um produto com 20 prices - como preferir organizar.
 2. Copie o **Price ID** de cada um (`price_...`) e associe na ordem da escada em `lib/plans.ts` (`LADDER_PRICES`: R$ 29,90 … R$ 569,90).
 
 ### 6.2 Variáveis de ambiente
@@ -137,9 +137,9 @@ Opcional em dev se o redirect cair no domínio errado:
 ### 6.3 Webhook (tela “Selecionar eventos” / “Configure o destino”)
 
 1. **Tipo de destino:** use **Sua conta** (não use “Contas conectadas” a menos que você integre Stripe Connect).
-2. **URL do endpoint:** `https://seu-dominio.com/api/stripe/webhook` (produção) — caminho exato do app Next.js.
+2. **URL do endpoint:** `https://seu-dominio.com/api/stripe/webhook` (produção) - caminho exato do app Next.js.
 3. **Versão da API:** pode manter a versão sugerida pelo Stripe no painel; o SDK valida a assinatura do evento normalmente.
-4. **Eventos — não marque “Todos os eventos”.** Selecione **somente** estes três (é o que o código processa hoje):
+4. **Eventos - não marque “Todos os eventos”.** Selecione **somente** estes três (é o que o código processa hoje):
 
    | Evento | Para quê |
    |--------|-----------|
@@ -153,7 +153,7 @@ Opcional em dev se o redirect cair no domínio errado:
 
 ### 6.3.1 Pagamento só com cartão (por enquanto)
 
-No Stripe: **Settings → Payment methods** — deixe habilitado o que você aceita (ex.: **Cartões**). Boleto/PIX direto no Stripe podem ser adicionados depois; o app já usa Checkout + Customer Portal. PIX via AbacatePay seria um fluxo paralelo no futuro (fora deste webhook).
+No Stripe: **Settings → Payment methods** - deixe habilitado o que você aceita (ex.: **Cartões**). Boleto/PIX direto no Stripe podem ser adicionados depois; o app já usa Checkout + Customer Portal. PIX via AbacatePay seria um fluxo paralelo no futuro (fora deste webhook).
 
 ### 6.3.2 Faturas e portal
 
@@ -170,6 +170,6 @@ Ou os blocos equivalentes no final de `schema.sql`.
 
 ### 6.5 Fluxo no app
 
-- **Setup**: ao escolher plano pago, após criar o negócio o usuário é enviado ao **Stripe Checkout** (sem trial extra no Stripe — o teste de 7 dias é só o do app; `payment_method_collection: if_required`).
+- **Setup**: ao escolher plano pago, após criar o negócio o usuário é enviado ao **Stripe Checkout** (sem trial extra no Stripe - o teste de 7 dias é só o do app; `payment_method_collection: if_required`).
 - **Conta → Meu plano**: botões para assinar cada tier; **Fatura e método de pagamento** abre o **Customer Portal**.
 - O **webhook** atualiza `stripe_*` e `subscription_*` na tabela `businesses`.

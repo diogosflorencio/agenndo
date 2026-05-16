@@ -30,7 +30,7 @@ export function DashboardStatCarousel({ slides, autoIntervalMs = 4200, className
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [slide, setSlide] = useState(0);
-  const safeSlides = slides.length > 0 ? slides : [{ key: "empty", hint: "—", items: [] as DashboardStatItem[] }];
+  const safeSlides = slides.length > 0 ? slides : [{ key: "empty", hint: "-", items: [] as DashboardStatItem[] }];
   const n = safeSlides.length;
 
   useEffect(() => {

@@ -36,7 +36,7 @@ const FEATURE_CARDS: FeatureCard[] = [
   {
     icon: "groups",
     title: "Equipe e colaboradores",
-    desc: "Profissionais ativos na agenda, vínculo com serviços e — quando você configurar — conta do colaborador para comissões.",
+    desc: "Profissionais ativos na agenda, vínculo com serviços e - quando você configurar - conta do colaborador para comissões.",
   },
   {
     icon: "savings",
@@ -62,7 +62,7 @@ const FEATURE_CARDS: FeatureCard[] = [
   {
     icon: "palette",
     title: "Personalização",
-    desc: "Logo, cores, banner, galeria e redes — página alinhada à sua marca.",
+    desc: "Logo, cores, banner, galeria e redes - página alinhada à sua marca.",
   },
   {
     icon: "notifications_active",
@@ -131,7 +131,7 @@ const MOCK_NOTIFICATION_TOASTS: {
     key: "client_reply",
     icon: "mark_email_read",
     title: "Cliente confirmou",
-    subtitle: "Comparece às 14:00 — link na mensagem",
+    subtitle: "Comparece às 14:00 - link na mensagem",
   },
   {
     key: "slot_hold",
@@ -287,14 +287,14 @@ export default function HomePage() {
           <div className="text-center mb-12 max-w-3xl mx-auto">
             <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-3">Plataforma</p>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              O que você já tem no painel —{" "}
+              O que você já tem no painel -{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-400">
                 e o que segue evoluindo
               </span>
             </h2>
             <p className="text-gray-400 leading-relaxed">
               Lista objetiva do que o Agenndo cobre hoje (agenda até analytics). Itens com etiqueta indicam áreas em que o produto
-              tem recebido melhorias recentes — não é só “novidade”, é o conjunto do sistema que já descrevemos na página,
+              tem recebido melhorias recentes - não é só “novidade”, é o conjunto do sistema que já descrevemos na página,
               agora organizado para você comparar com o que precisa no dia a dia.
             </p>
           </div>
@@ -330,7 +330,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Roadmap — visão futura sem overselling */}
+      {/* Roadmap - visão futura sem overselling */}
       <section className="py-16 bg-[#080c0a] border-y border-white/5">
         <div className="max-w-3xl mx-auto px-6 text-center">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Roadmap</p>
@@ -338,8 +338,8 @@ export default function HomePage() {
           <p className="text-gray-400 text-sm leading-relaxed">
             Estamos preparando{" "}
             <strong className="text-gray-200">recebimento de pagamentos</strong> com possibilidade de conectar o{" "}
-            <strong className="text-gray-200">Mercado Pago</strong> — o que abrirá caminho para cobrar{" "}
-            <strong className="text-gray-200">sinal ou caução</strong> em agendamentos — e{" "}
+            <strong className="text-gray-200">Mercado Pago</strong> - o que abrirá caminho para cobrar{" "}
+            <strong className="text-gray-200">sinal ou caução</strong> em agendamentos - e{" "}
             <strong className="text-gray-200">emissão automática de nota fiscal</strong> alinhada a cada atendimento. Sem data
             anunciada aqui; detalhes virão nas atualizações do produto.
           </p>
@@ -719,7 +719,7 @@ function PhoneMockup({ large = false }: { large?: boolean }) {
           </div>
         </header>
 
-        {/* Notification toast — cicla com o mesmo índice das “novidades” */}
+        {/* Notification toast - cicla com o mesmo índice das “novidades” */}
         <div className="relative z-20 shrink-0 px-3 -mt-1 pt-1 pb-2 pointer-events-none select-none">
           <AnimatePresence mode="wait">
             <motion.div

@@ -63,7 +63,7 @@ function snapGrid(openMin: number, closeMin: number): { startHour: number; endHo
  * Faixa vertical da grade (hora cheia final exclusiva no mesmo esquema de `generateHalfHourSlots`).
  * Dia: conforme expediente daquele dia.
  * Semana: união dos expedientes dos 7 dias (cobre o “dia mais longo” e todos os outros).
- * Mês: não usa grade — retorna fallback.
+ * Mês: não usa grade - retorna fallback.
  */
 export function computeAgendaGridBounds(opts: {
   view: "day" | "week" | "month";

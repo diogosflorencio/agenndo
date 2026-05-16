@@ -3,8 +3,8 @@
  * viram Z:\projeto\C:\Users\... (inválido). Solução: manter distDir como ".next" e criar
  * junction (Win) ou symlink (Unix) .next -> pasta em disco local.
  *
- * AGENNDO_LOCAL_NEXT_DIST=0 — não usa junction (recomendado: .next fica ao lado de node_modules).
- * AGENNDO_LOCAL_NEXT_DIST=1 — junction .next → AppData (só use se souber o impacto; em projeto em Z: e
+ * AGENNDO_LOCAL_NEXT_DIST=0 - não usa junction (recomendado: .next fica ao lado de node_modules).
+ * AGENNDO_LOCAL_NEXT_DIST=1 - junction .next → AppData (só use se souber o impacto; em projeto em Z: e
  *   node_modules em Z:, emitir server em C:\ quebra require('next/...') nas API routes → 404).
  */
 import fs from "fs";

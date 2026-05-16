@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   effectiveDaySchedule,
+  isDateOpenForPublicBooking,
   buildPublicSlotTimelineForPool,
   buildCalendarOnlyIntervals,
   buildCalendarOnlyIntervalsForPool,
@@ -142,7 +143,19 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Data além do limite de agendamento" }, { status: 400 });
   }
 
-  const schedule = effectiveDaySchedule(dateStr, (avRows ?? []) as AvailabilityDbRow[], (ovRows ?? []) as OverrideDbRow[]);
+  const av = (avRows ?? []) as AvailabilityDbRow[];
+  const ov = (ovRows ?? []) as OverrideDbRow[];
+  if (!isDateOpenForPublicBooking(dateStr, av, ov)) {
+    return NextResponse.json({
+      slots: [] as string[],
+      timeline: [] as PublicSlotCell[],
+      collaborators: [] as string[],
+      dayTimeline: null,
+      closed: true,
+    });
+  }
+
+  const schedule = effectiveDaySchedule(dateStr, av, ov);
 
   const { data: apts } = await admin
     .from("appointments")

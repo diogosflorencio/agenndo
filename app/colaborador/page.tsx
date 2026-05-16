@@ -4,7 +4,7 @@ import { getEffectiveUserId } from "@/lib/supabase/effective-user";
 import { getSiteUrl } from "@/lib/site-url";
 import { ColaboradorEntrada } from "./colaborador-entrada";
 
-const title = "Colaborador — entrar e ver comissões | Agenndo";
+const title = "Colaborador - entrar e ver comissões | Agenndo";
 const description =
   "Instruções para profissionais da equipe: use o mesmo e-mail que o empregador vinculou e entre com Google em agenndo.com/colaborador para acessar Minhas comissões.";
 

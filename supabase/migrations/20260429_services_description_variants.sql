@@ -7,6 +7,6 @@ ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS service_variant_index S
 ALTER TABLE public.appointments ADD COLUMN IF NOT EXISTS service_variant_label TEXT;
 
 COMMENT ON COLUMN public.services.description_public IS 'Texto opcional visível na página pública de agendamento.';
-COMMENT ON COLUMN public.services.variant_gallery IS 'Array JSON: [{url, title?, description?}] até 3 itens — variações/opções do serviço.';
+COMMENT ON COLUMN public.services.variant_gallery IS 'Array JSON: [{url, title?, description?}] até 3 itens - variações/opções do serviço.';
 COMMENT ON COLUMN public.appointments.service_variant_index IS 'Índice (0-based) em variant_gallery quando o cliente escolhe uma opção; NULL se não aplicável.';
 COMMENT ON COLUMN public.appointments.service_variant_label IS 'Título da opção no momento do agendamento (snapshot).';

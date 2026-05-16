@@ -193,6 +193,9 @@ export async function POST(req: Request) {
   }
 
   const schedule = effectiveDaySchedule(dateStr, (avRows ?? []) as AvailabilityDbRow[], (ovRows ?? []) as OverrideDbRow[]);
+  if (!schedule.active) {
+    return NextResponse.json({ error: "Sem atendimento neste dia" }, { status: 400 });
+  }
 
   const { data: apts } = await admin
     .from("appointments")

@@ -8,7 +8,7 @@ CREATE INDEX IF NOT EXISTS collaborators_auth_user_id_idx ON public.collaborator
 
 COMMENT ON COLUMN public.collaborators.auth_user_id IS 'Conta Supabase vinculada: acesso a Minhas comissões (RLS).';
 
--- Taxas futuras (ex.: Mercado Pago) — base líquida = price_cents - processor_fee_cents
+-- Taxas futuras (ex.: Mercado Pago) - base líquida = price_cents - processor_fee_cents
 ALTER TABLE public.appointments
   ADD COLUMN IF NOT EXISTS processor_fee_cents BIGINT NOT NULL DEFAULT 0;
 
