@@ -829,17 +829,12 @@ function PublicPageInner() {
                     disabled={bookingBlocked}
                     onClick={() => startBooking(service)}
                     className={cn(
-                      "group relative flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl border text-left transition-all overflow-hidden",
+                      "group flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl border text-left transition-all",
                       cardCls,
                       bookingBlocked ? "opacity-60 cursor-not-allowed" : `${cardHover} hover:-translate-y-0.5`
                     )}
                   >
-                    <span
-                      className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl opacity-80"
-                      style={{ backgroundColor: accent }}
-                      aria-hidden
-                    />
-                    <div className={cn("size-14 rounded-xl overflow-hidden flex items-center justify-center text-2xl shrink-0 ml-2", surfaceMuted)}>
+                    <div className={cn("size-14 rounded-xl overflow-hidden flex items-center justify-center text-2xl shrink-0", surfaceMuted)}>
                       {service.image_url ? (
                         <Image src={service.image_url} alt="" width={56} height={56} className="size-full object-cover" unoptimized />
                       ) : service.emoji ? (
