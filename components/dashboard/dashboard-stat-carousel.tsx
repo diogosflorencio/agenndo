@@ -184,6 +184,25 @@ export function DashboardStatCarousel({ slides, autoIntervalMs = 4200, className
     [viewportWidth, x, trackLen, n]
   );
 
+  const goPrev = useCallback(() => {
+    if (!loopEnabled || !viewportWidth) return;
+    stopAuto();
+    goTo(positionRef.current - 1);
+  }, [loopEnabled, viewportWidth, stopAuto, goTo]);
+
+  const goNext = useCallback(() => {
+    if (!loopEnabled || !viewportWidth) return;
+    stopAuto();
+    goTo(positionRef.current + 1);
+  }, [loopEnabled, viewportWidth, stopAuto, goTo]);
+
+  const navBtnClass = cn(
+    "inline-flex size-6 items-center justify-center rounded-full border transition-colors",
+    isDark
+      ? "border-white/12 bg-white/[0.06] text-white/70 hover:border-primary/45 hover:bg-primary/15 hover:text-primary"
+      : "border-gray-200/90 bg-white text-gray-500 shadow-sm hover:border-primary/35 hover:bg-primary/10 hover:text-primary"
+  );
+
   useLayoutEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
@@ -236,15 +255,25 @@ export function DashboardStatCarousel({ slides, autoIntervalMs = 4200, className
           {panel.hint}
         </p>
         {loopEnabled ? (
-          <p
-            className={cn(
-              "shrink-0 text-[10px] font-medium flex items-center gap-0.5",
-              isDark ? "text-primary/75" : "text-primary"
-            )}
-          >
-            <span className="material-symbols-outlined text-[14px] leading-none">swipe</span>
-            Arraste para o lado
-          </p>
+          <>
+            <p
+              className={cn(
+                "shrink-0 text-[10px] font-medium flex items-center gap-0.5 md:hidden",
+                isDark ? "text-primary/75" : "text-primary"
+              )}
+            >
+              <span className="material-symbols-outlined text-[14px] leading-none">swipe</span>
+              Arraste para o lado
+            </p>
+            <div className="hidden md:flex items-center gap-1 shrink-0" aria-label="Controles do carrossel">
+              <button type="button" onClick={goPrev} className={navBtnClass} aria-label="Painel anterior">
+                <span className="material-symbols-outlined text-[16px] leading-none">chevron_left</span>
+              </button>
+              <button type="button" onClick={goNext} className={navBtnClass} aria-label="Próximo painel">
+                <span className="material-symbols-outlined text-[16px] leading-none">chevron_right</span>
+              </button>
+            </div>
+          </>
         ) : null}
       </div>
 
