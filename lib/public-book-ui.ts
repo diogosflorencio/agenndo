@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
-/** Caixa de emoji/ícone — centralização consistente na página pública. */
-export const publicMediaTileClass = "flex items-center justify-center size-full shrink-0";
+/** Centraliza emoji/ícone dentro de caixa com tamanho fixo (não usar `size-full` aqui — conflita com `size-14` etc.). */
+export const publicMediaTileClass = "flex items-center justify-center shrink-0";
 
 export function publicEmojiClass(size: "sm" | "md" | "lg" = "md") {
   const text = { sm: "text-2xl", md: "text-[1.65rem]", lg: "text-3xl" }[size];
