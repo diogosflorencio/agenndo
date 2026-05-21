@@ -6,8 +6,11 @@ import { timeToMinutes, minutesToTime, type DaySchedule } from "@/lib/disponibil
 import {
   BOOKING_TZ,
   isPublicStartMinuteBookable,
+  isPublicStartMinuteBookableForPool,
   nearestBookableStartMinute,
+  nearestBookableStartMinuteForPool,
   stepBookableStartMinute,
+  stepBookableStartMinuteForPool,
   listBookingGridStartMinutes,
   type AppointmentBlockRow,
   type BlockDbRow,
@@ -35,6 +38,9 @@ export type PublicDayTimelinePayload = {
   blocks: BlockDbRow[];
   dateStr: string;
   suggestedStartMin: number | null;
+  /** Quando “qualquer profissional”: validar disponibilidade em todo o pool. */
+  poolCollaboratorIds?: string[];
+  bookingAnyMulti?: boolean;
 };
 
 type Props = {
@@ -47,17 +53,26 @@ type Props = {
 };
 
 function canBookAt(m: number, payload: PublicDayTimelinePayload, now: Date): boolean {
-  return isPublicStartMinuteBookable({
+  const base = {
     startMinute: m,
     dateStr: payload.dateStr,
     schedule: payload.schedule as DaySchedule,
     durationMinutes: payload.durationMinutes,
     bufferMinutes: payload.bufferMinutes,
-    collaboratorId: payload.viewCollaboratorId,
     appointments: payload.appointments,
     blocks: payload.blocks,
     minAdvanceHours: payload.minAdvanceHours,
     now,
+  };
+  if (payload.bookingAnyMulti && payload.poolCollaboratorIds && payload.poolCollaboratorIds.length > 0) {
+    return isPublicStartMinuteBookableForPool({
+      ...base,
+      poolCollaboratorIds: payload.poolCollaboratorIds,
+    });
+  }
+  return isPublicStartMinuteBookable({
+    ...base,
+    collaboratorId: payload.viewCollaboratorId,
   });
 }
 
@@ -314,8 +329,14 @@ export function PublicBookingDayTimeline({
   );
 
   const snapToBookable = useCallback(
-    (desired: number) => nearestBookableStartMinute({ ...baseCollectParams, now: new Date() }, desired),
-    [baseCollectParams]
+    (desired: number) => {
+      const now = new Date();
+      if (payload.bookingAnyMulti && payload.poolCollaboratorIds?.length) {
+        return nearestBookableStartMinuteForPool(payload.poolCollaboratorIds, { ...baseCollectParams, now }, desired);
+      }
+      return nearestBookableStartMinute({ ...baseCollectParams, now }, desired);
+    },
+    [baseCollectParams, payload.bookingAnyMulti, payload.poolCollaboratorIds]
   );
 
   const gridStarts = useMemo(
@@ -458,12 +479,17 @@ export function PublicBookingDayTimeline({
 
   const keyHandler = (e: React.KeyboardEvent) => {
     const params = { ...baseCollectParams, now: new Date() };
+    const pool = payload.bookingAnyMulti ? payload.poolCollaboratorIds : undefined;
+    const stepFn = (cur: number, dir: -1 | 1) =>
+      pool?.length
+        ? stepBookableStartMinuteForPool(pool, params, cur, dir)
+        : stepBookableStartMinute(params, cur, dir);
     const jumps = e.shiftKey ? 4 : 1;
     if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
       e.preventDefault();
       let cur = startMin;
       for (let i = 0; i < jumps; i++) {
-        const n = stepBookableStartMinute(params, cur, -1);
+        const n = stepFn(cur, -1);
         if (n == null) break;
         cur = n;
       }
@@ -473,7 +499,7 @@ export function PublicBookingDayTimeline({
       e.preventDefault();
       let cur = startMin;
       for (let i = 0; i < jumps; i++) {
-        const n = stepBookableStartMinute(params, cur, 1);
+        const n = stepFn(cur, 1);
         if (n == null) break;
         cur = n;
       }

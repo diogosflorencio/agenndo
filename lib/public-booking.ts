@@ -68,8 +68,52 @@ export type AppointmentBlockRow = {
   time_start: string;
   time_end: string;
   status: string;
-  collaborator_id: string;
+  collaborator_id: string | null;
+  /** Duração do serviço no momento do agendamento (evita `time_end` incorreto no banco). */
+  service_duration_minutes?: number | null;
 };
+
+/** Normaliza linhas da API (com join opcional em `services`). */
+export function mapAppointmentBlockRows(
+  rows: {
+    time_start: string;
+    time_end: string;
+    status: string;
+    collaborator_id: string | null;
+    services?: { duration_minutes: number | null } | { duration_minutes: number | null }[] | null;
+  }[]
+): AppointmentBlockRow[] {
+  return (rows ?? []).map((r) => {
+    const svc = r.services;
+    const dur =
+      svc == null
+        ? null
+        : Array.isArray(svc)
+          ? svc[0]?.duration_minutes
+          : svc.duration_minutes;
+    return {
+      time_start: r.time_start,
+      time_end: r.time_end,
+      status: r.status,
+      collaborator_id: r.collaborator_id,
+      service_duration_minutes: dur != null ? Number(dur) : null,
+    };
+  });
+}
+
+/** Fim ocupado do atendimento em minutos (usa o maior entre `time_end` e início+duração do serviço). */
+export function appointmentOccupiedEndMinute(apt: AppointmentBlockRow): number {
+  const s = timeToMinutes(String(apt.time_start).slice(0, 5));
+  let e = timeToMinutes(String(apt.time_end).slice(0, 5));
+  const dur = apt.service_duration_minutes;
+  if (dur != null && Number.isFinite(dur) && dur > 0) {
+    e = Math.max(e, s + dur);
+  }
+  if (!Number.isFinite(e) || e <= s) {
+    e = s + Math.max(1, dur != null && dur > 0 ? dur : 1);
+  }
+  return e;
+}
 
 export type BlockDbRow = {
   collaborator_id: string | null;
@@ -424,7 +468,8 @@ export function appointmentBlocksPublicCalendar(status: string | null | undefine
   const s = String(status ?? "")
     .toLowerCase()
     .trim();
-  if (s === "cancelado" || s === "compareceu") return false;
+  // Cancelado / faltou / já atendido liberam o horário para novos agendamentos.
+  if (s === "cancelado" || s === "compareceu" || s === "faltou") return false;
   return true;
 }
 
@@ -432,7 +477,23 @@ function sameCollaboratorId(a: string | null | undefined, b: string): boolean {
   return String(a ?? "").trim() === String(b).trim();
 }
 
-/** Intervalos bloqueados em minutos desde meia-noite (início inclusivo, fim exclusivo na prática de overlap). */
+function mergeMinuteIntervals(intervals: { lo: number; hi: number }[]): { lo: number; hi: number }[] {
+  if (intervals.length === 0) return [];
+  const sorted = [...intervals].sort((a, b) => a.lo - b.lo || a.hi - b.hi);
+  const out: { lo: number; hi: number }[] = [{ ...sorted[0]! }];
+  for (let i = 1; i < sorted.length; i++) {
+    const cur = sorted[i]!;
+    const last = out[out.length - 1]!;
+    if (cur.lo <= last.hi) {
+      last.hi = Math.max(last.hi, cur.hi);
+    } else {
+      out.push({ ...cur });
+    }
+  }
+  return out;
+}
+
+/** Intervalos bloqueados em minutos desde meia-noite (ocupação do profissional + folga após atendimento). */
 export function buildBlockedIntervals(
   dateStr: string,
   collaboratorId: string,
@@ -442,11 +503,13 @@ export function buildBlockedIntervals(
 ): { lo: number; hi: number }[] {
   const intervals: { lo: number; hi: number }[] = [];
   for (const apt of appointments) {
-    if (!sameCollaboratorId(apt.collaborator_id, collaboratorId)) continue;
     if (!appointmentBlocksPublicCalendar(apt.status)) continue;
+    const aptCid = apt.collaborator_id;
+    // Sem profissional definido: bloqueia todos (evita encaixe duplicado em legado).
+    if (aptCid != null && !sameCollaboratorId(aptCid, collaboratorId)) continue;
     const s = timeToMinutes(String(apt.time_start).slice(0, 5));
-    const e = timeToMinutes(String(apt.time_end).slice(0, 5));
-    intervals.push({ lo: s, hi: e + bufferMin });
+    const e = appointmentOccupiedEndMinute(apt);
+    intervals.push({ lo: s, hi: e + Math.max(0, bufferMin) });
   }
   for (const bl of blocks) {
     if (bl.collaborator_id != null && bl.collaborator_id !== collaboratorId) continue;
@@ -455,7 +518,7 @@ export function buildBlockedIntervals(
     const part = intervalMinutesOnDay(dateStr, bs, be);
     if (part) intervals.push(part);
   }
-  return intervals;
+  return mergeMinuteIntervals(intervals);
 }
 
 /** Lista de inícios livres na grade (duração+folga), para API book / compat. */
@@ -543,6 +606,71 @@ export function isPublicStartMinuteBookable(params: {
   }).has(params.startMinute);
 }
 
+/** União dos inícios livres de todos os profissionais do pool. */
+export function collectAvailableStartMinutesForPool(
+  poolCollaboratorIds: string[],
+  params: Omit<CollectAvailableStartParams, "collaboratorId">
+): Set<number> {
+  const out = new Set<number>();
+  for (const collaboratorId of poolCollaboratorIds) {
+    collectAvailableStartMinutes({ ...params, collaboratorId }).forEach((m) => out.add(m));
+  }
+  return out;
+}
+
+export function nearestBookableStartMinuteForPool(
+  poolCollaboratorIds: string[],
+  params: Omit<CollectAvailableStartParams, "collaboratorId">,
+  desiredMinute: number
+): number | null {
+  const set = collectAvailableStartMinutesForPool(poolCollaboratorIds, params);
+  if (set.size === 0) return null;
+  let best: number | null = null;
+  let bestDist = Infinity;
+  set.forEach((t) => {
+    const d = Math.abs(t - desiredMinute);
+    if (d < bestDist || (d === bestDist && best !== null && t < best)) {
+      bestDist = d;
+      best = t;
+    }
+  });
+  return best;
+}
+
+export function stepBookableStartMinuteForPool(
+  poolCollaboratorIds: string[],
+  params: Omit<CollectAvailableStartParams, "collaboratorId">,
+  current: number,
+  direction: -1 | 1
+): number | null {
+  const arr = Array.from(collectAvailableStartMinutesForPool(poolCollaboratorIds, params)).sort((a, b) => a - b);
+  if (arr.length === 0) return null;
+  let idx = arr.indexOf(current);
+  if (idx < 0) {
+    let bestI = 0;
+    for (let i = 1; i < arr.length; i++) {
+      if (Math.abs(arr[i]! - current) < Math.abs(arr[bestI]! - current)) bestI = i;
+    }
+    idx = bestI;
+  }
+  const n = idx + direction;
+  if (n < 0 || n >= arr.length) return null;
+  return arr[n]!;
+}
+
+/** “Qualquer profissional”: livre se pelo menos um do pool puder atender no minuto. */
+export function isPublicStartMinuteBookableForPool(
+  params: Omit<Parameters<typeof isPublicStartMinuteBookable>[0], "collaboratorId"> & {
+    poolCollaboratorIds: string[];
+  }
+): boolean {
+  const { poolCollaboratorIds, ...rest } = params;
+  if (poolCollaboratorIds.length === 0) return false;
+  return poolCollaboratorIds.some((collaboratorId) =>
+    isPublicStartMinuteBookable({ ...rest, collaboratorId })
+  );
+}
+
 /** Só bloqueios de calendário (sem agendamentos), para desenhar camada separada na linha do tempo. */
 export function buildCalendarOnlyIntervals(
   dateStr: string,
@@ -586,7 +714,7 @@ export function listAppointmentsForCollaboratorDay(
     .filter((a) => sameCollaboratorId(a.collaborator_id, collaboratorId) && appointmentBlocksPublicCalendar(a.status))
     .map((a) => ({
       timeStart: String(a.time_start).slice(0, 5),
-      timeEnd: String(a.time_end).slice(0, 5),
+      timeEnd: minutesToTime(appointmentOccupiedEndMinute(a)),
     }));
 }
 
@@ -605,7 +733,7 @@ export function listAppointmentsForPoolDay(
     )
     .map((a) => ({
       timeStart: String(a.time_start).slice(0, 5),
-      timeEnd: String(a.time_end).slice(0, 5),
+      timeEnd: minutesToTime(appointmentOccupiedEndMinute(a)),
     }))
     .sort((x, y) => timeToMinutes(x.timeStart) - timeToMinutes(y.timeStart));
 }

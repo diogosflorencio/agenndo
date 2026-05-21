@@ -2,10 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
-  DashboardFullScreenOverlay,
-  useFullScreenOverlayRequestClose,
-} from "@/components/dashboard/dashboard-full-screen-overlay";
+  DashboardDialog,
+  useDashboardDialogRequestClose,
+} from "@/components/dashboard/dashboard-dialog";
+import { getDashboardDialogUi } from "@/lib/dashboard-dialog-ui";
 import { HotkeyHint } from "@/lib/dashboard-hotkeys";
+import { useTheme } from "@/lib/theme-context";
+import { cn } from "@/lib/utils";
 
 function normDecimalInput(s: string) {
   return s.trim().replace(/\s/g, "").replace(",", ".");
@@ -25,22 +28,25 @@ type Props = {
 function AppointmentValueFooter({
   loading,
   confirmLabel,
-  value,
   onConfirmAction,
+  ui,
 }: {
   loading: boolean;
   confirmLabel: string;
-  value: string;
   onConfirmAction: () => boolean;
+  ui: ReturnType<typeof getDashboardDialogUi>;
 }) {
-  const requestClose = useFullScreenOverlayRequestClose();
+  const requestClose = useDashboardDialogRequestClose();
   return (
     <>
       <button
         type="button"
         disabled={loading}
         onClick={() => void requestClose()}
-        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 pr-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 disabled:opacity-50 sm:w-auto sm:min-w-[140px] lg:pr-[4.75rem]"
+        className={cn(
+          "relative inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 sm:w-auto sm:min-w-[120px]",
+          ui.btnSecondary
+        )}
       >
         <span className="flex min-w-0 flex-1 justify-center">Cancelar</span>
         <HotkeyHint action="cancel" layout="floating-end" />
@@ -49,7 +55,7 @@ function AppointmentValueFooter({
         type="button"
         disabled={loading}
         onClick={() => onConfirmAction()}
-        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-black transition-colors hover:opacity-90 disabled:opacity-50 sm:min-w-[200px] sm:w-auto lg:pr-[4.75rem]"
+        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 pr-4 text-sm font-bold text-black transition-colors hover:opacity-90 disabled:opacity-50 sm:min-w-[180px] sm:w-auto lg:pr-[4.75rem]"
       >
         <span className="flex min-w-0 flex-1 justify-center">{loading ? "Salvando…" : confirmLabel}</span>
         {!loading ? <HotkeyHint action="save" variant="primary" layout="floating-end" /> : null}
@@ -68,6 +74,9 @@ export function AppointmentValueModal({
   onClose,
   onConfirm,
 }: Props) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const ui = getDashboardDialogUi(isDark);
   const [value, setValue] = useState(initialValueReais);
 
   useEffect(() => {
@@ -97,16 +106,15 @@ export function AppointmentValueModal({
     applyConfirm();
   };
 
-  if (!open) return null;
-
   return (
-    <DashboardFullScreenOverlay
+    <DashboardDialog
+      open={open}
       title={title}
       subtitle={subtitle}
       onClose={() => !loading && onClose()}
       closeOnEscape={!loading}
       closeBlocked={loading}
-      contentMaxWidthClass="max-w-lg"
+      maxWidthClass="max-w-md"
       dirty={modalDirty}
       onSaveBeforeClose={persistValue}
       hotkeys={{
@@ -116,13 +124,13 @@ export function AppointmentValueModal({
         <AppointmentValueFooter
           loading={loading}
           confirmLabel={confirmLabel}
-          value={value}
           onConfirmAction={applyConfirm}
+          ui={ui}
         />
       }
     >
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-        <label className="block text-sm font-medium text-gray-700">
+      <div className={cn("rounded-xl border p-4 sm:p-5", ui.surface)}>
+        <label className={cn("block text-sm font-medium", ui.label)}>
           Valor cobrado (R$)
           <input
             type="text"
@@ -131,14 +139,17 @@ export function AppointmentValueModal({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="ex.: 80 ou 80,50"
-            className="mt-2 w-full rounded-xl border border-gray-200 px-4 py-4 text-2xl font-semibold tabular-nums text-gray-900 outline-none focus:border-primary sm:text-3xl"
+            className={cn(
+              "mt-2 w-full rounded-xl border px-4 py-3 text-2xl font-semibold tabular-nums outline-none focus:border-primary sm:text-3xl",
+              ui.input
+            )}
           />
         </label>
-        <p className="mt-4 text-sm leading-relaxed text-gray-500">
-          Pode ser diferente do preço do serviço (desconto, taxa extra, etc.). O financeiro e o total do cliente usam este
-          valor.
+        <p className={cn("mt-3 text-sm leading-relaxed", ui.muted)}>
+          Pode ser diferente do preço do serviço (desconto, taxa extra, etc.). O financeiro e o total do cliente usam
+          este valor.
         </p>
       </div>
-    </DashboardFullScreenOverlay>
+    </DashboardDialog>
   );
 }

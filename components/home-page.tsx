@@ -93,7 +93,7 @@ const MOCK_STAT_SLIDES: { key: string; hint: string; items: MockStat[] }[] = [
     key: "financeiro",
     hint: "Financeiro & serviços",
     items: [
-      { icon: "payments", label: "Hoje R$", value: "1,2k", trend: "+8%", trendColor: "text-primary" },
+      { icon: "payments", label: "Receita", value: "R$ 1,2k", trend: "+8%", trendColor: "text-primary" },
       { icon: "savings", label: "Comissões", value: "18", trend: "3 pendentes", trendColor: "text-amber-400" },
       { icon: "category", label: "Serviços", value: "14", trend: "ativos", trendColor: "text-gray-400" },
     ],

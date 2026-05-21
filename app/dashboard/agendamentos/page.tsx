@@ -13,6 +13,7 @@ import {
 } from "@/lib/appointment-finance";
 import { voidCommissionsForAppointments } from "@/lib/commission-sync";
 import { AppointmentValueModal } from "@/components/appointment-value-modal";
+import { AppointmentDetailModal } from "@/components/dashboard/appointment-detail-modal";
 import { useAppAlert } from "@/components/app-alert-provider";
 import { AgendaScheduleView, type AgendaViewMode } from "@/components/agenda-schedule-view";
 import { localISODate } from "@/lib/agenda-calendar-helpers";
@@ -67,6 +68,7 @@ export default function AgendamentosPage() {
     apt: AptRow;
     mode: "compareceu" | "edit_paid";
   } | null>(null);
+  const [detailAptId, setDetailAptId] = useState<string | null>(null);
 
   const fetchRange = useMemo(() => {
     const d = new Date(selectedDate + "T12:00:00");
@@ -320,6 +322,8 @@ export default function AgendamentosPage() {
     return d.toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   }, [selectedDate]);
 
+  const detailApt = detailAptId ? appointments.find((a) => a.id === detailAptId) ?? null : null;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -407,9 +411,7 @@ export default function AgendamentosPage() {
         onShowCancelled={setShowCancelled}
         canCreate={canCreateAppointments}
         availability={availability}
-        onAppointmentClick={(id) => {
-          document.getElementById(`apt-row-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
-        }}
+        onAppointmentClick={(id) => setDetailAptId(id)}
       />
 
       <section className="mt-10 border-t border-gray-200 pt-8">
@@ -496,16 +498,32 @@ export default function AgendamentosPage() {
                   const serviceName = apt.services?.name ?? "-";
                   const collabName = apt.collaborators?.name ?? "-";
                   const isSelected = selected.includes(apt.id);
+                  const waHref = apt.client_id ? phoneToWhatsAppHref(apt.clients?.phone) : null;
                   return (
                     <div
                       key={apt.id}
                       id={`apt-row-${apt.id}`}
-                      className={`bg-white border rounded-xl overflow-hidden transition-all scroll-mt-24 ${
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setDetailAptId(apt.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setDetailAptId(apt.id);
+                        }
+                      }}
+                      className={`bg-white border rounded-xl overflow-hidden transition-all scroll-mt-24 cursor-pointer ${
                         isSelected ? "border-primary/60" : "border-gray-200 hover:border-gray-300"
                       }`}
                     >
                       <div className="p-4 flex gap-3 items-start">
-                        <input type="checkbox" checked={isSelected} onChange={() => toggleSelect(apt.id)} className="accent-primary mt-0.5" />
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => toggleSelect(apt.id)}
+                          className="accent-primary mt-0.5"
+                        />
                         <div className="flex flex-col items-center w-14 flex-shrink-0">
                           <span className="text-gray-900 font-bold text-sm">{formatTime(apt.time_start)}</span>
                           <span className="text-gray-500 text-xs">{formatTime(apt.time_end)}</span>
@@ -531,7 +549,7 @@ export default function AgendamentosPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="px-4 pb-3 flex flex-wrap gap-2">
+                      <div className="px-4 pb-3 flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
                         {apt.client_id ? (
                           <Link
                             href={`/dashboard/clientes/${apt.client_id}`}
@@ -546,8 +564,10 @@ export default function AgendamentosPage() {
                         )}
                         <button
                           type="button"
+                          disabled={!waHref}
+                          title={!waHref ? "Cliente sem telefone cadastrado" : "Abrir WhatsApp"}
                           onClick={() => openClientWhatsApp(apt)}
-                          className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-600 hover:text-gray-900 text-xs rounded-lg transition-colors"
+                          className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-600 hover:text-gray-900 text-xs rounded-lg transition-colors disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:text-gray-600 disabled:hover:bg-white/5"
                         >
                           <span className="material-symbols-outlined text-xs">chat</span> WhatsApp
                         </button>
@@ -590,6 +610,16 @@ export default function AgendamentosPage() {
           </div>
         </div>
       </section>
+
+      <AppointmentDetailModal
+        apt={detailApt}
+        busyId={busyId}
+        onClose={() => setDetailAptId(null)}
+        onWhatsApp={openClientWhatsApp}
+        onCompareceu={(apt) => setMoneyModal({ apt, mode: "compareceu" })}
+        onFaltou={(apt) => void runMarkFaltou(apt)}
+        onEditPaid={(apt) => setMoneyModal({ apt, mode: "edit_paid" })}
+      />
 
       <AppointmentValueModal
         open={moneyModal != null}

@@ -10,9 +10,9 @@ import {
   listAppointmentsForPoolDay,
   type AvailabilityDbRow,
   type OverrideDbRow,
-  type AppointmentBlockRow,
   type BlockDbRow,
   type PublicSlotCell,
+  mapAppointmentBlockRows,
   BOOKING_TZ,
 } from "@/lib/public-booking";
 import { timeToMinutes } from "@/lib/disponibilidade";
@@ -159,11 +159,11 @@ export async function GET(req: Request) {
 
   const { data: apts } = await admin
     .from("appointments")
-    .select("time_start, time_end, status, collaborator_id")
+    .select("time_start, time_end, status, collaborator_id, services(duration_minutes)")
     .eq("business_id", bid)
     .eq("date", dateStr);
 
-  const appointments = (apts ?? []) as AppointmentBlockRow[];
+  const appointments = mapAppointmentBlockRows(apts ?? []);
 
   const dayStart = toDate(`${dateStr} 00:00:00`, { timeZone: BOOKING_TZ });
   const dayEnd = addDays(dayStart, 1);
@@ -232,6 +232,8 @@ export async function GET(req: Request) {
           blocks,
           dateStr,
           suggestedStartMin: slots.length ? timeToMinutes(slots[0].slice(0, 5)) : null,
+          poolCollaboratorIds: pool,
+          bookingAnyMulti: isAnyMulti,
         }
       : null;
 

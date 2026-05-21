@@ -11,6 +11,7 @@ import {
   collectAvailableStartMinutes,
   isDateOpenForPublicBooking,
   isPublicStartMinuteBookable,
+  isPublicStartMinuteBookableForPool,
   publicSlotReasonLabel,
   type AvailabilityDbRow,
   type OverrideDbRow,
@@ -19,7 +20,13 @@ import {
 import { PublicBookingDayTimeline, type PublicDayTimelinePayload } from "@/components/public-booking-day-timeline";
 import { PublicPwaInstallPrompt } from "@/components/public-pwa-install-prompt";
 import { PublicDatePicker } from "@/components/public/public-date-picker";
-import { getPublicBookUi, getPublicHomeUi } from "@/lib/public-book-ui";
+import {
+  getPublicBookUi,
+  getPublicHomeUi,
+  publicEmojiClass,
+  publicMaterialIconClass,
+  publicMediaTileClass,
+} from "@/lib/public-book-ui";
 import { minutesToTime, timeToMinutes, type DaySchedule } from "@/lib/disponibilidade";
 import { PUBLIC_GALLERY_MAX_IMAGES } from "@/lib/public-gallery";
 import { normalizeVariantGallery, variantEffectivePriceCents, type ServiceVariantItem } from "@/lib/service-variants";
@@ -409,17 +416,26 @@ function PublicPageInner() {
 
   const sliderPositionValid = useMemo(() => {
     if (!dayTimeline) return false;
-    return isPublicStartMinuteBookable({
+    const base = {
       startMinute: sliderStartMin,
       dateStr: dayTimeline.dateStr,
       schedule: dayTimeline.schedule as DaySchedule,
       durationMinutes: dayTimeline.durationMinutes,
       bufferMinutes: dayTimeline.bufferMinutes,
-      collaboratorId: dayTimeline.viewCollaboratorId,
       appointments: dayTimeline.appointments,
       blocks: dayTimeline.blocks,
       minAdvanceHours: dayTimeline.minAdvanceHours,
       now: new Date(),
+    };
+    if (dayTimeline.bookingAnyMulti && dayTimeline.poolCollaboratorIds?.length) {
+      return isPublicStartMinuteBookableForPool({
+        ...base,
+        poolCollaboratorIds: dayTimeline.poolCollaboratorIds,
+      });
+    }
+    return isPublicStartMinuteBookable({
+      ...base,
+      collaboratorId: dayTimeline.viewCollaboratorId,
     });
   }, [dayTimeline, sliderStartMin]);
 
@@ -643,7 +659,7 @@ function PublicPageInner() {
               )}
             >
               <p className="font-bold flex items-center gap-2">
-                <span className="material-symbols-outlined text-xl">event_busy</span>
+                <span className={publicMaterialIconClass("lg", false)}>event_busy</span>
                 Agendamento online pausado
               </p>
               <p className="mt-2 opacity-95 leading-relaxed text-[13px]">
@@ -696,14 +712,14 @@ function PublicPageInner() {
                     )}
                   >
                     {displayAddress && (
-                      <span className="inline-flex items-start gap-1.5 min-w-0">
-                        <span className="material-symbols-outlined text-base shrink-0 mt-0.5">location_on</span>
+                      <span className="inline-flex items-center gap-1.5 min-w-0">
+                        <span className={publicMaterialIconClass("sm", false)}>location_on</span>
                         <span className="leading-snug">{displayAddress}</span>
                       </span>
                     )}
                     {business.phone && (
                       <span className="inline-flex items-center gap-1.5 shrink-0">
-                        <span className="material-symbols-outlined text-base">call</span>
+                        <span className={publicMaterialIconClass("sm", false)}>call</span>
                         {formatBrazilPhoneFromDigits(business.phone) || business.phone}
                       </span>
                     )}
@@ -767,18 +783,7 @@ function PublicPageInner() {
             <section className="mb-10">
               <h2 className={cn("text-sm font-bold uppercase tracking-wider mb-3", subCls)}>Sobre</h2>
               <div className={cn("rounded-2xl border p-4 sm:p-5", cardCls)}>
-                <div className="flex gap-3">
-                  <span
-                    className={cn(
-                      "material-symbols-outlined text-xl shrink-0 size-10 rounded-xl flex items-center justify-center",
-                      surfaceMuted
-                    )}
-                    style={{ color: accent }}
-                  >
-                    info
-                  </span>
-                  <p className={cn("text-sm leading-relaxed flex-1", titleCls)}>{personalization.about.trim()}</p>
-                </div>
+                <p className={cn("text-sm leading-relaxed", titleCls)}>{personalization.about.trim()}</p>
               </div>
             </section>
           )}
@@ -792,7 +797,7 @@ function PublicPageInner() {
                   return (
                     <div key={c.id} className={cn("flex items-center gap-3 p-3.5 rounded-2xl border", cardCls)}>
                       <div
-                        className="size-11 rounded-xl overflow-hidden flex items-center justify-center text-sm font-bold shrink-0"
+                        className={cn("size-11 rounded-xl overflow-hidden text-sm font-bold shrink-0", publicMediaTileClass)}
                         style={
                           c.avatar_url
                             ? { boxShadow: `0 0 0 2px ${col}55` }
@@ -834,13 +839,13 @@ function PublicPageInner() {
                       bookingBlocked ? "opacity-60 cursor-not-allowed" : `${cardHover} hover:-translate-y-0.5`
                     )}
                   >
-                    <div className={cn("size-14 rounded-xl overflow-hidden flex items-center justify-center text-2xl shrink-0", surfaceMuted)}>
+                    <div className={cn("size-14 rounded-xl overflow-hidden shrink-0", surfaceMuted, publicMediaTileClass)}>
                       {service.image_url ? (
                         <Image src={service.image_url} alt="" width={56} height={56} className="size-full object-cover" unoptimized />
                       ) : service.emoji ? (
-                        <span className="leading-none">{service.emoji}</span>
+                        <span className={publicEmojiClass("md")}>{service.emoji}</span>
                       ) : (
-                        <span className="material-symbols-outlined text-gray-500 text-[28px]">spa</span>
+                        <span className={publicMaterialIconClass("xl")}>spa</span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -855,7 +860,13 @@ function PublicPageInner() {
                         </p>
                       ) : null}
                     </div>
-                    <span className={cn("material-symbols-outlined text-lg shrink-0 opacity-60 group-hover:opacity-100", mutedCls)}>
+                    <span
+                      className={cn(
+                        publicMaterialIconClass("md", false),
+                        "opacity-60 group-hover:opacity-100 self-center",
+                        mutedCls
+                      )}
+                    >
                       arrow_forward
                     </span>
                   </button>
@@ -895,7 +906,7 @@ function PublicPageInner() {
             rel="noopener noreferrer"
             className="fixed bottom-6 right-4 z-40 size-14 rounded-full bg-[#25D366] hover:bg-[#20b558] shadow-xl flex items-center justify-center transition-transform hover:scale-105"
           >
-            <span className="material-symbols-outlined text-white text-2xl">chat</span>
+            <span className={cn(publicMaterialIconClass("xl", false), "text-white")}>chat</span>
           </a>
         )}
 
@@ -1052,16 +1063,17 @@ function PublicPageInner() {
                 >
                   <div
                     className={cn(
-                      "size-12 rounded-xl overflow-hidden flex items-center justify-center text-2xl flex-shrink-0 border border-black/5",
-                      isDark ? "bg-[#213428]" : "bg-gray-100"
+                      "size-12 rounded-xl overflow-hidden flex-shrink-0 border border-black/5",
+                      isDark ? "bg-[#213428]" : "bg-gray-100",
+                      publicMediaTileClass
                     )}
                   >
                     {service.image_url ? (
                       <Image src={service.image_url} alt="" width={48} height={48} className="size-full object-cover" unoptimized />
                     ) : service.emoji ? (
-                      <span className="leading-none">{service.emoji}</span>
+                      <span className={publicEmojiClass("md")}>{service.emoji}</span>
                     ) : (
-                      <span className="material-symbols-outlined text-gray-500 text-[26px]">category</span>
+                      <span className={publicMaterialIconClass("lg")}>category</span>
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -1217,14 +1229,14 @@ function PublicPageInner() {
                   bookUi.cardHover
                 )}
               >
-                <div className={cn("size-12 rounded-xl flex items-center justify-center flex-shrink-0", bookUi.surfaceMuted)}>
-                  <span className="material-symbols-outlined text-[var(--public-accent)] text-2xl">groups</span>
+                <div className={cn("size-12 rounded-xl flex-shrink-0", bookUi.surfaceMuted, publicMediaTileClass)}>
+                  <span className={cn(publicMaterialIconClass("lg", false), "text-[var(--public-accent)]")}>groups</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={cn("font-semibold", bookUi.title)}>Primeiro disponível</p>
                   <p className={cn("text-xs mt-0.5", bookUi.subtitle)}>Quem atender mais cedo neste dia</p>
                 </div>
-                <span className="material-symbols-outlined text-gray-500 text-base flex-shrink-0">chevron_right</span>
+                <span className={cn(publicMaterialIconClass("sm"), "self-center")}>chevron_right</span>
               </button>
               {collabForService.map((collab) => {
                 const color = collab.color ?? "#3B82F6";
@@ -1243,7 +1255,7 @@ function PublicPageInner() {
                     )}
                   >
                     <div
-                      className="size-12 rounded-xl overflow-hidden flex items-center justify-center font-bold text-lg flex-shrink-0 border-2"
+                      className={cn("size-12 rounded-xl overflow-hidden font-bold text-lg flex-shrink-0 border-2", publicMediaTileClass)}
                       style={
                         collab.avatar_url
                           ? { borderColor: `${color}55` }
@@ -1260,7 +1272,7 @@ function PublicPageInner() {
                       <p className={cn("font-semibold", bookUi.title)}>{collab.name}</p>
                       <p className={cn("text-xs mt-0.5", bookUi.subtitle)}>{collab.role ?? "-"}</p>
                     </div>
-                    <span className="material-symbols-outlined text-gray-500 text-base flex-shrink-0">chevron_right</span>
+                    <span className={cn(publicMaterialIconClass("sm"), "self-center")}>chevron_right</span>
                   </button>
                 );
               })}
@@ -1340,8 +1352,9 @@ function PublicPageInner() {
                       <div className="flex gap-4 mb-6">
                         <div
                           className={cn(
-                            "size-16 xl:size-[4.5rem] rounded-2xl overflow-hidden flex items-center justify-center text-3xl shrink-0 border border-black/5",
-                            isDark ? "bg-[#213428]" : "bg-gray-100"
+                            "size-16 xl:size-[4.5rem] rounded-2xl overflow-hidden shrink-0 border border-black/5",
+                            isDark ? "bg-[#213428]" : "bg-gray-100",
+                            publicMediaTileClass
                           )}
                         >
                           {(() => {
@@ -1355,9 +1368,9 @@ function PublicPageInner() {
                               );
                             }
                             if (selectedService.emoji) {
-                              return <span className="leading-none">{selectedService.emoji}</span>;
+                              return <span className={publicEmojiClass("lg")}>{selectedService.emoji}</span>;
                             }
-                            return <span className="material-symbols-outlined text-gray-500 text-3xl">category</span>;
+                            return <span className={publicMaterialIconClass("xl")}>category</span>;
                           })()}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -1694,7 +1707,7 @@ function PublicPageInner() {
                 </div>
 
                 <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-5">
-                  <span className="material-symbols-outlined text-amber-500 text-base flex-shrink-0 mt-0.5">info</span>
+                  <span className={cn(publicMaterialIconClass("sm", false), "text-amber-500 self-center")}>info</span>
                   <p
                     className={cn(
                       "text-xs leading-relaxed",
@@ -1744,7 +1757,7 @@ function PublicPageInner() {
                   style={{ boxShadow: `0 0 20px ${rgbaFromHex(accent, 0.3)}` }}
                   className="w-full py-4 bg-[var(--public-accent)] hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl text-lg transition-all flex items-center justify-center gap-2"
                 >
-                  <span className="material-symbols-outlined">check_circle</span>
+                  <span className={publicMaterialIconClass("lg", false)}>check_circle</span>
                   {bookingSubmitting ? "Confirmando…" : "Confirmar agendamento"}
                 </button>
 
@@ -1807,7 +1820,7 @@ function PublicPageInner() {
           rel="noopener noreferrer"
           className="fixed bottom-24 right-4 z-40 size-12 rounded-full bg-[#25D366] hover:bg-[#20b558] shadow-lg flex items-center justify-center transition-all hover:scale-110"
         >
-          <span className="material-symbols-outlined text-white text-xl">chat</span>
+          <span className={cn(publicMaterialIconClass("lg", false), "text-white")}>chat</span>
         </a>
       )}
 
@@ -1860,7 +1873,7 @@ function SuccessScreen({
       <div className="relative z-10 w-full max-w-sm sm:max-w-md lg:max-w-lg flex flex-col sm:flex-row sm:items-stretch gap-6 sm:gap-8">
         <div className="flex flex-col items-center sm:items-start text-center sm:text-left flex-1">
           <div className="size-20 sm:size-24 rounded-3xl bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)] border-2 border-[color-mix(in_srgb,var(--public-accent)_30%,transparent)] flex items-center justify-center mb-4 sm:mb-6">
-            <span className="material-symbols-outlined text-[var(--public-accent)] text-4xl sm:text-5xl filled">
+            <span className={cn(publicMaterialIconClass("xl", false), "text-[var(--public-accent)] !text-4xl sm:!text-5xl filled")}>
               check_circle
             </span>
           </div>

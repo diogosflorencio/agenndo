@@ -12,8 +12,8 @@ import {
   isSlotStillFree,
   type AvailabilityDbRow,
   type OverrideDbRow,
-  type AppointmentBlockRow,
   type BlockDbRow,
+  mapAppointmentBlockRows,
   BOOKING_TZ,
 } from "@/lib/public-booking";
 import { hasFullServiceAccess } from "@/lib/billing-access";
@@ -199,11 +199,11 @@ export async function POST(req: Request) {
 
   const { data: apts } = await admin
     .from("appointments")
-    .select("time_start, time_end, status, collaborator_id")
+    .select("time_start, time_end, status, collaborator_id, services(duration_minutes)")
     .eq("business_id", bid)
     .eq("date", dateStr);
 
-  const appointments = (apts ?? []) as AppointmentBlockRow[];
+  let appointments = mapAppointmentBlockRows(apts ?? []);
 
   const dayStart = toDate(`${dateStr} 00:00:00`, { timeZone: BOOKING_TZ });
   const dayEnd = addDays(dayStart, 1);
@@ -312,6 +312,27 @@ export async function POST(req: Request) {
   }
 
   const timeEnd = endTimeFromStart(timeNorm, durationMinutes);
+
+  const { data: freshApts } = await admin
+    .from("appointments")
+    .select("time_start, time_end, status, collaborator_id, services(duration_minutes)")
+    .eq("business_id", bid)
+    .eq("date", dateStr);
+  appointments = mapAppointmentBlockRows(freshApts ?? []);
+
+  if (
+    !isSlotStillFree({
+      dateStr,
+      timeStart: timeNorm,
+      durationMinutes,
+      bufferMinutes,
+      collaboratorId: resolvedCollab,
+      appointments,
+      blocks,
+    })
+  ) {
+    return NextResponse.json({ error: "Este horário não está mais disponível" }, { status: 409 });
+  }
 
   const { data: aptRow, error: aptErr } = await admin
     .from("appointments")

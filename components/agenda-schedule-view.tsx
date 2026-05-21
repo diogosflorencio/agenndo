@@ -14,6 +14,11 @@ import { STATUS_CONFIG, formatCurrency, type AppointmentStatus } from "@/lib/uti
 import { DashboardFullScreenOverlay } from "@/components/dashboard/dashboard-full-screen-overlay";
 import { HotkeyHint } from "@/lib/dashboard-hotkeys";
 import { computeAgendaGridBounds } from "@/lib/agenda-grid-bounds";
+import {
+  AGENDA_SLOT_PX,
+  agendaEventBoxStyle,
+  assignAgendaColumns,
+} from "@/lib/agenda-event-layout";
 import type { DaySchedule } from "@/lib/disponibilidade";
 
 export type AgendaApt = {
@@ -33,28 +38,6 @@ export type AgendaApt = {
 export type AgendaCollab = { id: string; name: string };
 
 export type AgendaViewMode = "day" | "week" | "month";
-
-function assignColumns<T extends { id: string; startM: number; endM: number }>(events: T[]) {
-  const sorted = [...events].sort((a, b) => a.startM - b.startM || a.endM - b.endM);
-  const colEnds: number[] = [];
-  const placed = sorted.map((e) => {
-    let c = colEnds.findIndex((end) => end <= e.startM);
-    if (c === -1) {
-      c = colEnds.length;
-      colEnds.push(e.endM);
-    } else {
-      colEnds[c] = e.endM;
-    }
-    return { ...e, col: c };
-  });
-  const nCol = Math.max(1, colEnds.length);
-  return placed.map((r) => ({
-    ...r,
-    nCol,
-    widthPct: 100 / nCol,
-    leftPct: (r.col * 100) / nCol,
-  }));
-}
 
 function formatTimeShort(t: string) {
   const [h, m] = t.split(":");
@@ -246,6 +229,8 @@ export function AgendaScheduleView({
     return { total: apts.length, byStatus, receita };
   }, [appointments, selectedDate]);
 
+  const gridHeightPx = slots.length * AGENDA_SLOT_PX;
+
   const placeEvents = useCallback((apts: AgendaApt[]) => {
     const events = apts.map((a) => ({
       id: a.id,
@@ -253,7 +238,7 @@ export function AgendaScheduleView({
       endM: parseTimeToMinutes(a.time_end),
       apt: a,
     }));
-    return assignColumns(events);
+    return assignAgendaColumns(events);
   }, []);
 
   const headerTitle = selectedD.toLocaleDateString("pt-BR", {
@@ -488,12 +473,18 @@ export function AgendaScheduleView({
                     <div className="text-sm font-extrabold text-gray-900">{wd.dayNum}</div>
                     <div className="text-[10px] text-gray-500">{wd.count}</div>
                   </button>
-                  <div className="relative" style={{ height: slots.length * 40 }}>
+                  <div className="relative" style={{ height: gridHeightPx }}>
                     {placeEvents(filteredApts.filter((a) => a.date === wd.dateStr)).map((ev) => {
-                      const s = Math.max(ev.startM, gridStartMin);
-                      const e = Math.min(ev.endM, gridEndMin);
-                      const top = ((s - gridStartMin) / totalMin) * 100;
-                      const h = Math.max(4, ((e - s) / totalMin) * 100);
+                      const box = agendaEventBoxStyle({
+                        startM: ev.startM,
+                        endM: ev.endM,
+                        gridStartMin,
+                        gridEndMin,
+                        totalMin,
+                        gridHeightPx,
+                        leftPct: ev.leftPct,
+                        widthPct: ev.widthPct,
+                      });
                       const conf =
                         STATUS_CONFIG[ev.apt.status as AppointmentStatus] ?? STATUS_CONFIG.agendado;
                       return (
@@ -501,12 +492,12 @@ export function AgendaScheduleView({
                           key={ev.id}
                           type="button"
                           onClick={() => onAppointmentClick?.(ev.apt.id)}
-                          className={`absolute overflow-hidden rounded-md border text-left text-[10px] leading-tight shadow-sm ${conf.bg} ${conf.color} border-gray-200/80`}
+                          className={`absolute z-[1] overflow-hidden rounded-md border text-left text-[10px] leading-tight shadow-sm hover:z-[2] hover:ring-2 hover:ring-primary/40 ${conf.bg} ${conf.color} border-gray-200/80`}
                           style={{
-                            top: `${top}%`,
-                            height: `${h}%`,
-                            left: `${ev.leftPct}%`,
-                            width: `${ev.widthPct}%`,
+                            top: box.top,
+                            height: box.height,
+                            left: box.left,
+                            width: box.width,
                           }}
                         >
                           <span className="block font-bold truncate px-0.5">
@@ -551,12 +542,18 @@ export function AgendaScheduleView({
                         <p className="text-[10px] text-gray-500">({colApts.length})</p>
                       </div>
                     </div>
-                    <div className="relative" style={{ height: slots.length * 40 }}>
+                    <div className="relative" style={{ height: gridHeightPx }}>
                       {placeEvents(colApts).map((ev) => {
-                        const s = Math.max(ev.startM, gridStartMin);
-                        const e = Math.min(ev.endM, gridEndMin);
-                        const top = ((s - gridStartMin) / totalMin) * 100;
-                        const h = Math.max(5, ((e - s) / totalMin) * 100);
+                        const box = agendaEventBoxStyle({
+                          startM: ev.startM,
+                          endM: ev.endM,
+                          gridStartMin,
+                          gridEndMin,
+                          totalMin,
+                          gridHeightPx,
+                          leftPct: ev.leftPct,
+                          widthPct: ev.widthPct,
+                        });
                         const conf =
                           STATUS_CONFIG[ev.apt.status as AppointmentStatus] ?? STATUS_CONFIG.agendado;
                         return (
@@ -564,12 +561,12 @@ export function AgendaScheduleView({
                             key={ev.id}
                             type="button"
                             onClick={() => onAppointmentClick?.(ev.apt.id)}
-                            className={`absolute overflow-hidden rounded-md border px-1 py-0.5 text-left text-[10px] leading-tight shadow-sm ${conf.bg} ${conf.color} border-gray-200/80`}
+                            className={`absolute z-[1] overflow-hidden rounded-md border px-1 py-0.5 text-left text-[10px] leading-tight shadow-sm hover:z-[2] hover:ring-2 hover:ring-primary/40 ${conf.bg} ${conf.color} border-gray-200/80`}
                             style={{
-                              top: `${top}%`,
-                              height: `${h}%`,
-                              left: `${ev.leftPct}%`,
-                              width: `${ev.widthPct}%`,
+                              top: box.top,
+                              height: box.height,
+                              left: box.left,
+                              width: box.width,
                             }}
                           >
                             <span className="block font-bold truncate">

@@ -8,7 +8,9 @@ import { SwitchToggle } from "@/components/switch-toggle";
 import { EntityPhotoControl } from "@/components/dashboard/entity-photo-control";
 import { compressImageForUpload } from "@/lib/image-compress";
 import { uploadBusinessImage } from "@/lib/business-assets-storage";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 import { ServiceVariantGalleryEditor } from "@/components/dashboard/service-variant-gallery-editor";
 import {
   DashboardFullScreenOverlay,
@@ -44,6 +46,9 @@ type CollaboratorOption = { id: string; name: string; color: string | null; avat
 export default function ServicosPage() {
   const { business } = useDashboard();
   const { showConfirm } = useAppAlert();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [archivedServices, setArchivedServices] = useState<ServiceRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -200,15 +205,21 @@ export default function ServicosPage() {
   return (
     <div className="w-full">
       {listError && (
-        <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
+        <div
+          className={cn(
+            "mb-4 rounded-xl border px-4 py-3 text-sm",
+            isDark ? "border-red-500/30 bg-red-950/40 text-red-200" : "border-red-200 bg-red-50 text-red-800"
+          )}
+          role="alert"
+        >
           {listError}
         </div>
       )}
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Serviços</h1>
-          <p className="text-gray-400 text-sm mt-1">
+          <h1 className={cn("text-2xl font-bold", surfaces.title)}>Serviços</h1>
+          <p className={cn("text-sm mt-1", surfaces.muted)}>
             {services.length} ativo{services.length !== 1 ? "s" : ""}
             {archivedServices.length > 0
               ? ` · ${archivedServices.length} arquivado${archivedServices.length !== 1 ? "s" : ""}`
@@ -354,9 +365,9 @@ export default function ServicosPage() {
       </div>
 
       {archivedServices.length > 0 && (
-        <div className="mt-10 pt-8 border-t border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900 mb-1">Arquivados</h2>
-          <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+        <div className={cn("mt-10 pt-8 border-t", isDark ? "border-white/10" : "border-gray-200")}>
+          <h2 className={cn("text-lg font-bold mb-1", surfaces.title)}>Arquivados</h2>
+          <p className={cn("text-xs mb-4 leading-relaxed", surfaces.muted)}>
             Serviços que você removeu da oferta. Continuam no banco para manter o histórico de agendamentos; não aparecem na
             página pública. Você pode restaurar quando quiser.
           </p>
@@ -364,19 +375,43 @@ export default function ServicosPage() {
             {archivedServices.map((s) => (
               <div
                 key={s.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50/80 px-4 py-3"
+                className={cn(
+                  "flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3",
+                  surfaces.cardInset
+                )}
               >
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{s.name}</p>
-                  <p className="text-[11px] text-gray-500">
-                    {s.duration_minutes} min · {formatCurrency(s.price_cents / 100)}
-                  </p>
+                <div className="min-w-0 flex items-center gap-3">
+                  <div
+                    className={cn(
+                      "size-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center text-lg border",
+                      isDark ? "bg-[#020403] border-white/10" : "bg-gray-100 border-gray-200/80"
+                    )}
+                  >
+                    {s.image_url ? (
+                      <Image src={s.image_url} alt="" width={36} height={36} className="size-full object-cover" unoptimized />
+                    ) : s.emoji ? (
+                      <span className="inline-flex items-center justify-center leading-none select-none">{s.emoji}</span>
+                    ) : (
+                      <span className="material-symbols-outlined text-gray-400 text-[22px] leading-none">inventory_2</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={cn("text-sm font-semibold truncate", surfaces.title)}>{s.name}</p>
+                    <p className={cn("text-[11px]", surfaces.muted)}>
+                      {s.duration_minutes} min · {formatCurrency(s.price_cents / 100)}
+                    </p>
+                  </div>
                 </div>
                 <button
                   type="button"
                   disabled={busyId === s.id}
                   onClick={() => void restoreService(s)}
-                  className="shrink-0 text-xs font-bold px-4 py-2 rounded-lg bg-white border border-gray-200 hover:bg-primary/10 hover:border-primary/40 text-gray-800 disabled:opacity-50 transition-colors"
+                  className={cn(
+                    "shrink-0 text-xs font-bold px-4 py-2 rounded-lg border disabled:opacity-50 transition-colors",
+                    isDark
+                      ? "border-primary/35 bg-primary/10 text-primary hover:bg-primary/20"
+                      : "border-primary/30 bg-white text-gray-800 hover:bg-primary/10 hover:border-primary/40"
+                  )}
                 >
                   Restaurar
                 </button>

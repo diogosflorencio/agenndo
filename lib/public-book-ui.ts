@@ -1,3 +1,22 @@
+import { cn } from "@/lib/utils";
+
+/** Caixa de emoji/ícone — centralização consistente na página pública. */
+export const publicMediaTileClass = "flex items-center justify-center size-full shrink-0";
+
+export function publicEmojiClass(size: "sm" | "md" | "lg" = "md") {
+  const text = { sm: "text-2xl", md: "text-[1.65rem]", lg: "text-3xl" }[size];
+  return cn("inline-flex items-center justify-center leading-none select-none", text);
+}
+
+export function publicMaterialIconClass(size: "sm" | "md" | "lg" | "xl" = "md", muted = true) {
+  const px = { sm: "text-[18px]", md: "text-[22px]", lg: "text-[26px]", xl: "text-[28px]" }[size];
+  return cn(
+    "material-symbols-outlined leading-none shrink-0",
+    px,
+    muted && "text-gray-500"
+  );
+}
+
 /** Tokens visuais compartilhados entre home e fluxo de agendamento público. */
 export function getPublicBookUi(isDark: boolean) {
   return {

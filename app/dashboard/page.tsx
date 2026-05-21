@@ -345,6 +345,11 @@ export default function DashboardHome() {
     const commColor =
       pendingCommissionsCount > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-400 dark:text-gray-500";
 
+    const inboxTrend =
+      inboxUnread > 0 ? `${inboxUnread} não lida(s)` : "tudo em dia";
+    const inboxColor =
+      inboxUnread > 0 ? "text-amber-600 dark:text-amber-400" : "text-gray-400 dark:text-gray-500";
+
     return [
       {
         key: "operacao",
@@ -356,6 +361,7 @@ export default function DashboardHome() {
             value: String(todayApts.length),
             trend: trendAg,
             trendColor: trendAgColor,
+            href: "/dashboard/agendamentos",
           },
           {
             icon: "cancel",
@@ -363,6 +369,7 @@ export default function DashboardHome() {
             value: String(canc),
             trend: "hoje",
             trendColor: "text-gray-500 dark:text-gray-400",
+            href: "/dashboard/agendamentos",
           },
           {
             icon: "person_off",
@@ -370,6 +377,7 @@ export default function DashboardHome() {
             value: String(falt),
             trend: "hoje",
             trendColor: "text-gray-500 dark:text-gray-400",
+            href: "/dashboard/agendamentos",
           },
         ],
       },
@@ -379,10 +387,11 @@ export default function DashboardHome() {
         items: [
           {
             icon: "payments",
-            label: "Hoje R$",
+            label: "Receita",
             value: formatCurrency(todayRev / 100),
             trend: "compareceram",
             trendColor: "text-primary",
+            href: "/dashboard/financeiro",
           },
           {
             icon: "savings",
@@ -390,6 +399,7 @@ export default function DashboardHome() {
             value: String(pendingCommissionsCount),
             trend: commTrend,
             trendColor: commColor,
+            href: "/dashboard/financeiro",
           },
           {
             icon: "category",
@@ -397,6 +407,7 @@ export default function DashboardHome() {
             value: String(setupSnapshot.serviceCount),
             trend: "ativos",
             trendColor: "text-gray-500 dark:text-gray-400",
+            href: "/dashboard/servicos",
           },
         ],
       },
@@ -410,6 +421,7 @@ export default function DashboardHome() {
             value: String(setupSnapshot.collaboratorCount),
             trend: "ativos",
             trendColor: "text-primary",
+            href: "/dashboard/colaboradores",
           },
           {
             icon: "person_search",
@@ -417,6 +429,7 @@ export default function DashboardHome() {
             value: String(clientCount),
             trend: "cadastrados",
             trendColor: "text-teal-600 dark:text-teal-400",
+            href: "/dashboard/clientes",
           },
           {
             icon: "analytics",
@@ -424,6 +437,37 @@ export default function DashboardHome() {
             value: `${taxaComparecimento}%`,
             trend: totalWithStatus > 0 ? "no período" : "-",
             trendColor: "text-gray-500 dark:text-gray-400",
+            href: "/dashboard/analytics",
+          },
+        ],
+      },
+      {
+        key: "semana",
+        hint: "Semana & alertas",
+        items: [
+          {
+            icon: "date_range",
+            label: "Semana",
+            value: String(totalWeek),
+            trend: `${weekFromToday.restAfterToday} após hoje`,
+            trendColor: "text-gray-500 dark:text-gray-400",
+            href: "/dashboard/agendamentos",
+          },
+          {
+            icon: "trending_up",
+            label: "Receita 7d",
+            value: formatCurrency(receitaWeek / 100),
+            trend: maxDay ? `pico ${maxDay.dayLabel}` : "-",
+            trendColor: "text-primary",
+            href: "/dashboard/financeiro",
+          },
+          {
+            icon: "notifications",
+            label: "Avisos",
+            value: String(inboxUnread),
+            trend: inboxTrend,
+            trendColor: inboxColor,
+            href: "/dashboard/notificacoes",
           },
         ],
       },
@@ -438,6 +482,11 @@ export default function DashboardHome() {
     pendingCommissionsCount,
     taxaComparecimento,
     totalWithStatus,
+    totalWeek,
+    receitaWeek,
+    weekFromToday.restAfterToday,
+    maxDay,
+    inboxUnread,
   ]);
 
   const insights: { icon: string; text: string; color: string }[] = [];
