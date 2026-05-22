@@ -3,7 +3,12 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { consumeOAuthBridgeRedirectState, OAUTH_POPUP_MESSAGE } from "@/lib/auth/oauth-popup";
+import { syncAccountOnLogin } from "@/lib/auth/sync-account-on-login";
+import {
+  consumeOAuthBridgeRedirectState,
+  OAUTH_POPUP_MESSAGE,
+  type OAuthLoginContext,
+} from "@/lib/auth/oauth-popup";
 
 function postMessageTargetOrigin(): string {
   try {
@@ -58,8 +63,9 @@ function OAuthBridgeInner() {
           ? nextFromUrl
           : `/${nextFromUrl}`
         : "/dashboard";
-    const context =
-      stored?.context === "cliente" || searchParams.get("context") === "cliente" ? "cliente" : null;
+    const ctxParam = stored?.context ?? searchParams.get("context");
+    const context: OAuthLoginContext | null =
+      ctxParam === "cliente" || ctxParam === "staff" ? ctxParam : null;
     const hasOpener = typeof window !== "undefined" && window.opener && !window.opener.closed;
 
     async function finish() {
@@ -102,22 +108,19 @@ function OAuthBridgeInner() {
         return;
       }
 
-      const { data: profile } = await supabase.from("profiles").select("id").eq("id", user.id).single();
-      if (!profile) {
-        await supabase.from("profiles").upsert(
-          {
-            id: user.id,
-            email: user.email ?? undefined,
-            full_name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? undefined,
-            avatar_url: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? undefined,
-            role: "provider",
-          },
-          { onConflict: "id" }
-        );
-      }
+      const resolvedContext: OAuthLoginContext | null =
+        context ??
+        (nextPath.startsWith("/conta") ? "cliente" : nextPath.includes("minhas-comissoes") ? "staff" : null);
+
+      await syncAccountOnLogin(supabase, user.id, {
+        email: user.email,
+        fullName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? undefined,
+        avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? undefined,
+        loginContext: resolvedContext,
+      });
 
       let path = nextPath;
-      if (context !== "cliente") {
+      if (resolvedContext !== "cliente") {
         const { data: ownedBiz } = await supabase
           .from("businesses")
           .select("id")
@@ -132,6 +135,8 @@ function OAuthBridgeInner() {
         const hasStaffLink = (staffRows?.length ?? 0) > 0;
         if (!ownedBiz?.id && !hasStaffLink) {
           path = "/setup";
+        } else if (resolvedContext === "staff" || nextPath.includes("minhas-comissoes")) {
+          path = "/dashboard/minhas-comissoes";
         }
       }
 

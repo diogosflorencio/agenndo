@@ -1,12 +1,19 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { syncAccountOnLogin } from "@/lib/auth/sync-account-on-login";
+import type { OAuthLoginContext } from "@/lib/auth/oauth-popup";
+
+function parseLoginContext(raw: string | null): OAuthLoginContext | null {
+  if (raw === "cliente" || raw === "staff") return raw;
+  return null;
+}
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
   const errorParam = requestUrl.searchParams.get("error");
   const nextPath = requestUrl.searchParams.get("next") ?? "/dashboard";
-  const context = requestUrl.searchParams.get("context");
+  const loginContext = parseLoginContext(requestUrl.searchParams.get("context"));
   const origin = requestUrl.origin;
 
   if (errorParam) {
@@ -48,21 +55,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/login`);
   }
 
-  const { data: profile } = await supabase.from("profiles").select("id").eq("id", user.id).single();
-  if (!profile) {
-    await supabase.from("profiles").upsert(
-      {
-        id: user.id,
-        email: user.email ?? undefined,
-        full_name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? undefined,
-        avatar_url: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? undefined,
-        role: "provider",
-      },
-      { onConflict: "id" }
-    );
-  }
+  const resolvedContext: OAuthLoginContext | null =
+    loginContext ??
+    (nextPath.startsWith("/conta") ? "cliente" : nextPath.includes("minhas-comissoes") ? "staff" : null);
 
-  if (context !== "cliente") {
+  await syncAccountOnLogin(supabase, user.id, {
+    email: user.email,
+    fullName: (user.user_metadata?.full_name ?? user.user_metadata?.name) as string | undefined,
+    avatarUrl: (user.user_metadata?.avatar_url ?? user.user_metadata?.picture) as string | undefined,
+    loginContext: resolvedContext,
+  });
+
+  if (loginContext !== "cliente") {
     const { data: ownedBiz } = await supabase
       .from("businesses")
       .select("id")
@@ -77,7 +81,11 @@ export async function GET(request: NextRequest) {
     const hasStaffLink = (staffRows?.length ?? 0) > 0;
     if (!ownedBiz?.id && !hasStaffLink) {
       redirectTo = `${origin}/setup`;
+    } else if (loginContext === "staff" || nextPath.includes("minhas-comissoes")) {
+      redirectTo = `${origin}/dashboard/minhas-comissoes`;
     }
+  } else {
+    redirectTo = `${origin}${nextPath.startsWith("/") ? nextPath : `/${nextPath}`}`;
   }
 
   response.headers.set("Location", redirectTo);

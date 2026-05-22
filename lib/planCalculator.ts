@@ -94,11 +94,11 @@ function planOfferCopy(): Pick<DynamicPlanResult, "infrastructure" | "highlight"
   return {
     infrastructure: "",
     highlight:
-      "Mensalidade conforme o perfil informado; produto completo e uso ilimitado no escopo declarado. Após o teste, cobrança no cartão (Stripe).",
+      "Plano completo conforme o perfil informado. Após o teste, você vê o valor e assina em Conta → Meu plano (Stripe).",
     features: [
       {
-        title: "Você já vê o valor mensal",
-        sub: "O investimento é calculado a partir da equipe, ticket médio e volume declarados; o mesmo plano para todos os recursos.",
+        title: "Plano sob medida",
+        sub: "A mensalidade é calculada em background a partir da equipe, ticket médio e volume — você confere o valor só na área Conta.",
       },
       {
         title: "Teste sem pressa",

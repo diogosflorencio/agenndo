@@ -20,7 +20,7 @@ export function ColaboradorEntrada({ siteOrigin, linkedStaff, isBusinessOwner }:
           </Link>
           {!isBusinessOwner ? (
             <Link
-              href={`/login?next=${encodeURIComponent(LOGIN_NEXT)}`}
+              href={`/login?next=${encodeURIComponent(LOGIN_NEXT)}&context=staff`}
               className="text-sm font-semibold text-primary hover:text-primary/90"
             >
               Entrar
@@ -94,7 +94,7 @@ export function ColaboradorEntrada({ siteOrigin, linkedStaff, isBusinessOwner }:
         {!isBusinessOwner ? (
           <div className="flex flex-col sm:flex-row gap-3">
             <Link
-              href={`/login?next=${encodeURIComponent(LOGIN_NEXT)}`}
+              href={`/login?next=${encodeURIComponent(LOGIN_NEXT)}&context=staff`}
               className="inline-flex justify-center items-center gap-2 px-6 py-4 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-colors shadow-[0_0_24px_rgba(19,236,91,0.25)]"
             >
               Entrar com Google

@@ -4,7 +4,9 @@ export const OAUTH_POPUP_MESSAGE = "agenndo-oauth";
 /** Estado do redirect pós-OAuth (next/context). O Supabase pode não preservar query params no retorno. */
 const OAUTH_BRIDGE_STATE_KEY = "agenndo-oauth-bridge";
 
-export function writeOAuthBridgeRedirectState(state: { next: string; context?: "cliente" }): void {
+export type OAuthLoginContext = "cliente" | "staff";
+
+export function writeOAuthBridgeRedirectState(state: { next: string; context?: OAuthLoginContext }): void {
   if (typeof window === "undefined") return;
   try {
     sessionStorage.setItem(OAUTH_BRIDGE_STATE_KEY, JSON.stringify(state));
@@ -16,7 +18,7 @@ export function writeOAuthBridgeRedirectState(state: { next: string; context?: "
 /** Lê e remove o estado (uma vez por fluxo). */
 export function consumeOAuthBridgeRedirectState(): {
   next: string;
-  context?: "cliente";
+  context?: OAuthLoginContext;
 } | null {
   if (typeof window === "undefined") return null;
   try {
@@ -28,7 +30,8 @@ export function consumeOAuthBridgeRedirectState(): {
       typeof parsed.next === "string" && parsed.next.startsWith("/") && !parsed.next.startsWith("//")
         ? parsed.next
         : "/dashboard";
-    const context = parsed.context === "cliente" ? ("cliente" as const) : undefined;
+    const context =
+      parsed.context === "cliente" || parsed.context === "staff" ? (parsed.context as OAuthLoginContext) : undefined;
     return context ? { next, context } : { next };
   } catch {
     return null;
@@ -91,7 +94,7 @@ export function buildSupabaseOAuthRedirectUrl(
 
 export function buildOAuthBridgeUrl(
   origin: string,
-  opts: { next: string; context?: "cliente" }
+  opts: { next: string; context?: OAuthLoginContext }
 ): string {
   const u = new URL(`${origin.replace(/\/$/, "")}/auth/oauth-bridge`);
   const next = opts.next.startsWith("/") ? opts.next : `/${opts.next}`;
@@ -103,7 +106,7 @@ export function buildOAuthBridgeUrl(
 /** URL aberta no popup; a página chama signInWithOAuth dentro do popup (PKCE válido). */
 export function buildOAuthStartUrl(
   origin: string,
-  opts: { next: string; context?: "cliente" }
+  opts: { next: string; context?: OAuthLoginContext }
 ): string {
   const u = new URL(`${origin.replace(/\/$/, "")}/auth/oauth-start`);
   const next = opts.next.startsWith("/") ? opts.next : `/${opts.next}`;

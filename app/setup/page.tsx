@@ -187,7 +187,7 @@ export default function SetupPage() {
     ]
   );
 
-  /** Primeira vez no passo do preço: grava lock no navegador se ainda não existir (anti-manipulação; sem UI). */
+  /** Passo final: grava lock de precificação no navegador (anti-manipulação; sem exibir preço na UI). */
   useEffect(() => {
     if (step !== 5) return;
     const fromStorage = readPricingLock();
@@ -595,8 +595,7 @@ function Step3({ data, update }: { data: { dailyAppointments: number; averageTic
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white mb-2">Volume de trabalho</h1>
         <p className="text-gray-400 text-sm leading-relaxed">
-          Ajudam a entender seu perfil e o <span className="text-primary font-medium">valor mensal sugerido</span> quando
-          você decidir assinar. O ticket médio pesa mais do que só a quantidade de atendimentos no dia.
+          Ajudam a calibrar sua experiência no Agenndo. O ticket médio pesa mais do que só a quantidade de atendimentos no dia.
         </p>
       </div>
 
@@ -723,7 +722,7 @@ function Step4({ data, update, colors }: { data: { primaryColor: string; busines
   );
 }
 
-// Step 5 - teste primeiro (`effectivePlan` via `resolveEffectiveDynamicPlan`, sem microcopiar regra técnica)
+// Step 5 — trial; precificação calculada em background (sem exibir valor na UI)
 function Step5({
   data,
   dynamicPlan,
@@ -731,8 +730,6 @@ function Step5({
 }: {
   data: { businessName: string };
   dynamicPlan: {
-    tier: PlanId;
-    monthlyPrice: number;
     infrastructure: string;
     highlight: string;
     features: { title: string; sub: string }[];
@@ -746,14 +743,13 @@ function Step5({
     return `https://wa.me/${SUPPORT_WHATSAPP}?text=${text}`;
   }, [data.businessName]);
 
-  const priceFmt = `R$ ${dynamicPlan.monthlyPrice.toFixed(2).replace(".", ",")}`;
-
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-white mb-2">Comece pelo teste gratuito</h1>
         <p className="text-gray-400 text-sm leading-relaxed">
-          Entre e use sem cartão para explorar o Agenndo. Se gostar, você poderá assinar depois pelo painel pelo valor mensal de (<span className="text-white/90">{priceFmt}</span>). Com Infraestrutura de Software dedicada ao seu negócio.
+          Entre e use sem cartão para explorar o Agenndo com acesso completo. Se gostar, você assina depois em{" "}
+          <span className="text-white/90">Conta → Meu plano</span>, quando quiser — o valor mensal aparece só lá.
         </p>
       </div>
 
@@ -761,10 +757,10 @@ function Step5({
         <div className="flex items-start gap-3">
           <span className="material-symbols-outlined text-primary text-2xl shrink-0">rocket_launch</span>
           <div>
-            <p className="text-sm font-bold text-white">Período de teste sem pressa</p>
+            <p className="text-sm font-bold text-white">Teste de 7 dias (pode ser estendido)</p>
             <p className="text-xs text-gray-400 mt-1 leading-snug">
-              Em geral <span className="text-gray-300">7 dias ou mais</span> com acesso completo. Precisa avaliar com calma?
-              Chame o suporte e combine extensão (até cerca de 1 mês, caso a caso).
+              Você começa com <span className="text-gray-300">7 dias de teste</span> com tudo liberado. Precisa de mais tempo
+              para avaliar? Fale com o suporte — em muitos casos estendemos o período (até cerca de 1 mês, conforme combinação).
             </p>
             <a
               href={waTrialHref}
@@ -779,13 +775,10 @@ function Step5({
         </div>
 
         <div className="rounded-xl bg-[#080c0a]/90 border border-white/10 px-4 py-3">
-          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Depois do teste, se você quiser continuar</p>
-          <p className="text-lg font-extrabold text-white mt-1 tabular-nums">
-            {priceFmt}
-            <span className="text-sm font-medium text-gray-400"> /mês</span>
-          </p>
-          <p className="text-[11px] text-gray-500 mt-2 leading-snug">
-            Cobrança recorrente no cartão (via Stripe com qualquer cartão) apenas quando você ativar o plano pago. Ou seja, gostou do Agenndo, do suporte e das atualizações? Assine e aproveite!
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">Depois do teste</p>
+          <p className="text-sm text-gray-300 mt-1 leading-snug">
+            Nada é cobrado automaticamente. Quando quiser continuar, ative o plano pago no painel (cartão via Stripe). Até lá,
+            use à vontade para configurar agenda, serviços e página pública.
           </p>
         </div>
       </div>

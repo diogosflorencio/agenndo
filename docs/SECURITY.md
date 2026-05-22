@@ -67,6 +67,21 @@ Procure no repositório:
 
 Qualquer nova rota que use `createAdminClient()` deve documentar **por que** precisa ignorar RLS e validar entrada (slug, ids, rate limit).
 
+## CORS
+
+O `middleware.ts` bloqueia requisições com header `Origin` de domínios fora da lista (`lib/cors.ts`):
+
+- `NEXT_PUBLIC_SITE_URL`, `VERCEL_URL`, localhost
+- Extra: `CORS_ALLOWED_ORIGINS` (vírgula) para previews/domínios adicionais
+
+Webhook Stripe permanece fora do matcher (`/api/stripe/webhook`).
+
+## Tipos de conta
+
+- `user_accounts` + `user_account_memberships` — dono, funcionário (`collaborators.auth_user_id`), cliente (`clients.auth_user_id`)
+- Enum `user_account_kind`: `business_owner`, `business_staff`, `client`, `platform_admin`
+- Login grava `signup_channel` no OAuth; triggers mantêm memberships alinhados
+
 ## Impersonação
 
 - Tokens em `user_impersonate_tokens` — só o próprio utilizador (RLS).

@@ -12,6 +12,7 @@ import {
   OAUTH_POPUP_MESSAGE,
 } from "@/lib/auth/oauth-popup";
 import { GoogleOneTap } from "@/components/auth/google-one-tap";
+import type { OAuthLoginContext } from "@/lib/auth/oauth-popup";
 
 function safeLoginNext(raw: string | null): string {
   const n = raw?.trim();
@@ -23,6 +24,12 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const nextPath = safeLoginNext(searchParams.get("next"));
+  const loginContext: OAuthLoginContext | null =
+    searchParams.get("context") === "staff"
+      ? "staff"
+      : nextPath.includes("minhas-comissoes")
+        ? "staff"
+        : null;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const popupHandledRef = useRef(false);
@@ -71,7 +78,10 @@ function LoginContent() {
     const origin = getOAuthRedirectOrigin() || window.location.origin;
 
     if (isLocalhostOAuthPopup()) {
-      const startUrl = buildOAuthStartUrl(origin, { next: nextPath });
+      const startUrl = buildOAuthStartUrl(origin, {
+        next: nextPath,
+        ...(loginContext ? { context: loginContext } : {}),
+      });
       const popup = window.open(startUrl, "agenndo-oauth", "width=520,height=720,scrollbars=yes");
       if (!popup) {
         setError("Permita popups para este site ou use outro navegador.");
@@ -93,7 +103,10 @@ function LoginContent() {
     }
 
     const supabase = createClient();
-    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/callback", { next: nextPath });
+    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/callback", {
+      next: nextPath,
+      ...(loginContext ? { context: loginContext } : {}),
+    });
 
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",

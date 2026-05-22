@@ -4,6 +4,18 @@
 -- Extensões
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Tipos de conta (dono, funcionário, cliente, admin)
+DO $$ BEGIN
+  CREATE TYPE public.user_account_kind AS ENUM (
+    'platform_admin',
+    'business_owner',
+    'business_staff',
+    'client'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 -- ========== PERFIL / AUTH ==========
 -- Contas de prestadores (donos do negócio) - vinculadas ao auth.users do Supabase
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -11,7 +23,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email TEXT,
   full_name TEXT,
   avatar_url TEXT,
-  role TEXT NOT NULL DEFAULT 'provider', -- 'provider' | 'admin'
+  role TEXT NOT NULL DEFAULT 'provider', -- legado: 'provider' | 'admin'
+  account_kind public.user_account_kind NOT NULL DEFAULT 'business_owner',
   recommended_plan TEXT,
   recommended_price_display NUMERIC(10, 2),
   onboarding_inputs JSONB,
@@ -22,6 +35,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 COMMENT ON COLUMN public.profiles.recommended_plan IS 'Variante interna sugerida no cadastro: plano_1 | plano_2 | plano_3 | paid_20 | …';
 COMMENT ON COLUMN public.profiles.recommended_price_display IS 'Valor exibido no onboarding (referência); cobrança efetiva conforme Stripe';
 COMMENT ON COLUMN public.profiles.onboarding_inputs IS 'Snapshot: equipe, volume, ticket médio declarados';
+-- user_accounts / user_account_memberships: ver migration 20260522120000_user_account_kinds.sql
 
 -- Negócios (um perfil pode ter um negócio; no futuro pode ser mais de um)
 CREATE TABLE IF NOT EXISTS public.businesses (

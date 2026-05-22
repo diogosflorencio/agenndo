@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   buildSupabaseOAuthRedirectUrl,
   OAUTH_POPUP_MESSAGE,
+  type OAuthLoginContext,
   writeOAuthBridgeRedirectState,
 } from "@/lib/auth/oauth-popup";
 
@@ -21,7 +22,9 @@ function OAuthStartInner() {
 
     const nextRaw = searchParams.get("next") ?? "/dashboard";
     const nextPath = nextRaw.startsWith("/") ? nextRaw : `/${nextRaw}`;
-    const context = searchParams.get("context") === "cliente" ? "cliente" : undefined;
+    const ctxRaw = searchParams.get("context");
+    const context: OAuthLoginContext | undefined =
+      ctxRaw === "cliente" || ctxRaw === "staff" ? ctxRaw : undefined;
 
     writeOAuthBridgeRedirectState({ next: nextPath, ...(context ? { context } : {}) });
 
