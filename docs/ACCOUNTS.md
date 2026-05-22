@@ -28,6 +28,16 @@
 - `lib/account-types.ts` — tipos e labels
 - `lib/auth/sync-account-on-login.ts` — chamado após OAuth em callback/bridge
 
+## Console interno (operadores YWP)
+
+- Tabela **`platform_operators`** (não usar nome `admin_*` na API pública)
+- Função **`is_platform_operator()`** — fonte de verdade para RLS global
+- UI: **`/operacoes`** — login Supabase (anon + JWT do operador)
+- Incluir operador: `supabase/scripts/grant-platform-operator.sql` (SQL Editor apenas)
+
+Políticas `*_console` em todas as tabelas de negócio: `USING (is_platform_operator())`.
+
 ## Migration
 
-`supabase/migrations/20260522120000_user_account_kinds.sql`
+- `supabase/migrations/20260522120000_user_account_kinds.sql`
+- `supabase/migrations/20260523120000_platform_operators_rls.sql`

@@ -22,6 +22,12 @@ const nextConfig = {
     if (dev) config.cache = { type: "memory" };
     return config;
   },
+  async redirects() {
+    return [
+      { source: "/operacao-interna", destination: "/operacoes", permanent: true },
+      { source: "/operacao-interna/:path*", destination: "/operacoes/:path*", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

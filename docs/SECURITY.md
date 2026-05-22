@@ -82,6 +82,13 @@ Webhook Stripe permanece fora do matcher (`/api/stripe/webhook`).
 - Enum `user_account_kind`: `business_owner`, `business_staff`, `client`, `platform_admin`
 - Login grava `signup_channel` no OAuth; triggers mantêm memberships alinhados
 
+## Operadores internos (console `/operacoes`)
+
+- Lista em **`platform_operators`** — sem INSERT/UPDATE via API `authenticated`
+- RLS: `is_platform_operator()` libera gestão global (`*_console` nas tabelas)
+- Não promover via `profiles.role` / `account_kind` (trigger bloqueia)
+- Adicionar pessoa: SQL manual (`supabase/scripts/grant-platform-operator.sql`)
+
 ## Impersonação
 
 - Tokens em `user_impersonate_tokens` — só o próprio utilizador (RLS).

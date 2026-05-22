@@ -15,16 +15,11 @@ export async function syncAccountOnLogin(
   }
 ): Promise<void> {
   const channel: SignupChannel = signupChannelFromLoginContext(options.loginContext);
+  // SECURITY: platform_admin só via platform_operators (SQL manual), nunca pelo OAuth do app
   const kind =
-    channel === "client"
-      ? "client"
-      : channel === "staff"
-        ? "business_staff"
-        : channel === "admin"
-          ? "platform_admin"
-          : "business_owner";
+    channel === "client" ? "client" : channel === "staff" ? "business_staff" : "business_owner";
 
-  const role = kind === "platform_admin" ? "admin" : "provider";
+  const role = "provider";
 
   await supabase.from("user_accounts").upsert(
     {

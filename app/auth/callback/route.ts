@@ -66,7 +66,13 @@ export async function GET(request: NextRequest) {
     loginContext: resolvedContext,
   });
 
-  if (loginContext !== "cliente") {
+  const { data: isOp } = await supabase.rpc("is_platform_operator");
+
+  if (isOp === true) {
+    redirectTo = `${origin}/operacoes`;
+  } else if (resolvedContext === "cliente") {
+    redirectTo = `${origin}${nextPath.startsWith("/") ? nextPath : `/${nextPath}`}`;
+  } else {
     const { data: ownedBiz } = await supabase
       .from("businesses")
       .select("id")
@@ -81,11 +87,9 @@ export async function GET(request: NextRequest) {
     const hasStaffLink = (staffRows?.length ?? 0) > 0;
     if (!ownedBiz?.id && !hasStaffLink) {
       redirectTo = `${origin}/setup`;
-    } else if (loginContext === "staff" || nextPath.includes("minhas-comissoes")) {
+    } else if (resolvedContext === "staff" || nextPath.includes("minhas-comissoes")) {
       redirectTo = `${origin}/dashboard/minhas-comissoes`;
     }
-  } else {
-    redirectTo = `${origin}${nextPath.startsWith("/") ? nextPath : `/${nextPath}`}`;
   }
 
   response.headers.set("Location", redirectTo);
