@@ -10,7 +10,15 @@ Guia para conectar Supabase, Google Auth, repositório GitHub e Vercel.
 2. Em **Settings → API** anote:
    - **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`
    - **anon public** → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-3. No **SQL Editor**, execute o conteúdo de `supabase/schema.sql` na ordem (tabelas, RLS, triggers).
+3. No **SQL Editor**, execute o conteúdo de `supabase/schema.sql` na ordem (tabelas, RLS, triggers), **ou** use o CLI (recomendado):
+
+   ```bash
+   npm install
+   npx supabase link --project-ref SEU_PROJECT_REF
+   npm run db:push
+   ```
+
+4. Leia **`docs/SECURITY.md`** — modelo RLS, o que o `anon` pode fazer, e testes após deploy.
 
 ### Habilitar login com Google no Supabase
 
@@ -77,6 +85,7 @@ O repositório [diogosflorencio/agenndo](https://github.com/diogosflorencio/agen
 4. Em **Environment Variables** adicione:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY` (obrigatório para `/api/public/*`, sitemap e webhooks — ver `docs/SECURITY.md`)
 5. Em **Supabase → URL Configuration**, adicione a URL de produção da Vercel (ex.: `https://agenndo.vercel.app`) em **Site URL** e em **Redirect URLs** como `https://agenndo.vercel.app/auth/callback`.
 
 ### Deploy

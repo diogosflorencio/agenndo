@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/site-url";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
+/** SECURITY: sitemap usa service role no servidor — não expõe listagem via anon REST. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl();
   const now = new Date();
@@ -26,8 +27,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   try {
-    const supabase = await createClient();
-    const { data: rows } = await supabase.from("businesses").select("slug, updated_at").order("slug");
+    const admin = createAdminClient();
+    const { data: rows } = await admin.from("businesses").select("slug, updated_at").order("slug");
     if (rows?.length) {
       for (const row of rows) {
         if (!row.slug) continue;

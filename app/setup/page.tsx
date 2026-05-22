@@ -159,8 +159,8 @@ export default function SetupPage() {
     setSlugChecking(true);
     const id = window.setTimeout(async () => {
       const supabase = createClient();
-      const { data: row } = await supabase.from("businesses").select("id").eq("slug", raw).maybeSingle();
-      setSlugTaken(Boolean(row?.id));
+      const { data: available } = await supabase.rpc("is_business_slug_available", { p_slug: raw });
+      setSlugTaken(available === false);
       setSlugChecking(false);
     }, 450);
     return () => window.clearTimeout(id);

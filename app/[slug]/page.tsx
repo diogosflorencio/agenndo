@@ -150,42 +150,29 @@ function PublicPageInner() {
       setLoading(false);
       return;
     }
-    const supabase = createClient();
     (async () => {
       try {
-        const { data: biz } = await supabase
-          .from("businesses")
-          .select("id, name, slug, city, phone, primary_color, segment, logo_url")
-          .eq("slug", slug)
-          .single();
-        if (!biz) {
+        const res = await fetch(`/api/public/page-data?slug=${encodeURIComponent(slug)}`);
+        if (!res.ok) {
           setPersonalization(null);
           setLoading(false);
           return;
         }
-        setBusiness(biz as BusinessRow);
-        const bid = (biz as BusinessRow).id;
-        const [sRes, cRes, pRes] = await Promise.all([
-          supabase
-            .from("services")
-            .select(
-              "id, name, duration_minutes, price_cents, emoji, image_url, description_public, variant_gallery, collaborator_services(collaborator_id)"
-            )
-            .eq("business_id", bid)
-            .eq("active", true)
-            .is("archived_at", null),
-          supabase.from("collaborators").select("id, name, role, color, avatar_url").eq("business_id", bid).eq("active", true),
-          supabase
-            .from("personalization")
-            .select(
-              "banner_url, gallery_urls, social_links, instagram_url, facebook_url, whatsapp_number, tagline, about, public_theme, show_whatsapp_fab, address_line"
-            )
-            .eq("business_id", bid)
-            .maybeSingle(),
-        ]);
-        setServices((sRes.data as ServiceRow[]) ?? []);
-        setCollaborators((cRes.data as CollabRow[]) ?? []);
-        setPersonalization((pRes.data as PersonalizationRow) ?? null);
+        const data = (await res.json()) as {
+          business: BusinessRow | null;
+          services: ServiceRow[];
+          collaborators: CollabRow[];
+          personalization: PersonalizationRow | null;
+        };
+        if (!data.business) {
+          setPersonalization(null);
+          setLoading(false);
+          return;
+        }
+        setBusiness(data.business);
+        setServices(data.services ?? []);
+        setCollaborators(data.collaborators ?? []);
+        setPersonalization(data.personalization ?? null);
       } finally {
         setLoading(false);
       }

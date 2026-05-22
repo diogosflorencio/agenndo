@@ -1,0 +1,2 @@
+-- Seed opcional para `supabase db reset` local.
+-- Dados de desenvolvimento podem ser adicionados aqui.

@@ -687,20 +687,27 @@ CREATE POLICY "personalization_own" ON public.personalization FOR ALL
   WITH CHECK (
     business_id IN (SELECT b.id FROM public.businesses b WHERE b.profile_id = public.effective_user_id())
   );
-CREATE POLICY "personalization_public_read" ON public.personalization FOR SELECT USING (true);
+-- Catálogo público: ver docs/SECURITY.md e /api/public/page-data (migration 20260521120000_rls_hardening).
 
--- Página pública: leitura de negócio por slug (anon)
-CREATE POLICY "businesses_public_read" ON public.businesses FOR SELECT USING (true);
-CREATE POLICY "services_public_read" ON public.services FOR SELECT USING (active = true AND archived_at IS NULL);
-CREATE POLICY "collaborators_public_read" ON public.collaborators FOR SELECT USING (active = true);
+DROP POLICY IF EXISTS "profiles_insert_self" ON public.profiles;
+CREATE POLICY "profiles_insert_self" ON public.profiles
+  FOR INSERT TO authenticated
+  WITH CHECK (id = (SELECT auth.uid()));
 
 DROP POLICY IF EXISTS "collaborators_linked_account_read" ON public.collaborators;
 CREATE POLICY "collaborators_linked_account_read" ON public.collaborators FOR SELECT TO authenticated USING (
   auth_user_id = auth.uid()
 );
 
--- Cliente com conta: leitura dos próprios dados e agendamentos
-CREATE POLICY "clients_self" ON public.clients FOR ALL USING (auth_user_id = auth.uid());
+-- Cliente com conta: leitura/atualização dos próprios dados (criação de cliente no book via API servidor)
+DROP POLICY IF EXISTS "clients_self_select" ON public.clients;
+CREATE POLICY "clients_self_select" ON public.clients
+  FOR SELECT TO authenticated USING (auth_user_id = (SELECT auth.uid()));
+DROP POLICY IF EXISTS "clients_self_update" ON public.clients;
+CREATE POLICY "clients_self_update" ON public.clients
+  FOR UPDATE TO authenticated
+  USING (auth_user_id = (SELECT auth.uid()))
+  WITH CHECK (auth_user_id = (SELECT auth.uid()));
 
 CREATE POLICY "appointments_client_read" ON public.appointments
   FOR SELECT TO authenticated

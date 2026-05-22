@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { fetchPublicPageCatalogBySlug } from "@/lib/public-catalog-server";
 import { getSiteUrl } from "@/lib/site-url";
 
 export async function GET(_request: Request, { params }: { params: { slug: string } }) {
@@ -8,9 +8,8 @@ export async function GET(_request: Request, { params }: { params: { slug: strin
   let name = "Agendamento";
 
   try {
-    const supabase = await createClient();
-    const { data } = await supabase.from("businesses").select("name").eq("slug", slug).maybeSingle();
-    if (data?.name?.trim()) name = data.name.trim().slice(0, 80);
+    const catalog = await fetchPublicPageCatalogBySlug(slug);
+    if (catalog.business?.name?.trim()) name = catalog.business.name.trim().slice(0, 80);
   } catch {
     /* */
   }
