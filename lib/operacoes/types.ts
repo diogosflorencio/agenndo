@@ -1,6 +1,6 @@
 import type { PlanId } from "@/lib/plans";
 
-export type UnifiedRowKind = "prestador" | "cliente";
+export type UnifiedRowKind = "prestador" | "cliente" | "funcionario";
 
 export type UnifiedRow = {
   rowId: string;
@@ -38,6 +38,7 @@ export type OperacoesPlanSummary = {
 export type OperacoesOverview = {
   totalRows: number;
   prestadores: number;
+  funcionarios: number;
   clientes: number;
   negocios: number;
   agendamentos: number;

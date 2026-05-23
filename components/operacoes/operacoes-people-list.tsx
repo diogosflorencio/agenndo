@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { accountKindLabel, type UserAccountKind } from "@/lib/account-types";
+import { operacoesKindLabel } from "@/lib/operacoes/classify-row";
 import {
   formatPrice,
   getPlan,
@@ -13,7 +13,7 @@ import {
 import type { OperacoesNoteEntry } from "@/lib/operacoes/notes-storage";
 import { whatsAppHref } from "@/lib/operacoes/list-utils";
 import { resolveRowPublicUrl } from "@/lib/operacoes/resolve-public-url";
-import type { UnifiedRow } from "@/lib/operacoes/types";
+import type { UnifiedRow, UnifiedRowKind } from "@/lib/operacoes/types";
 import { OperacoesNoteButton } from "./operacoes-note-popup";
 import { operacoesSurface, useOperacoesShell } from "./operacoes-shell";
 
@@ -63,10 +63,17 @@ function AvatarBlock({
   );
 }
 
-function KindBadge({ kind, s }: { kind: UnifiedRow["kind"]; s: ReturnType<typeof operacoesSurface> }) {
-  const cls = kind === "prestador" ? s.badgePrestador : s.badgeCliente;
+function KindBadge({ kind, s }: { kind: UnifiedRowKind; s: ReturnType<typeof operacoesSurface> }) {
+  const cls =
+    kind === "prestador"
+      ? s.badgePrestador
+      : kind === "funcionario"
+        ? s.badgeFuncionario
+        : s.badgeCliente;
   return (
-    <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${cls}`}>{kind}</span>
+    <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${cls}`}>
+      {operacoesKindLabel(kind)}
+    </span>
   );
 }
 
@@ -122,11 +129,15 @@ function InfoCell({
   const wa = whatsAppHref(row.phone);
   const activity = row.lastAppointmentAt ?? row.createdAt;
   const kindLabel =
-    row.accountKind && row.kind === "prestador"
-      ? accountKindLabel(row.accountKind as UserAccountKind)
+    row.kind === "cliente" && row.authUserId
+      ? "Cliente com conta"
       : row.kind === "cliente"
-        ? "Cliente (agenda)"
-        : null;
+        ? "Cliente (só agenda)"
+        : row.kind === "funcionario"
+          ? "Funcionário / colaborador"
+          : row.accountKind === "business_owner"
+            ? "Dono do negócio"
+            : null;
   const publicUrl = resolveRowPublicUrl(row);
 
   return (
@@ -357,13 +368,17 @@ function ActionsCell({
         <tr>
           <td className={s.labelCell}>Conta</td>
           <td className="py-1">
-            <button
-              type="button"
-              onClick={() => onDelete(row)}
-              className={`text-[11px] font-semibold px-2 py-1 rounded-md ${theme === "light" ? "text-red-700 hover:bg-red-50" : "text-red-400 hover:bg-red-500/10"}`}
-            >
-              Excluir
-            </button>
+            {row.kind === "funcionario" ? (
+              <span className={`text-[11px] ${s.muted}`}>Remover no painel do negócio</span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onDelete(row)}
+                className={`text-[11px] font-semibold px-2 py-1 rounded-md ${theme === "light" ? "text-red-700 hover:bg-red-50" : "text-red-400 hover:bg-red-500/10"}`}
+              >
+                Excluir
+              </button>
+            )}
           </td>
         </tr>
       </tbody>

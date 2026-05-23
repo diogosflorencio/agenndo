@@ -34,7 +34,7 @@ export function OperacoesConsole() {
 
   const [q, setQ] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
-  const [kindFilter, setKindFilter] = useState<"all" | "prestador" | "cliente">("all");
+  const [kindFilter, setKindFilter] = useState<"all" | "prestador" | "cliente" | "funcionario">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "ativo" | "inativo">("all");
   const [sort, setSort] = useState<OperacoesSortKey>("activity_desc");
   const [subscribersOnly, setSubscribersOnly] = useState(false);
@@ -136,7 +136,13 @@ export function OperacoesConsole() {
     const msg =
       row.kind === "cliente"
         ? `Apagar cliente «${row.name}»?`
-        : `Apagar negócio «${row.name}» e dados em cascata?`;
+        : row.kind === "funcionario"
+          ? `Este registo é de funcionário — use o painel do negócio para remover o colaborador.`
+          : `Apagar negócio «${row.name}» e dados em cascata?`;
+    if (row.kind === "funcionario") {
+      alert(msg);
+      return;
+    }
     if (!confirm(msg)) return;
     const body =
       row.kind === "cliente"
@@ -201,12 +207,13 @@ export function OperacoesConsole() {
       {overview ? (
         <section className={`${s.panel} px-5 py-4`}>
           <p className={`text-[10px] uppercase tracking-wider ${s.muted} mb-4`}>Resumo da plataforma</p>
-          <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-x-6 gap-y-4">
+          <dl className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-x-6 gap-y-4">
             {[
               { label: "Total na lista", value: overview.totalRows },
-              { label: "Ativos (30d)", value: overview.ativos },
-              { label: "Inativos", value: overview.inativos },
               { label: "Prestadores", value: overview.prestadores },
+              { label: "Funcionários", value: overview.funcionarios },
+              { label: "Clientes", value: overview.clientes },
+              { label: "Ativos (30d)", value: overview.ativos },
               { label: "Negócios", value: overview.negocios },
               { label: "Agendamentos", value: overview.agendamentos },
             ].map((c) => (
@@ -223,7 +230,6 @@ export function OperacoesConsole() {
                 { label: "Grátis", value: overview.planSummary.free },
                 { label: "Pagos", value: overview.planSummary.paid },
                 { label: "Enterprise", value: overview.planSummary.enterprise },
-                { label: "Clientes", value: overview.clientes },
               ].map((c) => (
                 <div key={c.label} className="flex items-baseline gap-2">
                   <dt className={`text-xs ${s.muted}`}>{c.label}</dt>
@@ -254,7 +260,8 @@ export function OperacoesConsole() {
               className={`${inputCls} min-w-[120px]`}
             >
               <option value="all">Todos</option>
-              <option value="prestador">Prestador</option>
+              <option value="prestador">Prestador (dono)</option>
+              <option value="funcionario">Funcionário</option>
               <option value="cliente">Cliente</option>
             </select>
           </div>

@@ -29,7 +29,7 @@ export function filterAndSortRows(
   filters: {
     q: string;
     plan: string;
-    kind: "all" | "prestador" | "cliente";
+    kind: "all" | "prestador" | "cliente" | "funcionario";
     status: "all" | "ativo" | "inativo";
     sort: OperacoesSortKey;
     subscribersOnly: boolean;

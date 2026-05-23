@@ -9,7 +9,7 @@ const COLLAPSE_KEY = "agenndo_operacoes_collapse_v1";
 
 export type OperacoesTheme = "dark" | "light";
 
-export type OperacoesCollapseMode = "all" | "prestador" | "cliente";
+export type OperacoesCollapseMode = "all" | "prestador" | "cliente" | "funcionario";
 
 type ShellCtx = {
   theme: OperacoesTheme;
@@ -37,6 +37,7 @@ const COLLAPSE_LABELS: Record<OperacoesCollapseMode, string> = {
   all: "Todos expandidos",
   prestador: "Colapsar prestadores",
   cliente: "Colapsar clientes",
+  funcionario: "Colapsar funcionários",
 };
 
 export function operacoesSurface(theme: OperacoesTheme) {
@@ -61,6 +62,7 @@ export function operacoesSurface(theme: OperacoesTheme) {
         btnGhost: "bg-slate-100 hover:bg-slate-200 text-slate-700",
         badgePrestador: "bg-emerald-100 text-emerald-900",
         badgeCliente: "bg-sky-100 text-sky-800",
+        badgeFuncionario: "bg-violet-100 text-violet-900",
         badgeAtivo: "bg-emerald-100 text-emerald-800",
         rowCollapsed: "bg-slate-50/90",
       }
@@ -84,6 +86,7 @@ export function operacoesSurface(theme: OperacoesTheme) {
         btnGhost: "bg-white/5 hover:bg-white/10 text-gray-400",
         badgePrestador: "bg-[#0a3d22]/80 text-[#4aad72]",
         badgeCliente: "bg-sky-500/15 text-sky-400/90",
+        badgeFuncionario: "bg-violet-500/15 text-violet-300/90",
         badgeAtivo: "bg-[#0a3d22]/60 text-[#4aad72]",
         rowCollapsed: "bg-[#041610]/80",
       };
@@ -131,7 +134,7 @@ export function OperacoesShell({
     const stored = localStorage.getItem(THEME_KEY);
     if (stored === "light" || stored === "dark") setTheme(stored);
     const c = localStorage.getItem(COLLAPSE_KEY);
-    if (c === "all" || c === "prestador" || c === "cliente") setCollapseModeState(c);
+    if (c === "all" || c === "prestador" || c === "cliente" || c === "funcionario") setCollapseModeState(c);
   }, []);
 
   const toggleTheme = () => {
