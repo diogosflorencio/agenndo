@@ -1,4 +1,4 @@
-import { getSiteUrl } from "@/lib/site-url";
+import { buildPublicSlugUrl, getSiteUrl } from "@/lib/site-url";
 import {
   getPlan,
   getPaidTierPrice,
@@ -31,9 +31,12 @@ function monthlyPriceForPlan(plan: PlanId, recommended: number | null): number |
   return getPlan(plan).price;
 }
 
-export async function fetchOperacoesOverview(supabase: SupabaseClient): Promise<OperacoesOverview> {
+export async function fetchOperacoesOverview(
+  supabase: SupabaseClient,
+  opts?: { siteBase?: string }
+): Promise<OperacoesOverview> {
   const [rows, aptCountRes, bizCountRes] = await Promise.all([
-    fetchUnifiedRows(supabase),
+    fetchUnifiedRows(supabase, opts),
     supabase.from("appointments").select("*", { count: "exact", head: true }),
     supabase.from("businesses").select("*", { count: "exact", head: true }),
   ]);
@@ -69,8 +72,11 @@ export async function fetchOperacoesOverview(supabase: SupabaseClient): Promise<
   };
 }
 
-export async function fetchUnifiedRows(supabase: SupabaseClient): Promise<UnifiedRow[]> {
-  const siteBase = getSiteUrl();
+export async function fetchUnifiedRows(
+  supabase: SupabaseClient,
+  opts?: { siteBase?: string }
+): Promise<UnifiedRow[]> {
+  const siteBase = opts?.siteBase ?? getSiteUrl();
   const cutoff = daysAgoIso(INACTIVE_DAYS);
 
   const [bizRes, profRes, tokRes, cliRes, aptRes] = await Promise.all([
@@ -130,7 +136,7 @@ export async function fetchUnifiedRows(supabase: SupabaseClient): Promise<Unifie
       authUserId: b.profile_id,
       impersonateToken: tokens.get(b.profile_id) ?? null,
       publicSlug: b.slug,
-      publicUrl: b.slug ? `${siteBase}/${encodeURIComponent(b.slug)}` : null,
+      publicUrl: buildPublicSlugUrl(siteBase, b.slug),
       avatarUrl: b.logo_url ?? p?.avatar_url ?? null,
       name: b.name || p?.full_name || "—",
       email: p?.email ?? null,
@@ -195,7 +201,7 @@ export async function fetchUnifiedRows(supabase: SupabaseClient): Promise<Unifie
       authUserId: c.auth_user_id,
       impersonateToken: c.auth_user_id ? tokens.get(c.auth_user_id) ?? null : null,
       publicSlug: biz?.slug ?? null,
-      publicUrl: biz?.slug ? `${siteBase}/${encodeURIComponent(biz.slug)}` : null,
+      publicUrl: buildPublicSlugUrl(siteBase, biz?.slug ?? null),
       avatarUrl: null,
       name: c.name,
       email: c.email,

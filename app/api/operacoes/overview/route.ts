@@ -2,14 +2,16 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { fetchOperacoesOverview } from "@/lib/operacoes/build-unified-list";
 import { requirePlatformOperator } from "@/lib/operacoes/require-operator";
+import { resolveOperacoesSiteBase } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
   const supabase = await createClient();
   if (!(await requirePlatformOperator(supabase))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
-  const overview = await fetchOperacoesOverview(supabase);
+  const siteBase = resolveOperacoesSiteBase(request);
+  const overview = await fetchOperacoesOverview(supabase, { siteBase });
   return NextResponse.json(overview);
 }

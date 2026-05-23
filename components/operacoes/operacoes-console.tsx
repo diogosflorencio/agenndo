@@ -9,6 +9,7 @@ import {
   rowsToCsv,
 } from "@/lib/operacoes/list-utils";
 import { loadOperacoesNotes, saveOperacoesNote } from "@/lib/operacoes/notes-storage";
+import { resolveRowPublicUrl } from "@/lib/operacoes/resolve-public-url";
 import type { OperacoesOverview, OperacoesSortKey, UnifiedRow } from "@/lib/operacoes/types";
 import { OperacoesPeopleList } from "./operacoes-people-list";
 import { operacoesSurface, useOperacoesShell } from "./operacoes-shell";
@@ -103,7 +104,11 @@ export function OperacoesConsole() {
   };
 
   const handleExport = () => {
-    const csv = rowsToCsv(filtered, notesMap);
+    const forCsv = filtered.map((r) => ({
+      ...r,
+      publicUrl: resolveRowPublicUrl(r) ?? r.publicUrl,
+    }));
+    const csv = rowsToCsv(forCsv, notesMap);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

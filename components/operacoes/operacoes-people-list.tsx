@@ -12,6 +12,7 @@ import {
 } from "@/lib/plans";
 import type { OperacoesNoteEntry } from "@/lib/operacoes/notes-storage";
 import { whatsAppHref } from "@/lib/operacoes/list-utils";
+import { resolveRowPublicUrl } from "@/lib/operacoes/resolve-public-url";
 import type { UnifiedRow } from "@/lib/operacoes/types";
 import { OperacoesNoteButton } from "./operacoes-note-popup";
 import { operacoesSurface, useOperacoesShell } from "./operacoes-shell";
@@ -126,6 +127,7 @@ function InfoCell({
       : row.kind === "cliente"
         ? "Cliente (agenda)"
         : null;
+  const publicUrl = resolveRowPublicUrl(row);
 
   return (
     <InnerTable s={s}>
@@ -145,9 +147,9 @@ function InfoCell({
                 <td className={s.labelCell}>Página</td>
                 <td className={`py-1 ${s.muted}`}>
                   /{row.publicSlug}
-                  {row.publicUrl ? (
+                  {publicUrl ? (
                     <a
-                      href={row.publicUrl}
+                      href={publicUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className={`ml-2 ${s.accent} hover:underline`}
@@ -220,8 +222,8 @@ function InfoCell({
               <button type="button" className={btn} onClick={() => onCopy(row.entityId)}>
                 {copiedId === row.entityId ? "Copiado" : "ID"}
               </button>
-              {row.publicUrl ? (
-                <button type="button" className={btn} onClick={() => onCopy(row.publicUrl!)}>
+              {publicUrl ? (
+                <button type="button" className={btn} onClick={() => onCopy(publicUrl)}>
                   Link
                 </button>
               ) : null}
