@@ -11,6 +11,7 @@ import {
   isLocalhostOAuthPopup,
   OAUTH_POPUP_MESSAGE,
 } from "@/lib/auth/oauth-popup";
+import { resolveProviderLoginDestination } from "@/lib/auth/resolve-login-destination";
 import { GoogleOneTap } from "@/components/auth/google-one-tap";
 import type { OAuthLoginContext } from "@/lib/auth/oauth-popup";
 
@@ -34,6 +35,22 @@ function LoginContent() {
   const [error, setError] = useState<string | null>(null);
   const popupHandledRef = useRef(false);
   const popupPollRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const supabase = createClient();
+    void (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (cancelled || !session?.user) return;
+      const dest = await resolveProviderLoginDestination(supabase, nextPath);
+      router.replace(dest);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [nextPath, router]);
 
   useEffect(() => {
     const err = searchParams.get("error");

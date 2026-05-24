@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { generateGoogleAuthNonce } from "@/lib/auth/google-nonce";
+import { syncAccountOnLogin } from "@/lib/auth/sync-account-on-login";
 import { createClient } from "@/lib/supabase/client";
 
 declare global {
@@ -14,6 +16,8 @@ declare global {
             callback: (r: { credential: string }) => void | Promise<void>;
             auto_select?: boolean;
             cancel_on_tap_outside?: boolean;
+            nonce?: string;
+            use_fedcm_for_prompt?: boolean;
           }) => void;
           prompt: (momentListener?: (n: {
             isNotDisplayed: () => boolean;
@@ -56,6 +60,7 @@ type Props = {
  */
 export function GoogleOneTap({ nextPath, onError, disabled }: Props) {
   const router = useRouter();
+  const nonceRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (disabled) return;
@@ -69,20 +74,40 @@ export function GoogleOneTap({ nextPath, onError, disabled }: Props) {
         await loadGsiScript();
         if (cancelled || !window.google?.accounts?.id) return;
 
+        const { nonce, hashedNonce } = await generateGoogleAuthNonce();
+        nonceRef.current = nonce;
+
         window.google.accounts.id.initialize({
           client_id: clientId,
           auto_select: false,
           cancel_on_tap_outside: true,
+          nonce: hashedNonce,
+          use_fedcm_for_prompt: true,
           callback: async (resp) => {
             if (!resp?.credential) return;
+            const rawNonce = nonceRef.current;
+            if (!rawNonce) {
+              onError?.("Falha de segurança no login. Tente de novo.");
+              return;
+            }
             const supabase = createClient();
-            const { error } = await supabase.auth.signInWithIdToken({
+            const { data, error } = await supabase.auth.signInWithIdToken({
               provider: "google",
               token: resp.credential,
+              nonce: rawNonce,
             });
             if (error) {
               onError?.(error.message);
               return;
+            }
+            const user = data.user;
+            if (user) {
+              await syncAccountOnLogin(supabase, user.id, {
+                email: user.email,
+                fullName: (user.user_metadata?.full_name ?? user.user_metadata?.name) as string | undefined,
+                avatarUrl: (user.user_metadata?.avatar_url ?? user.user_metadata?.picture) as string | undefined,
+                loginContext: null,
+              });
             }
             const dest =
               nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/dashboard";

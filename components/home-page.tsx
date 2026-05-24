@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { LoginEntryLink } from "@/components/auth/login-entry-link";
 import { WhatsAppSupportWidget } from "@/components/whatsapp-support-widget";
 import { HOME_FAQS } from "@/lib/seo/home-faq-data";
 import { cn } from "@/lib/utils";
@@ -155,12 +156,11 @@ export default function HomePage() {
             <Link className="hover:text-primary transition-colors" href="/termos">Termos</Link>
             <Link className="hover:text-primary transition-colors" href="/politicas">Políticas</Link>
           </div>
-          <Link
-            href="/login"
+          <LoginEntryLink
             className="bg-primary hover:bg-primary/90 text-black font-bold py-2 px-5 rounded-full text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.4)]"
           >
             Entrar
-          </Link>
+          </LoginEntryLink>
         </div>
       </nav>
 
@@ -187,13 +187,12 @@ export default function HomePage() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-              <Link
-                href="/login"
+              <LoginEntryLink
                 className="w-full sm:w-auto px-8 py-4 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(19,236,91,0.3)] flex items-center justify-center gap-2"
               >
                 Teste Grátis por 7 Dias
                 <span className="material-symbols-outlined text-lg">arrow_forward</span>
-              </Link>
+              </LoginEntryLink>
               <Link
                 href="/ywp"
                 className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
@@ -495,13 +494,12 @@ export default function HomePage() {
           <p className="text-gray-400 mb-8">
             No onboarding você escolhe testar grátis por 7 dias. Depois, o valor é definido conforme seu uso e aparece em <strong className="text-white">Conta</strong> para você assinar quando quiser.
           </p>
-          <Link
-            href="/login"
+          <LoginEntryLink
             className="inline-flex items-center gap-2 px-8 py-4 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(19,236,91,0.3)]"
           >
             Começar teste grátis
             <span className="material-symbols-outlined">arrow_forward</span>
-          </Link>
+          </LoginEntryLink>
         </div>
       </section>
 
@@ -563,13 +561,12 @@ export default function HomePage() {
           <p className="text-gray-400 text-lg mb-10">
             Junte-se a mais de 2.000 profissionais que já usam o Agenndo.
           </p>
-          <Link
-            href="/login"
+          <LoginEntryLink
             className="inline-flex items-center gap-2 px-10 py-5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-[0_0_30px_rgba(19,236,91,0.4)] text-lg"
           >
             Teste Grátis por 7 Dias
             <span className="material-symbols-outlined">arrow_forward</span>
-          </Link>
+          </LoginEntryLink>
           <div className="mt-8 flex items-center justify-center gap-8 text-sm text-gray-500 flex-wrap">
             {["7 dias grátis", "Sem cartão de crédito", "Suporte em português", "Cancele quando quiser"].map((t) => (
               <div key={t} className="flex items-center gap-2">
