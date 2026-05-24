@@ -11,6 +11,7 @@ import {
   weekdayKeyToDow,
   WEEKDAY_KEYS,
 } from "@/lib/disponibilidade";
+import { getServiceBlockingDurationMinutes } from "@/lib/service-duration";
 
 export const BOOKING_TZ = "America/Sao_Paulo";
 
@@ -69,8 +70,13 @@ export type AppointmentBlockRow = {
   time_end: string;
   status: string;
   collaborator_id: string | null;
-  /** Duração do serviço no momento do agendamento (evita `time_end` incorreto no banco). */
+  /** Duração de bloqueio na agenda (real ou total). Evita `time_end` incorreto no banco. */
   service_duration_minutes?: number | null;
+};
+
+type ServiceDurationJoin = {
+  duration_minutes: number | null;
+  real_duration_minutes?: number | null;
 };
 
 /** Normaliza linhas da API (com join opcional em `services`). */
@@ -80,23 +86,19 @@ export function mapAppointmentBlockRows(
     time_end: string;
     status: string;
     collaborator_id: string | null;
-    services?: { duration_minutes: number | null } | { duration_minutes: number | null }[] | null;
+    services?: ServiceDurationJoin | ServiceDurationJoin[] | null;
   }[]
 ): AppointmentBlockRow[] {
   return (rows ?? []).map((r) => {
     const svc = r.services;
-    const dur =
-      svc == null
-        ? null
-        : Array.isArray(svc)
-          ? svc[0]?.duration_minutes
-          : svc.duration_minutes;
+    const row = svc == null ? null : Array.isArray(svc) ? (svc[0] ?? null) : svc;
+    const blocking = row != null ? getServiceBlockingDurationMinutes(row) : null;
     return {
       time_start: r.time_start,
       time_end: r.time_end,
       status: r.status,
       collaborator_id: r.collaborator_id,
-      service_duration_minutes: dur != null ? Number(dur) : null,
+      service_duration_minutes: blocking,
     };
   });
 }

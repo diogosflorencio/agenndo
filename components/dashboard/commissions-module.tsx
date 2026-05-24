@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, cn } from "@/lib/utils";
 import { useAppAlert } from "@/components/app-alert-provider";
 import { SwitchToggle } from "@/components/switch-toggle";
+import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 import { jsPDF } from "jspdf";
 
 type CommissionSettings = {
@@ -57,6 +59,14 @@ function localYmd(d: Date) {
 
 export function CommissionsModule({ businessId, profileId }: { businessId: string; profileId: string }) {
   const { showAlert, showConfirm } = useAppAlert();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
+  const inputCls = cn("rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input);
+  const inputClsSm = cn("rounded-xl border px-2 py-2 text-sm outline-none focus:border-primary", surfaces.input);
+  const rowDivider = isDark ? "divide-white/[0.06]" : "divide-gray-100";
+  const rowHover = isDark ? "hover:bg-white/[0.04]" : "hover:bg-gray-50";
+  const tabIdle = isDark ? "bg-white/[0.06] text-gray-300 hover:bg-white/10" : "bg-gray-100 text-gray-700 hover:bg-gray-200";
   const [section, setSection] = useState<"config" | "lines" | "payouts">("config");
   const [settings, setSettings] = useState<CommissionSettings | null>(null);
   const [settingsLoading, setSettingsLoading] = useState(true);
@@ -426,7 +436,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-3">
+      <div className={cn("flex flex-wrap gap-2 border-b pb-3", isDark ? "border-white/10" : "border-gray-200")}>
         {(
           [
             { key: "config" as const, label: "Configuração" },
@@ -440,7 +450,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
             onClick={() => setSection(t.key)}
             className={cn(
               "px-4 py-2 rounded-xl text-sm font-bold transition-all",
-              section === t.key ? "bg-primary text-black" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              section === t.key ? "bg-primary text-black" : tabIdle
             )}
           >
             {t.label}
@@ -450,11 +460,11 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
 
       {section === "config" && (
         <div className="space-y-6">
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
+          <div className={cn(surfaces.panel, "p-5 space-y-4")}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h2 className="text-sm font-bold text-gray-900">Módulo de comissões</h2>
-                <p className="text-xs text-gray-500 mt-1">
+                <h2 className={cn("text-sm font-bold", surfaces.title)}>Módulo de comissões</h2>
+                <p className={cn("text-xs mt-1", surfaces.muted)}>
                   Desligado: o sistema segue como hoje, sem lançar comissões. Ligado: cada “compareceu” gera uma linha
                   congelada.
                 </p>
@@ -465,7 +475,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
               />
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              <label className="block text-xs font-medium text-gray-600">
+              <label className={cn("block text-xs font-medium", surfaces.label)}>
                 Percentual padrão (%)
                 <input
                   type="text"
@@ -476,10 +486,10 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
                       s ? { ...s, default_percent: Number(e.target.value.replace(",", ".")) || 0 } : s
                     )
                   }
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                  className={cn("mt-1 w-full", inputCls)}
                 />
               </label>
-              <label className="block text-xs font-medium text-gray-600">
+              <label className={cn("block text-xs font-medium", surfaces.label)}>
                 Base de cálculo
                 <select
                   value={settings.calculation_base}
@@ -488,14 +498,14 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
                       s ? { ...s, calculation_base: e.target.value as "gross" | "net" } : s
                     )
                   }
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                  className={cn("mt-1 w-full", inputCls)}
                 >
                   <option value="gross">Bruto (valor cobrado no atendimento)</option>
                   <option value="net">Líquido (valor − taxas de gateway / MP)</option>
                 </select>
               </label>
             </div>
-            <p className="text-[11px] text-gray-500">
+            <p className={cn("text-[11px]", surfaces.muted)}>
               Base líquida usa o campo de taxas no agendamento (`processor_fee_cents`). Enquanto não houver integração
               automática, você pode ajustar esse valor manualmente no banco ou em fluxos futuros.
             </p>
@@ -509,9 +519,9 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
             </button>
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-bold text-gray-900 mb-3">Por colaborador (opcional)</h2>
-            <p className="text-xs text-gray-500 mb-4">
+          <div className={cn(surfaces.panel, "p-5")}>
+            <h2 className={cn("text-sm font-bold mb-3", surfaces.title)}>Por colaborador (opcional)</h2>
+            <p className={cn("text-xs mb-4", surfaces.muted)}>
               Sobrescreve o percentual padrão para quem estiver listado. Regras por serviço abaixo têm prioridade maior.
             </p>
             <div className="space-y-3">
@@ -519,12 +529,12 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
                 const row = collabDefaults.find((x) => x.id === c.id);
                 return (
                   <div key={c.id} className="flex flex-wrap items-end gap-2">
-                    <span className="text-sm text-gray-800 min-w-[10rem]">{c.name}</span>
+                    <span className={cn("text-sm min-w-[10rem]", surfaces.label)}>{c.name}</span>
                     <input
                       placeholder="%"
                       defaultValue={row?.percent ?? ""}
                       id={`cd-${c.id}`}
-                      className="w-24 rounded-lg border border-gray-200 px-2 py-2 text-sm"
+                      className={cn("w-24", inputClsSm)}
                     />
                     <button
                       type="button"
@@ -537,7 +547,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
                       Salvar
                     </button>
                     {row ? (
-                      <button type="button" className="text-xs text-gray-500" onClick={() => void removeCollabDefault(c.id)}>
+                      <button type="button" className={cn("text-xs", surfaces.muted)} onClick={() => void removeCollabDefault(c.id)}>
                         Remover
                       </button>
                     ) : null}
@@ -547,16 +557,16 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
             </div>
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-bold text-gray-900 mb-3">Regras por serviço (e opcionalmente por colaborador)</h2>
-            <p className="text-xs text-gray-500 mb-4">
+          <div className={cn(surfaces.panel, "p-5")}>
+            <h2 className={cn("text-sm font-bold mb-3", surfaces.title)}>Regras por serviço (e opcionalmente por colaborador)</h2>
+            <p className={cn("text-xs mb-4", surfaces.muted)}>
               Ordem de prioridade: serviço+colaborador → colaborador acima → só serviço → padrão do negócio.
             </p>
             <div className="flex flex-wrap gap-2 mb-4">
               <select
                 value={newRule.service_id}
                 onChange={(e) => setNewRule((r) => ({ ...r, service_id: e.target.value }))}
-                className="rounded-xl border border-gray-200 px-2 py-2 text-sm min-w-[10rem]"
+                className={cn(inputClsSm, "min-w-[10rem]")}
               >
                 <option value="">Serviço…</option>
                 {services.map((s) => (
@@ -568,7 +578,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
               <select
                 value={newRule.collaborator_id}
                 onChange={(e) => setNewRule((r) => ({ ...r, collaborator_id: e.target.value }))}
-                className="rounded-xl border border-gray-200 px-2 py-2 text-sm min-w-[10rem]"
+                className={cn(inputClsSm, "min-w-[10rem]")}
               >
                 <option value="">Todos colaboradores</option>
                 {collabs.map((s) => (
@@ -581,13 +591,13 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
                 placeholder="%"
                 value={newRule.percent}
                 onChange={(e) => setNewRule((r) => ({ ...r, percent: e.target.value }))}
-                className="w-24 rounded-xl border border-gray-200 px-2 py-2 text-sm"
+                className={cn("w-24", inputClsSm)}
               />
               <button type="button" onClick={() => void addRule()} className="px-3 py-2 rounded-xl bg-gray-900 text-white text-sm font-bold">
                 Adicionar regra
               </button>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className={cn("divide-y", rowDivider)}>
               {rules.map((r) => {
                 const svc = services.find((s) => s.id === r.service_id)?.name ?? r.service_id;
                 const col = r.collaborator_id ? collabs.find((c) => c.id === r.collaborator_id)?.name ?? "?" : "Todos";
@@ -602,7 +612,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
                   </div>
                 );
               })}
-              {rules.length === 0 ? <p className="text-xs text-gray-400 py-2">Nenhuma regra específica.</p> : null}
+              {rules.length === 0 ? <p className={cn("text-xs py-2", surfaces.muted)}>Nenhuma regra específica.</p> : null}
             </div>
           </div>
         </div>
@@ -610,11 +620,11 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
 
       {section === "lines" && (
         <div className="space-y-4">
-          <div className="rounded-xl border border-gray-200 bg-white p-4 flex flex-wrap gap-2 items-center">
+          <div className={cn(surfaces.panel, "p-4 flex flex-wrap gap-2 items-center")}>
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value as typeof period)}
-              className="rounded-xl border border-gray-200 px-3 py-2 text-sm"
+              className={inputClsSm}
             >
               <option value="day">Hoje</option>
               <option value="week">Últimos 7 dias</option>
@@ -627,20 +637,20 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
                   type="date"
                   value={customFrom}
                   onChange={(e) => setCustomFrom(e.target.value)}
-                  className="rounded-xl border border-gray-200 px-2 py-2 text-sm"
+                  className={inputClsSm}
                 />
                 <input
                   type="date"
                   value={customTo}
                   onChange={(e) => setCustomTo(e.target.value)}
-                  className="rounded-xl border border-gray-200 px-2 py-2 text-sm"
+                  className={inputClsSm}
                 />
               </>
             ) : null}
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="rounded-xl border border-gray-200 px-3 py-2 text-sm"
+              className={inputClsSm}
             >
               <option value="all">Todos status</option>
               <option value="pending">Pendente</option>
@@ -651,7 +661,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
             <select
               value={filterCollab}
               onChange={(e) => setFilterCollab(e.target.value)}
-              className="rounded-xl border border-gray-200 px-3 py-2 text-sm"
+              className={inputClsSm}
             >
               <option value="all">Todos colaboradores</option>
               {collabs.map((c) => (
@@ -663,20 +673,20 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
             <button
               type="button"
               onClick={() => void loadLines()}
-              className="ml-auto px-3 py-2 rounded-xl bg-gray-100 text-sm font-semibold"
+              className={cn("ml-auto px-3 py-2 rounded-xl text-sm font-semibold border", surfaces.btnSecondary)}
             >
               Atualizar
             </button>
           </div>
 
           {rankingByCollab.length > 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-white p-4">
-              <h3 className="text-xs font-bold text-gray-500 uppercase mb-2">Ranking no período (filtrado)</h3>
+            <div className={cn(surfaces.panel, "p-4")}>
+              <h3 className={cn("text-xs font-bold uppercase mb-2", surfaces.muted)}>Ranking no período (filtrado)</h3>
               <div className="flex flex-wrap gap-3">
                 {rankingByCollab.map(([name, cents], i) => (
                   <div key={name} className="text-sm">
                     <span className="text-gray-400 mr-1">{i + 1}.</span>
-                    <span className="font-semibold text-gray-900">{name}</span>{" "}
+                    <span className={cn("font-semibold", surfaces.title)}>{name}</span>{" "}
                     <span className="text-primary font-bold">{formatCurrency(cents / 100)}</span>
                   </div>
                 ))}
@@ -689,7 +699,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
               type="button"
               disabled={!settings.enabled}
               onClick={() => void runApprove()}
-              className="px-3 py-2 rounded-xl border border-gray-200 text-sm font-bold disabled:opacity-40"
+              className={cn("px-3 py-2 rounded-xl border text-sm font-bold disabled:opacity-40", surfaces.btnSecondary)}
             >
               Aprovar selecionadas
             </button>
@@ -709,22 +719,22 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
             >
               Marcar pagas (lote)
             </button>
-            <button type="button" onClick={exportCsvLines} className="px-3 py-2 rounded-xl border text-sm font-semibold ml-auto">
+            <button type="button" onClick={exportCsvLines} className={cn("px-3 py-2 rounded-xl border text-sm font-semibold ml-auto", surfaces.btnSecondary)}>
               CSV
             </button>
-            <button type="button" onClick={exportPdfSummary} className="px-3 py-2 rounded-xl border text-sm font-semibold">
+            <button type="button" onClick={exportPdfSummary} className={cn("px-3 py-2 rounded-xl border text-sm font-semibold", surfaces.btnSecondary)}>
               PDF
             </button>
           </div>
 
-          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-            <div className="divide-y divide-gray-100">
+          <div className={cn(surfaces.panel, "overflow-hidden")}>
+            <div className={cn("divide-y", rowDivider)}>
               {linesLoading ? (
                 <div className="p-8 flex justify-center">
                   <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                 </div>
               ) : lines.length === 0 ? (
-                <div className="p-8 text-center text-sm text-gray-500">
+                <div className={cn("p-8 text-center text-sm", surfaces.muted)}>
                   {settings.enabled
                     ? "Nenhuma comissão neste filtro. Marque atendimentos como compareceu para gerar linhas."
                     : "Ative o módulo na aba Configuração para começar a registrar comissões."}
@@ -733,7 +743,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
                 lines.map((l) => (
                   <label
                     key={l.id}
-                    className="flex flex-wrap items-center gap-3 p-4 hover:bg-gray-50 cursor-pointer"
+                    className={cn("flex flex-wrap items-center gap-3 p-4 cursor-pointer", rowHover)}
                   >
                     <input
                       type="checkbox"
@@ -742,22 +752,22 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
                       className="rounded border-gray-300"
                     />
                     <div className="flex-1 min-w-[12rem]">
-                      <p className="text-sm font-medium text-gray-900">{l.collaborators?.name ?? "-"}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className={cn("text-sm font-medium", surfaces.title)}>{l.collaborators?.name ?? "-"}</p>
+                      <p className={cn("text-xs", surfaces.muted)}>
                         {l.services?.name ?? "-"} · {(l.appointments?.date ?? "").slice(0, 10)} · atend.{" "}
                         {formatCurrency((l.appointments?.price_cents ?? 0) / 100)}
                       </p>
                     </div>
                     <div className="text-right text-sm">
                       <p className="text-gray-500 text-xs">{l.percent_applied}% sobre base {formatCurrency(l.base_amount_cents / 100)}</p>
-                      <p className="font-bold text-gray-900">{formatCurrency(l.amount_cents / 100)}</p>
+                      <p className={cn("font-bold", surfaces.title)}>{formatCurrency(l.amount_cents / 100)}</p>
                       <span
                         className={cn(
                           "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full",
                           l.status === "paid"
                             ? "bg-primary/15 text-primary"
                             : l.status === "void"
-                              ? "bg-gray-100 text-gray-500"
+                              ? (isDark ? "bg-white/[0.06] text-gray-500" : "bg-gray-100 text-gray-500")
                               : "bg-amber-100 text-amber-800"
                         )}
                       >
@@ -773,15 +783,15 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
       )}
 
       {section === "payouts" && (
-        <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+        <div className={cn(surfaces.panel, "divide-y", rowDivider)}>
           {batches.length === 0 ? (
-            <p className="p-6 text-sm text-gray-500">Nenhum lote registrado ainda.</p>
+            <p className={cn("p-6 text-sm", surfaces.muted)}>Nenhum lote registrado ainda.</p>
           ) : (
             batches.map((b) => (
               <div key={b.id} className="p-4 flex flex-wrap justify-between gap-2">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{new Date(b.created_at).toLocaleString("pt-BR")}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className={cn("text-sm font-semibold", surfaces.title)}>{new Date(b.created_at).toLocaleString("pt-BR")}</p>
+                  <p className={cn("text-xs", surfaces.muted)}>
                     Registrado por perfil {b.approved_by ? `${b.approved_by.slice(0, 8)}…` : "-"} · {b.notes ?? ""}
                   </p>
                 </div>

@@ -4,7 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
-import { STATUS_CONFIG, formatCurrency, getAuthHeaders, phoneToWhatsAppHref, type AppointmentStatus } from "@/lib/utils";
+import { cn, STATUS_CONFIG, formatCurrency, getAuthHeaders, phoneToWhatsAppHref, type AppointmentStatus } from "@/lib/utils";
+import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 import { hasFullServiceAccess } from "@/lib/billing-access";
 import {
   setAppointmentAttendance,
@@ -45,6 +47,9 @@ function formatTime(t: string) {
 }
 
 export default function AgendamentosPage() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
   const { business } = useDashboard();
   const { showConfirm } = useAppAlert();
   const [appointments, setAppointments] = useState<AptRow[]>([]);
@@ -336,8 +341,8 @@ export default function AgendamentosPage() {
     <div className="w-full min-w-0 overflow-x-hidden pb-24">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Agendamentos</h1>
-          <p className="text-gray-600 text-sm mt-1">Gerencie todos os seus agendamentos</p>
+          <h1 className={cn("text-2xl font-bold", surfaces.title)}>Agendamentos</h1>
+          <p className={cn("text-sm mt-1", surfaces.subtitle)}>Gerencie todos os seus agendamentos</p>
         </div>
         {canCreateAppointments ? (
           <Link
@@ -414,25 +419,25 @@ export default function AgendamentosPage() {
         onAppointmentClick={(id) => setDetailAptId(id)}
       />
 
-      <section className="mt-10 border-t border-gray-200 pt-8">
+      <section className={cn("mt-10 border-t pt-8", isDark ? "border-white/10" : "border-gray-200")}>
         <div className="mb-4">
-          <h2 className="text-lg font-bold text-gray-900">Lista do dia</h2>
-          <p className="text-sm text-gray-500 capitalize">{listTitle}</p>
-          <p className="text-xs text-gray-500 mt-1">
+          <h2 className={cn("text-lg font-bold", surfaces.title)}>Lista do dia</h2>
+          <p className={cn("text-sm capitalize", surfaces.muted)}>{listTitle}</p>
+          <p className={cn("text-xs mt-1", surfaces.muted)}>
             Use a grade acima para ver o dia na vertical; aqui você filtra por status e aplica ações em lote.
           </p>
         </div>
 
         <div className="grid lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1 min-w-0">
-            <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-4">
-              <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-3">Status (lista)</h3>
+            <div className={cn(surfaces.panel, "p-4")}>
+              <h3 className={cn("text-xs font-bold uppercase tracking-wider mb-3", surfaces.subtitle)}>Status (lista)</h3>
               <div className="space-y-1">
                 <button
                   type="button"
                   onClick={() => setFilterStatus("todos")}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                    filterStatus === "todos" ? "bg-primary/10 text-primary" : "text-gray-600 hover:bg-gray-50"
+                    filterStatus === "todos" ? "bg-primary/10 text-primary" : cn(surfaces.subtitle, isDark ? "hover:bg-white/5" : "hover:bg-gray-50")
                   }`}
                 >
                   <span className="size-2 rounded-full bg-gray-400" /> Todos
@@ -445,7 +450,7 @@ export default function AgendamentosPage() {
                       type="button"
                       onClick={() => setFilterStatus(s)}
                       className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                        filterStatus === s ? `bg-primary/10 ${conf.color}` : "text-gray-600 hover:bg-gray-50"
+                        filterStatus === s ? `bg-primary/10 ${conf.color}` : cn(surfaces.subtitle, isDark ? "hover:bg-white/5" : "hover:bg-gray-50")
                       }`}
                     >
                       <span className={`size-2 rounded-full ${conf.dot}`} /> {conf.label}
@@ -465,7 +470,7 @@ export default function AgendamentosPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar cliente..."
-                  className="w-full h-10 bg-white border border-gray-200 shadow-sm rounded-xl pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary transition-colors"
+                  className={cn("w-full h-10 rounded-xl pl-9 pr-4 text-sm outline-none focus:border-primary transition-colors", surfaces.input)}
                 />
               </div>
             </div>
@@ -512,9 +517,11 @@ export default function AgendamentosPage() {
                           setDetailAptId(apt.id);
                         }
                       }}
-                      className={`bg-white border rounded-xl overflow-hidden transition-all scroll-mt-24 cursor-pointer ${
-                        isSelected ? "border-primary/60" : "border-gray-200 hover:border-gray-300"
-                      }`}
+                      className={cn(
+                        surfaces.panel,
+                        "overflow-hidden transition-all scroll-mt-24 cursor-pointer",
+                        isSelected ? "border-primary/60" : isDark ? "hover:border-primary/25" : "hover:border-gray-300"
+                      )}
                     >
                       <div className="p-4 flex gap-3 items-start">
                         <input

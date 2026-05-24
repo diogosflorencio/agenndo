@@ -20,6 +20,7 @@ import {
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
 import { cn, getAuthHeaders } from "@/lib/utils";
 import {
@@ -476,10 +477,9 @@ function MiniCalendar({
 }
 
 function Card({ children, className = "", isDark }: { children: React.ReactNode; className?: string; isDark: boolean }) {
+  const surfaces = getDashboardSurfaces(isDark);
   return (
-    <div
-      className={`rounded-xl border shadow-sm overflow-hidden ${isDark ? "bg-[#080c0a] border-white/10" : "bg-white border-gray-200"} ${className}`}
-    >
+    <div className={cn(surfaces.panel, "overflow-hidden", className)}>
       {children}
     </div>
   );
@@ -581,6 +581,7 @@ export default function DisponibilidadePage() {
   const { theme } = useTheme();
   const { showConfirm } = useAppAlert();
   const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
 
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -910,8 +911,8 @@ export default function DisponibilidadePage() {
     return max;
   }, [schedule]);
 
-  const pageBg = isDark ? "bg-[#020403]" : "bg-gray-50";
-  const textMuted = isDark ? "text-white/50" : "text-gray-600";
+  const pageBg = surfaces.page;
+  const textMuted = surfaces.subtitle;
 
   const horariosCardTitle = useMemo(() => {
     switch (scope) {

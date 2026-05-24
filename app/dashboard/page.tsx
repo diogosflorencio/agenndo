@@ -22,6 +22,8 @@ import {
   type DashboardStatSlide,
 } from "@/components/dashboard/dashboard-stat-carousel";
 import { useDashboardNotifications } from "@/lib/dashboard-notifications";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
+import { cn } from "@/lib/utils";
 
 type AppointmentRow = {
   id: string;
@@ -528,6 +530,7 @@ export default function DashboardHome() {
 
   const firstName = profile?.full_name?.split(" ")[0] ?? business?.name?.split(" ")[0] ?? "Olá";
   const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
   const tooltipStyle = isDark
     ? { background: "#0f1c15", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }
     : { background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" };
@@ -547,7 +550,7 @@ export default function DashboardHome() {
     <div className="w-full">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className={cn("text-2xl font-bold", surfaces.title)}>
             {greetingForHour(new Date().getHours())}, {firstName}! 👋
           </h1>
           <p className="text-gray-600 text-sm mt-1">
@@ -591,12 +594,15 @@ export default function DashboardHome() {
       {latestUnread ? (
         <Link
           href="/dashboard/notificacoes"
-          className="flex items-start gap-3 p-4 mb-6 rounded-xl border border-gray-200 bg-white shadow-sm transition-colors hover:border-primary/30 hover:bg-primary/[0.03]"
+          className={cn(
+            "flex items-start gap-3 p-4 mb-6 transition-colors hover:border-primary/18",
+            surfaces.panel
+          )}
         >
           <span className="material-symbols-outlined text-primary text-2xl shrink-0 mt-0.5">{latestUnread.icon}</span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2 gap-y-1">
-              <p className="text-sm font-bold text-gray-900">{latestUnread.title}</p>
+              <p className={cn("text-sm font-bold", surfaces.title)}>{latestUnread.title}</p>
               {inboxUnread > 1 ? (
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 tabular-nums">
                   +{inboxUnread - 1} não lidas
@@ -604,7 +610,7 @@ export default function DashboardHome() {
               ) : null}
             </div>
             {latestUnread.body ? (
-              <p className="text-xs text-gray-600 mt-1 line-clamp-2 leading-relaxed">{latestUnread.body}</p>
+              <p className={cn("text-xs mt-1 line-clamp-2 leading-relaxed", surfaces.subtitle)}>{latestUnread.body}</p>
             ) : null}
           </div>
           <span className="text-[10px] font-semibold text-primary shrink-0 tabular-nums">{formatRelativeShort(latestUnread.created_at)}</span>
@@ -612,7 +618,11 @@ export default function DashboardHome() {
       ) : inboxUnread > 0 ? (
         <Link
           href="/dashboard/notificacoes"
-          className="flex items-center justify-between gap-3 p-4 mb-6 rounded-xl border border-gray-200 bg-white shadow-sm text-sm font-semibold text-gray-900 hover:border-primary/30"
+          className={cn(
+            "flex items-center justify-between gap-3 p-4 mb-6 text-sm font-semibold hover:border-primary/18",
+            surfaces.panel,
+            surfaces.title
+          )}
         >
           <span className="flex items-center gap-2 min-w-0">
             <span className="material-symbols-outlined text-primary shrink-0">notifications</span>
@@ -622,12 +632,12 @@ export default function DashboardHome() {
         </Link>
       ) : null}
 
-      <div className="mb-6 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-gray-800">
-        <p className="font-semibold text-gray-900 flex flex-wrap items-center gap-2">
-          <span className="material-symbols-outlined text-primary text-lg">info</span>
+      <div className={cn("mb-6 px-4 py-3 text-sm", surfaces.accentCard)}>
+        <p className={cn("flex flex-wrap items-center gap-2", surfaces.accentCardTitle)}>
+          <span className={cn("material-symbols-outlined text-lg", surfaces.accentIcon)}>info</span>
           Resumo rápido
         </p>
-        <p className="mt-1 text-gray-700">
+        <p className={cn("mt-1", surfaces.accentCardBody)}>
           <strong>Hoje</strong> você tem{" "}
           <strong>{todayAppointments.length}</strong> agendamento{todayAppointments.length === 1 ? "" : "s"}. Nesta semana (segunda a domingo):{" "}
           <strong>{weekFromToday.totalWeek}</strong> no total, sendo <strong>{weekFromToday.restAfterToday}</strong> nos dias seguintes.
@@ -646,7 +656,7 @@ export default function DashboardHome() {
         <div className="lg:col-span-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-4">
             <div>
-              <h2 className="text-base font-bold text-gray-900">
+              <h2 className={cn("text-base font-bold", surfaces.title)}>
                 {selectedDate === todayStr ? "Hoje" : formatDate(new Date(selectedDate + "T12:00:00"))}
               </h2>
               <p className="text-xs text-gray-500 mt-0.5">
@@ -690,11 +700,11 @@ export default function DashboardHome() {
                 const serviceName = apt.services?.name ?? "Serviço";
                 const collabName = apt.collaborators?.name ?? "-";
                 return (
-                  <div key={apt.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors shadow-sm">
+                  <div key={apt.id} className={cn(surfaces.panel, "overflow-hidden hover:border-primary/18 transition-colors")}>
                     <div className="p-4 flex gap-3 items-start">
                       <div className="w-16 flex-shrink-0">
-                        <p className="text-gray-900 font-bold text-sm">{formatTime(apt.time_start)}</p>
-                        <p className="text-gray-500 text-xs">{formatTime(apt.time_end)}</p>
+                        <p className={cn("font-bold text-sm", surfaces.title)}>{formatTime(apt.time_start)}</p>
+                        <p className={cn("text-xs", surfaces.muted)}>{formatTime(apt.time_end)}</p>
                       </div>
                       <div className="size-10 rounded-lg flex items-center justify-center text-white font-bold text-sm flex-shrink-0 bg-primary/80">
                         {clientName[0]?.toUpperCase() ?? "?"}
@@ -702,8 +712,8 @@ export default function DashboardHome() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <p className="text-gray-900 font-semibold text-sm">{clientName}</p>
-                            <p className="text-gray-500 text-xs mt-0.5">{serviceName} · {collabName}</p>
+                            <p className={cn("font-semibold text-sm", surfaces.title)}>{clientName}</p>
+                            <p className={cn("text-xs mt-0.5", surfaces.muted)}>{serviceName} · {collabName}</p>
                           </div>
                           <div className="flex flex-col items-end gap-1 flex-shrink-0">
                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${statusConf.bg} ${statusConf.color}`}>
@@ -716,12 +726,12 @@ export default function DashboardHome() {
                       </div>
                     </div>
                     {(apt.status === "agendado" || (apt.status as AppointmentStatus) === "confirmado") && (
-                      <div className="grid grid-cols-2 gap-px bg-gray-100 border-t border-gray-200">
+                      <div className={cn("grid grid-cols-2 gap-px border-t", surfaces.serviceCardActions)}>
                         <button
                           type="button"
                           disabled={attBusyId === apt.id}
                           onClick={() => void runHomeFaltou(apt)}
-                          className="bg-white hover:bg-gray-50 disabled:opacity-50 text-xs font-semibold text-gray-600 py-3 transition-colors flex items-center justify-center gap-1"
+                          className={cn(surfaces.serviceCardActionBtn, "disabled:opacity-50 text-xs font-semibold py-3 transition-colors flex items-center justify-center gap-1")}
                         >
                           <span className="material-symbols-outlined text-sm">person_off</span>
                           Faltou
@@ -746,13 +756,13 @@ export default function DashboardHome() {
 
         <div className="lg:col-span-2">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-base font-bold text-gray-900">Últimos 7 dias</h2>
+            <h2 className={cn("text-base font-bold", surfaces.title)}>Últimos 7 dias</h2>
           </div>
           <p className="text-xs text-gray-500 mb-3">
             Clique em uma barra para carregar os agendamentos desse dia na lista ao lado.
           </p>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <div className={cn(surfaces.panel, "p-4")}>
             <ResponsiveContainer width="100%" height={160}>
               <BarChart data={weekData} barSize={20}>
                 <XAxis dataKey="dayLabel" tick={{ fill: "#6b7280", fontSize: 10 }} axisLine={false} tickLine={false} />
@@ -793,11 +803,11 @@ export default function DashboardHome() {
           </div>
 
           <div className="mt-4 space-y-2">
-            <h3 className="text-sm font-bold text-gray-900 mb-3">Insights</h3>
+            <h3 className={cn("text-sm font-bold mb-3", surfaces.title)}>Insights</h3>
             {insights.map((insight, i) => (
-              <div key={i} className="flex gap-2 p-3 bg-white border border-gray-200 rounded-xl shadow-sm">
+              <div key={i} className={cn(surfaces.panel, "flex gap-2 p-3")}>
                 <span className={`material-symbols-outlined text-base flex-shrink-0 mt-0.5 ${insight.color}`}>{insight.icon}</span>
-                <p className="text-xs text-gray-600 leading-relaxed">{insight.text}</p>
+                <p className={cn("text-xs leading-relaxed", surfaces.subtitle)}>{insight.text}</p>
               </div>
             ))}
           </div>
@@ -835,13 +845,15 @@ function EmptyState({
   desc: string;
   action?: { label: string; href: string };
 }) {
+  const { theme } = useTheme();
+  const surfaces = getDashboardSurfaces(theme === "dark");
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="size-16 rounded-2xl bg-white border border-gray-200 flex items-center justify-center mb-4 shadow-sm">
-        <span className="material-symbols-outlined text-gray-400 text-3xl">{icon}</span>
+      <div className={cn(surfaces.panel, "size-16 flex items-center justify-center mb-4")}>
+        <span className={cn("material-symbols-outlined text-3xl", surfaces.muted)}>{icon}</span>
       </div>
-      <h3 className="text-base font-bold text-gray-900 mb-1">{title}</h3>
-      <p className="text-sm text-gray-600 mb-4 max-w-xs">{desc}</p>
+      <h3 className={cn("text-base font-bold mb-1", surfaces.title)}>{title}</h3>
+      <p className={cn("text-sm mb-4 max-w-xs", surfaces.subtitle)}>{desc}</p>
       {action && (
         <Link href={action.href} className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary text-sm font-semibold rounded-lg border border-primary/20 transition-colors">
           {action.label}

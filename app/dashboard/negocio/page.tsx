@@ -3,12 +3,17 @@
 import { useState, useEffect, useMemo, useRef, forwardRef, useCallback } from "react";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
-import { formatBrazilPhoneFromDigits, maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
+import { cn, formatBrazilPhoneFromDigits, maskPhoneInputRaw, phoneDigitsOnly } from "@/lib/utils";
+import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
 import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 import { useRegisterDashboardUnsavedNavigation } from "@/lib/dashboard-navigation-guard";
 
 export default function NegocioPage() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
   const { business } = useDashboard();
   const [savedBaseline, setSavedBaseline] = useState<string | null>(null);
   const [form, setForm] = useState({
@@ -49,14 +54,14 @@ export default function NegocioPage() {
     <div className="w-full">
       <div className="mb-6">
         <div className="flex flex-wrap items-center gap-2.5">
-          <h1 className="text-2xl font-bold text-gray-900">Dados do negócio</h1>
+          <h1 className={cn("text-2xl font-bold", surfaces.title)}>Dados do negócio</h1>
           <UnsavedChangesIndicator dirty={isDirty} variant="inline" />
         </div>
-        <p className="text-gray-600 text-sm mt-1">Nome, contato e link público do seu estabelecimento</p>
+        <p className={cn("text-sm mt-1", surfaces.subtitle)}>Nome, contato e link público do seu estabelecimento</p>
       </div>
 
       <div className="space-y-4">
-        <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4 shadow-sm">
+        <div className={cn(surfaces.panel, "p-5 space-y-4")}>
           {[
             { label: "Nome do negócio", key: "businessName", type: "text" },
             { label: "Telefone", key: "phone", type: "tel" },
@@ -64,7 +69,7 @@ export default function NegocioPage() {
             { label: "Segmento", key: "segment", type: "text" },
           ].map((field) => (
             <div key={field.key}>
-              <label className="text-sm font-medium text-gray-700 block mb-1.5">{field.label}</label>
+              <label className={cn("text-sm font-medium block mb-1.5", surfaces.label)}>{field.label}</label>
               <input
                 type={field.type}
                 inputMode={field.key === "phone" ? "tel" : undefined}
@@ -77,22 +82,22 @@ export default function NegocioPage() {
                       field.key === "phone" ? maskPhoneInputRaw(e.target.value) : e.target.value,
                   })
                 }
-                className="w-full h-11 bg-gray-50 border border-gray-200 focus:border-primary rounded-xl px-4 text-gray-900 placeholder-gray-400 outline-none transition-colors text-sm"
+                className={cn("w-full h-11 rounded-xl px-4 outline-none transition-colors text-sm focus:border-primary", surfaces.input)}
               />
             </div>
           ))}
 
           <div>
-            <label className="text-sm font-medium text-gray-700 block mb-1.5">URL pública</label>
-            <div className="flex items-center h-11 bg-gray-50 border border-gray-200 focus-within:border-primary rounded-xl overflow-hidden transition-colors">
-              <span className="px-3 text-gray-500 text-sm border-r border-gray-200 h-full flex items-center flex-shrink-0">
+            <label className={cn("text-sm font-medium block mb-1.5", surfaces.label)}>URL pública</label>
+            <div className={cn("flex items-center h-11 rounded-xl overflow-hidden transition-colors focus-within:border-primary border", isDark ? "bg-[#020403] border-white/10" : "bg-gray-50 border-gray-200")}>
+              <span className={cn("px-3 text-sm h-full flex items-center flex-shrink-0 border-r", surfaces.muted, isDark ? "border-white/10" : "border-gray-200")}>
                 agenndo.com.br/
               </span>
               <input
                 type="text"
                 value={form.slug}
                 onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                className="flex-1 h-full bg-transparent px-3 text-gray-900 text-sm outline-none"
+                className={cn("flex-1 h-full bg-transparent px-3 text-sm outline-none", surfaces.title)}
               />
             </div>
             <p className="text-xs text-amber-700 mt-1 flex items-center gap-1">

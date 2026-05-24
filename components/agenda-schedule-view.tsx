@@ -20,6 +20,9 @@ import {
   assignAgendaColumns,
 } from "@/lib/agenda-event-layout";
 import type { DaySchedule } from "@/lib/disponibilidade";
+import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
+import { cn } from "@/lib/utils";
 
 export type AgendaApt = {
   id: string;
@@ -79,6 +82,16 @@ export function AgendaScheduleView({
   onAppointmentClick,
   availability,
 }: Props) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
+  const gridShell = cn(surfaces.panel, "overflow-x-auto");
+  const gridDivider = isDark ? "border-white/[0.06]" : "border-gray-100";
+  const chipIdle = isDark
+    ? "bg-white/[0.06] text-gray-300 hover:bg-white/10"
+    : "bg-gray-100 text-gray-700 hover:bg-gray-200";
+  const rowHover = isDark ? "hover:bg-white/[0.04]" : "hover:bg-gray-50";
+
   const [metricsOpen, setMetricsOpen] = useState(false);
   const [stripScroll, setStripScroll] = useState<HTMLDivElement | null>(null);
 
@@ -254,24 +267,25 @@ export function AgendaScheduleView({
       {/* Toolbar */}
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <label className="flex items-center gap-2 text-xs font-semibold text-gray-600 uppercase tracking-wide">
+          <label className={cn("flex items-center gap-2 text-xs font-semibold uppercase tracking-wide", surfaces.label)}>
             Data
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => onDateChange(e.target.value)}
-              className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 shadow-sm outline-none focus:border-primary"
+              className={cn("rounded-lg border px-2 py-1.5 text-sm shadow-sm outline-none focus:border-primary", surfaces.input)}
             />
           </label>
-          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
+          <div className={cn("inline-flex rounded-lg border p-0.5", isDark ? "border-white/10 bg-white/[0.04]" : "border-gray-200 bg-gray-50")}>
             {(["day", "week", "month"] as const).map((v) => (
               <button
                 key={v}
                 type="button"
                 onClick={() => onViewChange(v)}
-                className={`rounded-md px-3 py-1.5 text-xs font-bold transition-colors ${
-                  view === v ? "bg-primary text-black shadow-sm" : "text-gray-600 hover:text-gray-900"
-                }`}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-bold transition-colors",
+                  view === v ? "bg-primary text-black shadow-sm" : cn(surfaces.muted, isDark ? "hover:text-white" : "hover:text-gray-900")
+                )}
               >
                 {v === "day" ? "Dia" : v === "week" ? "Semana" : "Mês"}
               </button>
@@ -317,11 +331,14 @@ export function AgendaScheduleView({
                 key={x.dateStr}
                 type="button"
                 onClick={() => onDateChange(x.dateStr)}
-                className={`flex min-w-[72px] flex-col items-center rounded-xl border px-2 py-2 text-center transition-all shrink-0 ${
+                className={cn(
+                  "flex min-w-[72px] flex-col items-center rounded-xl border px-2 py-2 text-center transition-all shrink-0",
                   x.isSel
                     ? "border-primary bg-primary text-black shadow-md"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                }`}
+                    : isDark
+                      ? "border-white/10 bg-[#080c0a] text-gray-300 hover:border-white/20"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                )}
               >
                 <span className="text-[10px] font-bold uppercase opacity-80">{x.wk}</span>
                 <span className="text-lg font-extrabold leading-tight">{x.dayNum}</span>
@@ -428,16 +445,16 @@ export function AgendaScheduleView({
       </div>
 
       {/* Subheader */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-3">
+      <div className={cn("flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b pb-3", gridDivider)}>
         <div>
-          <p className="text-sm font-bold text-gray-900 capitalize">{headerTitle}</p>
-          <p className="text-xs text-gray-500">{viewLabel}</p>
+          <p className={cn("text-sm font-bold capitalize", surfaces.title)}>{headerTitle}</p>
+          <p className={cn("text-xs", surfaces.muted)}>{viewLabel}</p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
-          <span className="rounded-full bg-gray-100 px-2 py-1 font-medium text-gray-700">
+          <span className={cn("rounded-full px-2 py-1 font-medium", chipIdle)}>
             {dayApts.length === 0 ? "Sem atendimentos" : `${dayApts.length} agendamento(s)`}
           </span>
-          <span className="rounded-full bg-gray-100 px-2 py-1 font-medium text-gray-700">
+          <span className={cn("rounded-full px-2 py-1 font-medium", chipIdle)}>
             {String(gridStartHour).padStart(2, "0")}:00 – {String(gridEndHour).padStart(2, "0")}:00
           </span>
         </div>
@@ -445,33 +462,37 @@ export function AgendaScheduleView({
 
       {/* Week timeline */}
       {view === "week" && (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className={gridShell}>
           <div className="min-w-[720px] flex">
-            <div className="w-14 shrink-0 border-r border-gray-100 pt-10">
+            <div className={cn("w-14 shrink-0 border-r pt-10", gridDivider)}>
               {slots.map((s) => (
-                <div key={s.label} className="h-10 text-[10px] text-gray-400 pr-1 text-right leading-10">
+                <div key={s.label} className={cn("h-10 text-[10px] pr-1 text-right leading-10", surfaces.muted)}>
                   {s.label}
                 </div>
               ))}
             </div>
-            <div className="flex flex-1 border-l border-gray-100">
+            <div className={cn("flex flex-1 border-l", gridDivider)}>
               {weekDays.map((wd) => (
                 <div
                   key={wd.dateStr}
-                  className={`flex-1 min-w-[90px] border-r border-gray-100 last:border-r-0 ${
-                    wd.dateStr === selectedDate ? "bg-primary/5" : ""
-                  }`}
+                  className={cn(
+                    "flex-1 min-w-[90px] border-r last:border-r-0",
+                    gridDivider,
+                    wd.dateStr === selectedDate && (isDark ? "bg-primary/10" : "bg-primary/5")
+                  )}
                 >
                   <button
                     type="button"
                     onClick={() => onDateChange(wd.dateStr)}
-                    className={`w-full border-b border-gray-100 py-2 text-center ${
-                      wd.dateStr === selectedDate ? "bg-primary/15" : "hover:bg-gray-50"
-                    }`}
+                    className={cn(
+                      "w-full border-b py-2 text-center",
+                      gridDivider,
+                      wd.dateStr === selectedDate ? "bg-primary/15" : rowHover
+                    )}
                   >
-                    <div className="text-[10px] font-bold text-gray-500">{wd.label}</div>
-                    <div className="text-sm font-extrabold text-gray-900">{wd.dayNum}</div>
-                    <div className="text-[10px] text-gray-500">{wd.count}</div>
+                    <div className={cn("text-[10px] font-bold", surfaces.muted)}>{wd.label}</div>
+                    <div className={cn("text-sm font-extrabold", surfaces.title)}>{wd.dayNum}</div>
+                    <div className={cn("text-[10px]", surfaces.muted)}>{wd.count}</div>
                   </button>
                   <div className="relative" style={{ height: gridHeightPx }}>
                     {placeEvents(filteredApts.filter((a) => a.date === wd.dateStr)).map((ev) => {
@@ -519,11 +540,11 @@ export function AgendaScheduleView({
 
       {/* Day timeline: colunas por profissional */}
       {view === "day" && (
-        <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div className={gridShell}>
           <div className="min-w-[640px] flex">
-            <div className="w-14 shrink-0 border-r border-gray-100 pt-12">
+            <div className={cn("w-14 shrink-0 border-r pt-12", gridDivider)}>
               {slots.map((s) => (
-                <div key={s.label} className="h-10 text-[10px] text-gray-400 pr-1 text-right leading-10">
+                <div key={s.label} className={cn("h-10 text-[10px] pr-1 text-right leading-10", surfaces.muted)}>
                   {s.label}
                 </div>
               ))}
@@ -534,12 +555,12 @@ export function AgendaScheduleView({
                   col.id === "__solo" ? true : a.collaborators?.id === col.id
                 );
                 return (
-                  <div key={col.id} className="flex-1 min-w-[140px] border-r border-gray-100 last:border-r-0">
-                    <div className="h-12 border-b border-gray-100 px-2 py-1 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-gray-400 text-lg">person</span>
+                  <div key={col.id} className={cn("flex-1 min-w-[140px] border-r last:border-r-0", gridDivider)}>
+                    <div className={cn("h-12 border-b px-2 py-1 flex items-center gap-2", gridDivider)}>
+                      <span className={cn("material-symbols-outlined text-lg", surfaces.muted)}>person</span>
                       <div className="min-w-0">
-                        <p className="text-[11px] font-bold text-gray-900 truncate">{col.name}</p>
-                        <p className="text-[10px] text-gray-500">({colApts.length})</p>
+                        <p className={cn("text-[11px] font-bold truncate", surfaces.title)}>{col.name}</p>
+                        <p className={cn("text-[10px]", surfaces.muted)}>({colApts.length})</p>
                       </div>
                     </div>
                     <div className="relative" style={{ height: gridHeightPx }}>
@@ -592,28 +613,32 @@ export function AgendaScheduleView({
 
       {/* Month grid */}
       {view === "month" && (
-        <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+        <div className={cn(surfaces.panel, "p-3")}>
           <div className="grid grid-cols-7 mb-1">
             {["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].map((d) => (
-              <div key={d} className="py-2 text-center text-[11px] font-bold text-gray-500">
+              <div key={d} className={cn("py-2 text-center text-[11px] font-bold", surfaces.muted)}>
                 {d}
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-px bg-gray-100">
+          <div className={cn("grid grid-cols-7 gap-px", isDark ? "bg-white/[0.06]" : "bg-gray-100")}>
             {monthGrid.map((cell, idx) => (
               <button
                 key={`${cell.dateStr}-${idx}`}
                 type="button"
                 onClick={() => cell.dateStr && onDateChange(cell.dateStr)}
                 disabled={!cell.dateStr}
-                className={`min-h-[72px] bg-white p-1.5 text-left transition-colors ${
-                  !cell.inMonth ? "bg-gray-50/80 text-gray-400" : "text-gray-900"
-                } ${cell.dateStr === selectedDate ? "ring-2 ring-primary ring-inset" : "hover:bg-gray-50"}`}
+                className={cn(
+                  "min-h-[72px] p-1.5 text-left transition-colors",
+                  isDark ? "bg-[#080c0a]" : "bg-white",
+                  !cell.inMonth && (isDark ? "opacity-35" : "bg-gray-50/80 text-gray-400"),
+                  cell.inMonth && surfaces.title,
+                  cell.dateStr === selectedDate ? "ring-2 ring-primary ring-inset" : rowHover
+                )}
               >
                 <span className="block text-sm font-bold">{cell.day}</span>
                 {cell.count > 0 && (
-                  <span className="mt-1 inline-block rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-gray-800">
+                  <span className={cn("mt-1 inline-block rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold", isDark ? "text-primary" : "text-gray-800")}>
                     {cell.count}
                   </span>
                 )}
@@ -649,25 +674,25 @@ export function AgendaScheduleView({
           }
         >
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Total</p>
-              <p className="mt-1 text-3xl font-extrabold tabular-nums text-gray-900">{metrics.total}</p>
-              <p className="mt-1 text-sm text-gray-500">agendamentos no dia</p>
+            <div className={cn(surfaces.panel, "p-5")}>
+              <p className={cn("text-xs font-medium uppercase tracking-wide", surfaces.muted)}>Total</p>
+              <p className={cn("mt-1 text-3xl font-extrabold tabular-nums", surfaces.title)}>{metrics.total}</p>
+              <p className={cn("mt-1 text-sm", surfaces.muted)}>agendamentos no dia</p>
             </div>
-            <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Receita (compareceu)</p>
+            <div className={cn(surfaces.panel, "p-5")}>
+              <p className={cn("text-xs font-medium uppercase tracking-wide", surfaces.muted)}>Receita (compareceu)</p>
               <p className="mt-1 text-2xl font-bold tabular-nums text-primary">
                 {formatCurrency(metrics.receita / 100)}
               </p>
             </div>
           </div>
-          <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-500">Por status</p>
-            <ul className="mt-3 divide-y divide-gray-100">
+          <div className={cn(surfaces.panel, "mt-6 p-5")}>
+            <p className={cn("text-xs font-bold uppercase tracking-wide", surfaces.muted)}>Por status</p>
+            <ul className={cn("mt-3 divide-y", isDark ? "divide-white/[0.06]" : "divide-gray-100")}>
               {Object.entries(metrics.byStatus).map(([st, n]) => (
                 <li key={st} className="flex items-center justify-between py-2.5 text-sm first:pt-0">
-                  <span className="text-gray-700">{STATUS_CONFIG[st as AppointmentStatus]?.label ?? st}</span>
-                  <span className="font-bold tabular-nums text-gray-900">{n}</span>
+                  <span className={surfaces.label}>{STATUS_CONFIG[st as AppointmentStatus]?.label ?? st}</span>
+                  <span className={cn("font-bold tabular-nums", surfaces.title)}>{n}</span>
                 </li>
               ))}
             </ul>
@@ -678,7 +703,12 @@ export function AgendaScheduleView({
       <Link
         href="/dashboard/clientes"
         title="Ir para clientes"
-        className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-4 z-[25] inline-flex max-w-[min(18rem,calc(100vw-6rem))] items-center gap-2 rounded-full border border-gray-200 bg-white py-2.5 pl-3 pr-3.5 text-sm font-bold text-gray-900 shadow-lg hover:bg-gray-50 lg:bottom-8 lg:left-auto lg:right-[5.75rem] lg:z-[30] lg:py-3 lg:pl-4 lg:pr-4"
+        className={cn(
+          "fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] left-4 z-[25] inline-flex max-w-[min(18rem,calc(100vw-6rem))] items-center gap-2 rounded-full border py-2.5 pl-3 pr-3.5 text-sm font-bold shadow-lg lg:bottom-8 lg:left-auto lg:right-[5.75rem] lg:z-[30] lg:py-3 lg:pl-4 lg:pr-4",
+          surfaces.panel,
+          surfaces.title,
+          isDark ? "hover:bg-white/[0.04]" : "hover:bg-gray-50"
+        )}
       >
         <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/12">
           <span className="material-symbols-outlined text-primary text-[22px] leading-none">search</span>

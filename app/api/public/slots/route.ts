@@ -16,6 +16,7 @@ import {
   BOOKING_TZ,
 } from "@/lib/public-booking";
 import { timeToMinutes } from "@/lib/disponibilidade";
+import { getServiceBlockingDurationMinutes } from "@/lib/service-duration";
 import { hasFullServiceAccess } from "@/lib/billing-access";
 import { addDays } from "date-fns";
 import { toDate } from "date-fns-tz";
@@ -74,13 +75,13 @@ export async function GET(req: Request) {
 
   const { data: svc, error: svcErr } = await admin
     .from("services")
-    .select("id, business_id, duration_minutes, active, archived_at")
+    .select("id, business_id, duration_minutes, real_duration_minutes, active, archived_at")
     .eq("id", serviceId)
     .maybeSingle();
   if (svcErr || !svc?.id || svc.business_id !== bid || !svc.active || svc.archived_at != null) {
     return NextResponse.json({ error: "Serviço inválido" }, { status: 400 });
   }
-  const durationMinutes = Number(svc.duration_minutes) || 30;
+  const blockingDurationMinutes = getServiceBlockingDurationMinutes(svc);
 
   const { data: links } = await admin
     .from("collaborator_services")
@@ -159,7 +160,7 @@ export async function GET(req: Request) {
 
   const { data: apts } = await admin
     .from("appointments")
-    .select("time_start, time_end, status, collaborator_id, services(duration_minutes)")
+    .select("time_start, time_end, status, collaborator_id, services(duration_minutes, real_duration_minutes)")
     .eq("business_id", bid)
     .eq("date", dateStr);
 
@@ -197,7 +198,7 @@ export async function GET(req: Request) {
     pool,
     dateStr,
     schedule,
-    durationMinutes,
+    durationMinutes: blockingDurationMinutes,
     bufferMinutes,
     minAdvanceHours,
     appointments,
@@ -215,7 +216,7 @@ export async function GET(req: Request) {
             end: schedule.end,
             breaks: schedule.breaks,
           },
-          durationMinutes,
+          durationMinutes: blockingDurationMinutes,
           bufferMinutes,
           minAdvanceHours,
           viewCollaboratorId: timelineCollabId,

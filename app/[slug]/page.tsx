@@ -20,6 +20,9 @@ import {
 import { PublicBookingDayTimeline, type PublicDayTimelinePayload } from "@/components/public-booking-day-timeline";
 import { PublicPwaInstallPrompt } from "@/components/public-pwa-install-prompt";
 import { PublicDatePicker } from "@/components/public/public-date-picker";
+import { PublicBookingSummaryAside } from "@/components/public/booking-summary-aside";
+import { PublicBookingConfirmStep } from "@/components/public/booking-confirm-step";
+import { PublicBookingSplitLayout } from "@/components/public/booking-split-layout";
 import {
   getPublicBookUi,
   getPublicHomeUi,
@@ -821,12 +824,12 @@ function PublicPageInner() {
                     disabled={bookingBlocked}
                     onClick={() => startBooking(service)}
                     className={cn(
-                      "group flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl border text-left transition-all",
-                      cardCls,
-                      bookingBlocked ? "opacity-60 cursor-not-allowed" : `${cardHover} hover:-translate-y-0.5`
+                      "flex flex-row items-center gap-3 p-3 rounded-xl border text-left transition-all hover:-translate-y-0.5",
+                      bookUi.serviceCard,
+                      bookingBlocked ? "opacity-60 cursor-not-allowed" : "hover:border-primary/35"
                     )}
                   >
-                    <div className={cn("size-14 rounded-xl overflow-hidden shrink-0", surfaceMuted, publicMediaTileClass)}>
+                    <div className={cn("size-12 rounded-xl overflow-hidden shrink-0 border", bookUi.serviceCardMedia, publicMediaTileClass)}>
                       {service.image_url ? (
                         <Image src={service.image_url} alt="" width={56} height={56} className="size-full object-cover" unoptimized />
                       ) : service.emoji ? (
@@ -842,7 +845,7 @@ function PublicPageInner() {
                         <span style={{ color: accent }}>{formatCurrency(service.price_cents / 100)}</span>
                       </p>
                       {service.description_public?.trim() ? (
-                        <p className={cn("text-[11px] mt-1.5 line-clamp-2 leading-snug", mutedCls)}>
+                        <p className={cn("text-[11px] mt-1 line-clamp-1 sm:line-clamp-2 leading-snug", mutedCls)}>
                           {service.description_public.trim()}
                         </p>
                       ) : null}
@@ -1046,16 +1049,18 @@ function PublicPageInner() {
                     }
                   }}
                   className={cn(
-                    "flex items-start gap-4 p-4 rounded-xl border text-left transition-all hover:-translate-y-0.5",
+                    "flex flex-row items-center gap-3 p-3 rounded-xl border text-left transition-all hover:-translate-y-0.5",
                     selectedService?.id === service.id
-                      ? "border-[var(--public-accent)] bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)]"
-                      : cn(bookUi.card, bookUi.cardHover)
+                      ? isDark
+                        ? cn("border", bookUi.accentSelected)
+                        : "border-[var(--public-accent)] bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)]"
+                      : cn(bookUi.serviceCard)
                   )}
                 >
                   <div
                     className={cn(
-                      "size-12 rounded-xl overflow-hidden flex-shrink-0 border border-black/5",
-                      isDark ? "bg-[#213428]" : "bg-gray-100",
+                      "size-11 sm:size-12 rounded-xl overflow-hidden flex-shrink-0 border",
+                      bookUi.serviceCardMedia,
                       publicMediaTileClass
                     )}
                   >
@@ -1073,7 +1078,7 @@ function PublicPageInner() {
                       {service.duration_minutes}min · {formatCurrency(service.price_cents / 100)}
                     </p>
                     {service.description_public?.trim() ? (
-                      <p className={cn("text-[11px] mt-1.5 line-clamp-2 leading-snug", bookUi.muted)}>
+                      <p className={cn("text-[11px] mt-1 line-clamp-1 sm:line-clamp-2 leading-snug", bookUi.muted)}>
                         {service.description_public.trim()}
                       </p>
                     ) : null}
@@ -1098,11 +1103,28 @@ function PublicPageInner() {
               <span className="material-symbols-outlined text-lg">arrow_back</span>
               Todos os serviços
             </button>
-            <div>
-              <h2 className={cn("text-xl sm:text-2xl font-bold mb-2", bookUi.title)}>{selectedService.name}</h2>
-              <p className={cn("text-sm", bookUi.subtitle)}>
-                {selectedService.duration_minutes} min · {formatCurrency(selectedBookingPriceCents / 100)}
-              </p>
+            <div className="flex flex-row gap-3 items-start">
+              <div
+                className={cn(
+                  "size-14 sm:size-16 rounded-xl overflow-hidden shrink-0 border",
+                  bookUi.serviceCardMedia,
+                  publicMediaTileClass
+                )}
+              >
+                {selectedService.image_url ? (
+                  <Image src={selectedService.image_url} alt="" width={64} height={64} className="size-full object-cover" unoptimized />
+                ) : selectedService.emoji ? (
+                  <span className={publicEmojiClass("md")}>{selectedService.emoji}</span>
+                ) : (
+                  <span className={publicMaterialIconClass("lg")}>category</span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h2 className={cn("text-lg sm:text-xl font-bold leading-tight", bookUi.title)}>{selectedService.name}</h2>
+                <p className={cn("text-sm mt-1", bookUi.subtitle)}>
+                  {selectedService.duration_minutes} min · {formatCurrency(selectedBookingPriceCents / 100)}
+                </p>
+              </div>
             </div>
             {selectedService.description_public?.trim() ? (
               <p className={cn("text-sm leading-relaxed rounded-xl p-4 border", bookUi.card)}>
@@ -1272,154 +1294,64 @@ function PublicPageInner() {
           </div>
         )}
 
-        {step === 3 && (
-          <div className="w-full max-w-lg mx-auto lg:max-w-none">
-            <div className="lg:grid lg:grid-cols-12 lg:gap-8 xl:gap-10 lg:items-start">
-              <div className="lg:col-span-7 xl:col-span-8 min-w-0">
-                <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Escolha a data</h2>
-                <p className={cn("text-sm mb-5 lg:mb-6", bookUi.subtitle)}>Selecione o dia do seu atendimento</p>
-                <PublicDatePicker
-                  calMonth={calMonth}
-                  calYear={calYear}
-                  onNavigate={(y, m) => {
-                    setCalYear(y);
-                    setCalMonth(m);
-                  }}
-                  selectedDate={selectedDate}
-                  onSelectDate={(dateStr) => {
-                    setSelectedDate(dateStr);
-                    setSelectedTime(null);
-                    setStep(4);
-                  }}
-                  bookingMeta={bookingMeta}
-                  maxFutureDaysFallback={maxFutureDays}
-                  accentColor={accent}
-                  isDark={isDark}
-                  today={today}
-                  cardClass={bookUi.card}
-                  titleClass={bookUi.title}
-                  navBtnClass={bookUi.navBtn}
-                />
-                <p
-                  className={cn(
-                    "text-xs mt-3 lg:mt-4 text-center lg:text-left",
-                    isDark ? "text-white/45" : "text-gray-500"
-                  )}
-                >
-                  Toque num dia disponível. Passe o dedo (ou o mouse) sobre um dia bloqueado para ver o motivo.
-                  {bookingMeta?.minAdvanceHours != null
-                    ? ` Antecedência mínima: ${bookingMeta.minAdvanceHours}h.`
-                    : ""}
-                  {bookingMeta?.maxFutureDays != null
-                    ? ` Até ${bookingMeta.maxFutureDays} dias à frente.`
-                    : ""}
-                </p>
-              </div>
-
-              {selectedService && (
-                <aside className="hidden lg:block lg:col-span-5 xl:col-span-4 min-w-0">
-                  <div
-                    className={cn(
-                      "sticky top-28 rounded-2xl border overflow-hidden",
-                      bookUi.card,
-                      isDark
-                        ? "border-[color-mix(in_srgb,var(--public-accent)_25%,transparent)] shadow-[0_0_40px_-12px_var(--pa-glow-soft)]"
-                        : "border-gray-200/80 shadow-sm"
-                    )}
-                    style={
-                      isDark
-                        ? ({ ["--pa-glow-soft"]: rgbaFromHex(accent, 0.25) } as CSSProperties)
-                        : undefined
-                    }
-                  >
-                    <div
-                      className="h-1 w-full bg-[var(--public-accent)]"
-                      style={{ boxShadow: `0 0 20px ${rgbaFromHex(accent, 0.5)}` }}
-                    />
-                    <div className="p-6 xl:p-7">
-                      <p className={cn("text-[11px] font-bold uppercase tracking-widest mb-5", bookUi.muted)}>
-                        Seu agendamento
-                      </p>
-                      <div className="flex gap-4 mb-6">
-                        <div
-                          className={cn(
-                            "size-16 xl:size-[4.5rem] rounded-2xl overflow-hidden shrink-0 border border-black/5",
-                            isDark ? "bg-[#213428]" : "bg-gray-100",
-                            publicMediaTileClass
-                          )}
-                        >
-                          {(() => {
-                            const vars = normalizeVariantGallery(selectedService.variant_gallery);
-                            const pv =
-                              selectedVariantIndex != null ? vars[selectedVariantIndex] : undefined;
-                            const thumb = pv?.url || selectedService.image_url;
-                            if (thumb) {
-                              return (
-                                <Image src={thumb} alt="" width={72} height={72} className="size-full object-cover" unoptimized />
-                              );
-                            }
-                            if (selectedService.emoji) {
-                              return <span className={publicEmojiClass("lg")}>{selectedService.emoji}</span>;
-                            }
-                            return <span className={publicMaterialIconClass("xl")}>category</span>;
-                          })()}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className={cn("font-bold text-lg xl:text-xl leading-snug", bookUi.title)}>
-                            {selectedService.name}
-                          </p>
-                          {selectedVariantIndex != null &&
-                            normalizeVariantGallery(selectedService.variant_gallery)[selectedVariantIndex] && (
-                              <p className={cn("text-xs font-semibold mt-1.5", bookUi.subtitle)}>
-                                {normalizeVariantGallery(selectedService.variant_gallery)[selectedVariantIndex]?.title?.trim() ||
-                                  `Opção ${selectedVariantIndex + 1}`}
-                              </p>
-                            )}
-                          <p className={cn("text-sm mt-2", bookUi.subtitle)}>
-                            {selectedService.duration_minutes} min · {formatCurrency(selectedBookingPriceCents / 100)}
-                          </p>
-                        </div>
-                      </div>
-                      <div
-                        className={cn(
-                          "rounded-xl p-4 border",
-                          isDark ? "border-white/10 bg-white/[0.04]" : "border-gray-100 bg-gray-50/90"
-                        )}
-                      >
-                        <p className={cn("text-[11px] font-semibold uppercase tracking-wide mb-1.5", bookUi.muted)}>
-                          Profissional
-                        </p>
-                        <div className="flex items-center gap-3">
-                          {selectedCollab && selectedCollab !== "any" && selectedCollab.avatar_url ? (
-                            <Image
-                              src={selectedCollab.avatar_url}
-                              alt=""
-                              width={40}
-                              height={40}
-                              className="size-10 rounded-full object-cover border border-white/10 shrink-0"
-                              unoptimized
-                            />
-                          ) : null}
-                          <p className={cn("text-sm font-semibold min-w-0", bookUi.title)}>
-                            {selectedCollab === "any"
-                              ? "Primeiro disponível na equipe"
-                              : selectedCollab
-                                ? selectedCollab.name
-                                : "-"}
-                          </p>
-                        </div>
-                      </div>
-                      <p className={cn("text-xs leading-relaxed mt-6", bookUi.muted)}>
-                        No calendário ao lado, os dias em destaque estão livres para agendar. Passe o cursor sobre um
-                        dia indisponível para ver se já passou, está fora do período ou o estabelecimento não abre.
-                      </p>
-                    </div>
-                  </div>
-                </aside>
-              )}
-            </div>
-          </div>
+        {step === 3 && selectedService && (
+          <PublicBookingSplitLayout
+            bookUi={bookUi}
+            isDark={isDark}
+            accent={accent}
+            title="Escolha a data"
+            subtitle="Selecione o dia do seu atendimento"
+            left={
+              <PublicDatePicker
+                calMonth={calMonth}
+                calYear={calYear}
+                onNavigate={(y, m) => {
+                  setCalYear(y);
+                  setCalMonth(m);
+                }}
+                selectedDate={selectedDate}
+                onSelectDate={(dateStr) => {
+                  setSelectedDate(dateStr);
+                  setSelectedTime(null);
+                  setStep(4);
+                }}
+                bookingMeta={bookingMeta}
+                maxFutureDaysFallback={maxFutureDays}
+                accentColor={accent}
+                isDark={isDark}
+                today={today}
+                cardClass={bookUi.card}
+                titleClass={bookUi.title}
+                navBtnClass={bookUi.navBtn}
+                embedded
+              />
+            }
+            leftFooter={
+              <p className={cn("text-xs text-center lg:text-left", isDark ? "text-white/45" : "text-gray-500")}>
+                Toque num dia disponível. Passe o dedo (ou o mouse) sobre um dia bloqueado para ver o motivo.
+                {bookingMeta?.minAdvanceHours != null ? ` Antecedência mínima: ${bookingMeta.minAdvanceHours}h.` : ""}
+                {bookingMeta?.maxFutureDays != null ? ` Até ${bookingMeta.maxFutureDays} dias à frente.` : ""}
+              </p>
+            }
+            right={
+              <PublicBookingSummaryAside
+                embedded
+                selectedService={selectedService}
+                selectedVariantIndex={selectedVariantIndex}
+                selectedCollab={selectedCollab}
+                selectedDate={null}
+                selectedTime={null}
+                priceCents={selectedBookingPriceCents}
+                isDark={isDark}
+                accent={accent}
+                bookUi={bookUi}
+                footerHint="No calendário ao lado, os dias em destaque estão livres para agendar. Passe o cursor sobre um dia indisponível para ver se já passou, está fora do período ou o estabelecimento não abre."
+              />
+            }
+          />
         )}
+
+        {step === 3 && !selectedService && null}
 
         {step === 4 && (
           <div className="w-full max-w-2xl lg:max-w-4xl mx-auto">
@@ -1574,192 +1506,28 @@ function PublicPageInner() {
           </div>
         )}
 
-        {step === 5 && (
-          <div className="max-w-2xl lg:max-w-4xl mx-auto">
-            <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Confirmar agendamento</h2>
-            <p className={cn("text-sm mb-6", bookUi.subtitle)}>Revise os detalhes antes de confirmar</p>
-
-            <div className="lg:grid lg:grid-cols-5 lg:gap-8 lg:items-start">
-              <div className="lg:col-span-2 mb-5 lg:mb-0">
-                <div
-                  className={cn(
-                    "rounded-2xl border overflow-hidden mb-5 lg:mb-0",
-                    bookUi.card,
-                    "border-[color-mix(in_srgb,var(--public-accent)_25%,transparent)]"
-                  )}
-                >
-                  <div className="h-1 bg-[var(--public-accent)]" />
-                  <div className="p-5 sm:p-6 space-y-3">
-                  {[
-                    { icon: "category", label: "Serviço", value: selectedService?.name ?? "" },
-                    ...(selectedService && selectedVariantIndex != null
-                      ? [
-                          {
-                            icon: "photo_library",
-                            label: "Opção",
-                            value:
-                              normalizeVariantGallery(selectedService.variant_gallery)[selectedVariantIndex]?.title?.trim() ||
-                              `Opção ${selectedVariantIndex + 1}`,
-                          },
-                        ]
-                      : []),
-                    {
-                      icon: "person",
-                      label: "Profissional",
-                      value:
-                        selectedCollab === "any"
-                          ? "Primeiro disponível no horário"
-                          : (selectedCollab as CollabRow)?.name ?? "",
-                    },
-                    {
-                      icon: "calendar_today",
-                      label: "Data",
-                      value: selectedDate
-                        ? new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR", {
-                            weekday: "long",
-                            day: "numeric",
-                            month: "long",
-                          })
-                        : "",
-                    },
-                    { icon: "schedule", label: "Horário", value: selectedTime ?? "" },
-                    { icon: "timer", label: "Duração", value: `${selectedService?.duration_minutes ?? 0}min` },
-                    {
-                      icon: "payments",
-                      label: "Valor",
-                      value: formatCurrency(selectedBookingPriceCents / 100),
-                      highlight: true,
-                    },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      className={cn(
-                        "flex items-start gap-3 rounded-xl p-3 border",
-                        isDark ? "border-white/8 bg-white/[0.03]" : "border-gray-100 bg-gray-50/80"
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "material-symbols-outlined text-lg shrink-0 size-9 rounded-lg flex items-center justify-center",
-                          bookUi.surfaceMuted,
-                          item.highlight ? "text-[var(--public-accent)]" : bookUi.muted
-                        )}
-                      >
-                        {item.icon}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className={cn("text-[11px] font-semibold uppercase tracking-wide", bookUi.muted)}>{item.label}</p>
-                        <p
-                          className={cn(
-                            "text-sm font-semibold mt-0.5 leading-snug",
-                            item.highlight ? "text-[var(--public-accent)]" : bookUi.title
-                          )}
-                        >
-                          {item.value}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                  </div>
-                </div>
-              </div>
-
-              <div className="lg:col-span-3">
-                <div className="mb-5">
-                  <label className={cn("text-sm font-medium block mb-2", bookUi.label)}>
-                    Seu nome <span className={bookUi.muted}>(obrigatório)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={clientName}
-                    onChange={(e) => setClientName(e.target.value)}
-                    placeholder="Como quer ser chamado(a)"
-                    className={cn(
-                      "w-full h-11 border focus:border-[var(--public-accent)] rounded-xl px-4 outline-none transition-colors text-sm",
-                      bookUi.input
-                    )}
-                  />
-                </div>
-
-                <div className="mb-5">
-                  <label className={cn("text-sm font-medium block mb-2", bookUi.label)}>
-                    Observações <span className={bookUi.muted}>(opcional)</span>
-                  </label>
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Ex.: acessibilidade, acompanhante, detalhes do serviço ou do atendimento..."
-                    rows={3}
-                    className={cn(
-                      "w-full border focus:border-[var(--public-accent)] rounded-xl px-4 py-3 outline-none transition-colors text-sm resize-none",
-                      bookUi.input
-                    )}
-                  />
-                </div>
-
-                <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-5">
-                  <span className={cn(publicMaterialIconClass("sm", false), "text-amber-500 self-center")}>info</span>
-                  <p
-                    className={cn(
-                      "text-xs leading-relaxed",
-                      isDark ? "text-amber-200" : "text-amber-900"
-                    )}
-                  >
-                    Você pode agendar sem criar conta: basta informar seu nome. Com conta de cliente você acompanha
-                    histórico e cancelamentos em{" "}
-                    <Link href="/conta" className="font-semibold text-[var(--public-accent)] hover:underline">
-                      Minha conta
-                    </Link>{" "}
-                    após o vínculo com o negócio.
-                  </p>
-                </div>
-
-                {!authUserId && (
-                  <div className="flex gap-2 mb-3">
-                    <Link
-                      href={`/entrar?slug=${encodeURIComponent(slug)}`}
-                      className={cn(
-                        "flex-1 py-3 font-semibold rounded-xl text-sm transition-all text-center",
-                        isDark
-                          ? "bg-white/5 border border-white/10 hover:bg-white/10 text-white"
-                          : "bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-900"
-                      )}
-                    >
-                      Entrar / Criar conta
-                    </Link>
-                  </div>
-                )}
-
-                {bookError && (
-                  <div
-                    className={cn(
-                      "mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/25 text-sm",
-                      isDark ? "text-red-300" : "text-red-700"
-                    )}
-                  >
-                    {bookError}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => void handleBook()}
-                  disabled={!clientName.trim() || bookingSubmitting}
-                  style={{ boxShadow: `0 0 20px ${rgbaFromHex(accent, 0.3)}` }}
-                  className="w-full py-4 bg-[var(--public-accent)] hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl text-lg transition-all flex items-center justify-center gap-2"
-                >
-                  <span className={publicMaterialIconClass("lg", false)}>check_circle</span>
-                  {bookingSubmitting ? "Confirmando…" : "Confirmar agendamento"}
-                </button>
-
-                <p className="text-xs text-gray-500 text-center mt-3">
-                  {bookingMeta?.minAdvanceHours != null
-                    ? `Cancelamento com pelo menos ${bookingMeta.minAdvanceHours}h de antecedência (quando permitido pelo negócio).`
-                    : "Cancelamento com antecedência mínima configurada pelo negócio."}
-                </p>
-              </div>
-            </div>
-          </div>
+        {step === 5 && selectedService && (
+          <PublicBookingConfirmStep
+            slug={slug}
+            bookUi={bookUi}
+            isDark={isDark}
+            accent={accent}
+            selectedService={selectedService}
+            selectedVariantIndex={selectedVariantIndex}
+            selectedCollab={selectedCollab}
+            selectedDate={selectedDate}
+            selectedTime={selectedTime}
+            priceCents={selectedBookingPriceCents}
+            clientName={clientName}
+            setClientName={setClientName}
+            notes={notes}
+            setNotes={setNotes}
+            authUserId={authUserId}
+            bookError={bookError}
+            bookingSubmitting={bookingSubmitting}
+            minAdvanceHours={bookingMeta?.minAdvanceHours}
+            onConfirm={() => void handleBook()}
+          />
         )}
       </main>
 

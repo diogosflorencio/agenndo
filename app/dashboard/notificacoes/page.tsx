@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTheme } from "@/lib/theme-context";
 import { SwitchToggle } from "@/components/switch-toggle";
 import { cn } from "@/lib/utils";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 
 type NotifConfig = {
   newAppointmentEmail: boolean;
@@ -36,6 +37,7 @@ const TEMPLATE_VARS = ["{nome}", "{data}", "{hora}", "{servico}", "{colaborador}
 export default function NotificacoesPage() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
 
   const [config, setConfig] = useState<NotifConfig>(DEFAULT_CONFIG);
   const [activeTemplate, setActiveTemplate] = useState<"confirmacao" | "lembrete" | "avaliacao" | "reativacao">("confirmacao");
@@ -49,37 +51,25 @@ export default function NotificacoesPage() {
 
   const [templateTexts, setTemplateTexts] = useState(templates);
 
-  const card = cn(
-    "rounded-xl overflow-hidden shadow-sm border",
-    isDark ? "bg-[#111318] border-white/[0.08]" : "bg-white border-gray-200"
-  );
+  const card = cn(surfaces.panel, "overflow-hidden");
   const cardHeadBorder = isDark ? "border-white/[0.08]" : "border-gray-200";
-  const pageTitle = isDark ? "text-white" : "text-gray-900";
-  const pageSub = isDark ? "text-gray-400" : "text-gray-600";
-  const itemTitle = isDark ? "text-white" : "text-gray-900";
-  const itemDesc = isDark ? "text-gray-400" : "text-gray-500";
-  const iconMuted = isDark ? "text-gray-500" : "text-gray-400";
-  const inputSurface = isDark
-    ? "bg-black/25 border-white/[0.08] text-white placeholder:text-gray-500"
-    : "bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400";
-  const chipBtn = isDark
-    ? "bg-white/[0.06] hover:bg-white/10 text-gray-300 border-white/[0.08] hover:border-primary/30"
-    : "bg-gray-100 hover:bg-primary/20 text-gray-600 border-gray-200 hover:border-primary/30";
-  const ghostBtn = isDark
-    ? "bg-white/[0.04] hover:bg-white/[0.08] border-white/[0.1] text-gray-200"
-    : "bg-white hover:bg-gray-50 border-gray-200 text-gray-700";
+  const pageTitle = surfaces.title;
+  const pageSub = surfaces.subtitle;
+  const itemTitle = surfaces.title;
+  const itemDesc = surfaces.muted;
+  const iconMuted = surfaces.muted;
+  const inputSurface = cn(surfaces.input, "rounded-xl");
+  const chipBtn = cn(
+    surfaces.btnSecondary,
+    "rounded-lg border hover:border-primary/30"
+  );
+  const ghostBtn = cn(surfaces.btnGhost, "rounded-xl border", isDark ? "border-white/[0.1]" : "border-gray-200");
 
   return (
     <div className="relative w-full min-h-[min(70vh,520px)]">
-      <div
-        className={cn(
-          "mb-6 rounded-xl border px-4 py-3 flex gap-3 items-start",
-          isDark ? "border-primary/30 bg-primary/[0.08]" : "border-primary/25 bg-primary/5"
-        )}
-        role="note"
-      >
-        <span className="material-symbols-outlined text-primary shrink-0 mt-0.5">chat</span>
-        <p className={cn("text-sm leading-relaxed", isDark ? "text-gray-200" : "text-gray-800")}>
+      <div className={cn("mb-6 px-4 py-3 flex gap-3 items-start", surfaces.accentCard)} role="note">
+        <span className={cn("material-symbols-outlined shrink-0 mt-0.5", surfaces.accentIcon)}>chat</span>
+        <p className={cn("text-sm leading-relaxed", surfaces.accentCardBody)}>
           Essas serão as notificações padrão que chegarão ao WhatsApp cadastrado no futuro, quando implementarmos o envio.
         </p>
       </div>

@@ -50,7 +50,6 @@ type MonthGridProps = {
   accentColor: string;
   isDark: boolean;
   today: Date;
-  titleClass: string;
 };
 
 function MonthGrid({
@@ -63,7 +62,6 @@ function MonthGrid({
   accentColor,
   isDark,
   today,
-  titleClass,
 }: MonthGridProps) {
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDay(year, month);
@@ -71,20 +69,17 @@ function MonthGrid({
   const metaLoaded = bookingMeta != null;
 
   return (
-    <div className="min-w-0 flex-1">
-      <h4 className={cn("font-bold text-center mb-3 text-sm", titleClass)}>
-        {MONTHS_SHORT[month]} {year}
-      </h4>
-      <div className="grid grid-cols-7 gap-0.5 sm:gap-1 mb-1">
+    <div className="min-w-0 w-full">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1 lg:gap-1.5 mb-1">
         {WEEKDAYS.map((d, i) => (
           <div key={`${year}-${month}-wd-${i}`} className="text-center text-[10px] font-semibold text-gray-500 py-0.5">
             {d}
           </div>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1 lg:gap-1.5">
         {Array.from({ length: firstDay }).map((_, i) => (
-          <div key={`e-${year}-${month}-${i}`} className="aspect-square min-h-[1.75rem] sm:min-h-[2rem]" />
+          <div key={`e-${year}-${month}-${i}`} className="aspect-square min-h-[2rem] sm:min-h-[2.25rem] lg:min-h-[2.5rem]" />
         ))}
         {Array.from({ length: daysInMonth }, (_, i) => {
           const day = i + 1;
@@ -110,7 +105,7 @@ function MonthGrid({
               onClick={() => onSelectDate(dateStr)}
               style={isSelected ? { boxShadow: `0 0 0 2px ${rgbaFromHex(accentColor, 0.4)}` } : undefined}
               className={cn(
-                "aspect-square min-h-[1.75rem] sm:min-h-[2rem] text-xs rounded-lg font-semibold flex items-center justify-center transition-all",
+                "aspect-square min-h-[2rem] sm:min-h-[2.25rem] lg:min-h-[2.5rem] text-xs rounded-lg font-semibold flex items-center justify-center transition-all",
                 isSelected
                   ? "bg-[var(--public-accent)] text-black"
                   : isDisabled
@@ -157,6 +152,7 @@ export function PublicDatePicker({
   cardClass,
   titleClass,
   navBtnClass,
+  embedded = false,
 }: {
   calMonth: number;
   calYear: number;
@@ -175,9 +171,8 @@ export function PublicDatePicker({
   cardClass: string;
   titleClass: string;
   navBtnClass: string;
+  embedded?: boolean;
 }) {
-  const second = shiftMonth(calYear, calMonth, 1);
-
   const goPrev = () => {
     const prev = shiftMonth(calYear, calMonth, -1);
     onNavigate(prev.year, prev.month);
@@ -195,41 +190,49 @@ export function PublicDatePicker({
     accentColor,
     isDark,
     today,
-    titleClass,
   };
 
   return (
-    <div className={cn("rounded-2xl border p-4 sm:p-5", cardClass)}>
-      <div className="flex items-center justify-between mb-4">
+    <div
+      className={cn(
+        embedded ? "min-w-0" : "rounded-2xl border p-4 sm:p-5 lg:p-6",
+        !embedded && cardClass
+      )}
+    >
+      <div className="flex items-center justify-between gap-3 mb-4 lg:mb-5">
         <button
           type="button"
           onClick={goPrev}
-          className={cn("size-9 rounded-xl flex items-center justify-center transition-colors", navBtnClass)}
+          className={cn("size-9 rounded-xl flex items-center justify-center transition-colors shrink-0", navBtnClass)}
           aria-label="Mês anterior"
         >
           <span className="material-symbols-outlined text-base">chevron_left</span>
         </button>
-        <p className={cn("text-xs font-semibold uppercase tracking-wider", isDark ? "text-white/50" : "text-gray-500")}>
-          {bookingMeta == null ? "Carregando…" : "Toque num dia disponível"}
-        </p>
+        <div className="min-w-0 flex-1 text-center">
+          <p className={cn("text-sm lg:text-base font-bold", titleClass)}>
+            {MONTHS_SHORT[calMonth]} {calYear}
+          </p>
+          <p className={cn("text-[11px] mt-0.5", isDark ? "text-white/45" : "text-gray-500")}>
+            {bookingMeta == null ? "Carregando…" : "Toque num dia disponível"}
+          </p>
+        </div>
         <button
           type="button"
           onClick={goNext}
-          className={cn("size-9 rounded-xl flex items-center justify-center transition-colors", navBtnClass)}
+          className={cn("size-9 rounded-xl flex items-center justify-center transition-colors shrink-0", navBtnClass)}
           aria-label="Próximo mês"
         >
           <span className="material-symbols-outlined text-base">chevron_right</span>
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6">
+      <div className="max-w-sm mx-auto lg:max-w-none lg:mx-0">
         <MonthGrid year={calYear} month={calMonth} {...shared} />
-        <MonthGrid year={second.year} month={second.month} {...shared} />
       </div>
 
       <div
         className={cn(
-          "mt-4 pt-3 border-t flex flex-wrap gap-x-4 gap-y-2 text-[10px] sm:text-[11px]",
+          "mt-4 pt-3 border-t flex flex-wrap justify-center lg:justify-start gap-x-4 gap-y-2 text-[10px] sm:text-[11px]",
           isDark ? "border-white/10 text-white/50" : "border-gray-100 text-gray-500"
         )}
       >

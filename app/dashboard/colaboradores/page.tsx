@@ -6,7 +6,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
+import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 
 type CollabRow = {
   id: string;
@@ -18,6 +21,9 @@ type CollabRow = {
 };
 
 export default function ColaboradoresPage() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
   const router = useRouter();
   const { business } = useDashboard();
   const [collaborators, setCollaborators] = useState<CollabRow[]>([]);
@@ -115,8 +121,8 @@ export default function ColaboradoresPage() {
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Equipe</h1>
-          <p className="text-gray-600 text-sm mt-1">{collaborators.length} colaboradores</p>
+          <h1 className={cn("text-2xl font-bold", surfaces.title)}>Equipe</h1>
+          <p className={cn("text-sm mt-1", surfaces.subtitle)}>{collaborators.length} colaboradores</p>
         </div>
         <Link
           href="/dashboard/colaboradores/novo"
@@ -134,7 +140,7 @@ export default function ColaboradoresPage() {
           const todayApts = countsToday[collab.id] ?? 0;
           const monthApts = countsMonth[collab.id] ?? 0;
           return (
-            <div key={collab.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-all shadow-sm">
+            <div key={collab.id} className={cn(surfaces.panel, "overflow-hidden transition-all", isDark ? "hover:border-primary/25" : "hover:border-gray-300")}>
               <div className="p-5">
                 <div className="flex items-start gap-4 mb-4">
                   <div className="relative">
@@ -148,8 +154,8 @@ export default function ColaboradoresPage() {
                     <div className={`absolute -bottom-0.5 -right-0.5 size-3.5 rounded-full border-2 border-white ${collab.active ? "bg-primary" : "bg-gray-500"}`} />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-gray-900 font-bold">{collab.name}</h3>
-                    <p className="text-gray-500 text-xs mt-0.5">{collab.role ?? "-"}</p>
+                    <h3 className={cn("font-bold", surfaces.title)}>{collab.name}</h3>
+                    <p className={cn("text-xs mt-0.5", surfaces.muted)}>{collab.role ?? "-"}</p>
                     <div className="flex items-center gap-1 mt-1.5">
                       <span className={`size-1.5 rounded-full ${collab.active ? "bg-primary" : "bg-gray-500"}`} />
                       <span className={`text-xs font-medium ${collab.active ? "text-primary" : "text-gray-500"}`}>
@@ -159,15 +165,15 @@ export default function ColaboradoresPage() {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mb-4">
-                  <div className="bg-gray-100 rounded-lg p-2.5">
-                    <p className="text-xs text-gray-500 mb-0.5">Hoje</p>
-                    <p className="text-gray-900 font-bold text-lg">{todayApts}</p>
-                    <p className="text-xs text-gray-500">agend.</p>
+                  <div className={cn("rounded-lg p-2.5 border", surfaces.cardInset)}>
+                    <p className={cn("text-xs mb-0.5", surfaces.muted)}>Hoje</p>
+                    <p className={cn("font-bold text-lg", surfaces.title)}>{todayApts}</p>
+                    <p className={cn("text-xs", surfaces.muted)}>agend.</p>
                   </div>
-                  <div className="bg-gray-100 rounded-lg p-2.5">
-                    <p className="text-xs text-gray-500 mb-0.5">Este mês</p>
-                    <p className="text-gray-900 font-bold text-lg">{monthApts}</p>
-                    <p className="text-xs text-gray-500">agend.</p>
+                  <div className={cn("rounded-lg p-2.5 border", surfaces.cardInset)}>
+                    <p className={cn("text-xs mb-0.5", surfaces.muted)}>Este mês</p>
+                    <p className={cn("font-bold text-lg", surfaces.title)}>{monthApts}</p>
+                    <p className={cn("text-xs", surfaces.muted)}>agend.</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -175,20 +181,22 @@ export default function ColaboradoresPage() {
                   <span className="text-xs text-gray-500">Cor no calendário</span>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-px bg-gray-100 border-t border-gray-200">
-                <Link href={`/dashboard/colaboradores/${collab.id}/editar`} className="bg-white hover:bg-gray-50 text-xs font-semibold text-gray-600 py-3 transition-colors flex items-center justify-center gap-1">
+              <div className={cn("grid grid-cols-3 gap-px border-t", isDark ? "bg-primary/10 border-primary/20" : "bg-gray-100 border-gray-200")}>
+                <Link href={`/dashboard/colaboradores/${collab.id}/editar`} className={cn(surfaces.serviceCardActionBtn, "text-xs font-semibold py-3 flex items-center justify-center gap-1")}>
                   <span className="material-symbols-outlined text-xs">edit</span> Editar
                 </Link>
-                <Link href={`/dashboard/colaboradores/${collab.id}/servicos`} className="bg-white hover:bg-gray-50 text-xs font-semibold text-gray-600 py-3 transition-colors flex items-center justify-center gap-1">
+                <Link href={`/dashboard/colaboradores/${collab.id}/servicos`} className={cn(surfaces.serviceCardActionBtn, "text-xs font-semibold py-3 flex items-center justify-center gap-1")}>
                   <span className="material-symbols-outlined text-xs">category</span> Serviços
                 </Link>
                 <button
                   type="button"
                   disabled={busyId === collab.id}
                   onClick={() => void toggleActive(collab)}
-                  className={`bg-white hover:bg-gray-50 disabled:opacity-50 text-xs font-semibold py-3 transition-colors flex items-center justify-center gap-1 ${
+                  className={cn(
+                    surfaces.serviceCardActionBtn,
+                    "disabled:opacity-50 text-xs font-semibold py-3 transition-colors flex items-center justify-center gap-1",
                     collab.active ? "text-red-600" : "text-primary"
-                  }`}
+                  )}
                 >
                   <span className="material-symbols-outlined text-xs">{collab.active ? "person_off" : "person_add"}</span>
                   {collab.active ? "Desativar" : "Ativar"}
@@ -200,9 +208,9 @@ export default function ColaboradoresPage() {
       </div>
 
       {collaborators.length === 0 && (
-        <div className="text-center py-12 bg-white border border-gray-200 rounded-xl">
-          <span className="material-symbols-outlined text-gray-400 text-4xl block mb-3">groups</span>
-          <p className="text-gray-600 text-sm">Nenhum colaborador. Adicione sua primeira pessoa da equipe.</p>
+        <div className={cn(surfaces.panel, "text-center py-12")}>
+          <span className={cn("material-symbols-outlined text-4xl block mb-3", surfaces.muted)}>groups</span>
+          <p className={cn("text-sm", surfaces.subtitle)}>Nenhum colaborador. Adicione sua primeira pessoa da equipe.</p>
           <Link href="/dashboard/colaboradores/novo" className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-primary text-black font-bold rounded-xl text-sm">
             <span className="material-symbols-outlined text-base">person_add</span> Adicionar
           </Link>

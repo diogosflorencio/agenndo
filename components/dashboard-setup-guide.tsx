@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 
 const STORAGE_DISMISS = "agenndo_setup_guide_dismissed";
 const STORAGE_COMPACT = "agenndo_setup_guide_compact";
@@ -92,6 +93,7 @@ function buildSections(s: SetupProgressSnapshot): Section[] {
 export function DashboardSetupGuide({ snapshot }: { snapshot: SetupProgressSnapshot }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
 
   const [dismissed, setDismissed] = useState(true);
   const [compact, setCompact] = useState(false);
@@ -157,19 +159,14 @@ export function DashboardSetupGuide({ snapshot }: { snapshot: SetupProgressSnaps
   if (!hydrated || dismissed) return null;
 
   return (
-    <div
-      className={cn(
-        "mb-6 rounded-xl border overflow-hidden",
-        isDark ? "bg-[#080c0a] border-white/10 shadow-none" : "bg-white border-gray-200 shadow-sm"
-      )}
-    >
+    <div className={cn(surfaces.panel, "mb-6 overflow-hidden", isDark && "shadow-none")}>
       <div
         className={cn(
           "flex items-center justify-between gap-3 px-4 py-3 border-b",
           isDark ? "border-white/10" : "border-gray-100"
         )}
       >
-        <h2 className={cn("text-sm font-bold", isDark ? "text-white" : "text-gray-900")}>Guia de configuração</h2>
+        <h2 className={cn("text-sm font-bold", surfaces.title)}>Guia de configuração</h2>
         <div className="flex items-center gap-0.5 shrink-0">
           <button
             type="button"
@@ -209,7 +206,7 @@ export function DashboardSetupGuide({ snapshot }: { snapshot: SetupProgressSnaps
             style={{ width: `${pct}%` }}
           />
         </div>
-        <p className={cn("text-xs mt-2", isDark ? "text-white/50" : "text-gray-500")}>
+        <p className={cn("text-xs mt-2", surfaces.muted)}>
           {allDone ? (
             <>Configuração concluída. Ótimo trabalho.</>
           ) : (

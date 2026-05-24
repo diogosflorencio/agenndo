@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { QrCode, Printer, FileDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 
 const STORAGE_KEY = "agenndo-personalizacao-qrcode-v1";
 
@@ -67,6 +69,14 @@ export function PersonalizationShareQr({
   primaryColor,
   desktopPreviewHost,
 }: PersonalizationShareQrProps) {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
+  const inputCls = cn("w-full h-10 rounded-xl border px-3 text-sm outline-none focus:border-primary", surfaces.input);
+  const styleBtnIdle = isDark
+    ? "border-white/10 text-gray-400 hover:border-white/20 hover:text-gray-200"
+    : "border-gray-200 text-gray-500 hover:border-gray-300";
+
   const qrContainerRef = useRef<HTMLDivElement>(null);
   const printAreaRef = useRef<HTMLDivElement>(null);
   const qrInstanceRef = useRef<{
@@ -425,11 +435,11 @@ export function PersonalizationShareQr({
 
   if (!slug) {
     return (
-      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+      <div className={cn(surfaces.panel, "p-5")}>
         <div className="flex items-start gap-3">
           <span className="material-symbols-outlined text-amber-600 text-xl shrink-0">link_off</span>
-          <p className="text-sm text-gray-600">
-            Defina o <strong className="text-gray-900">slug</strong> do seu negócio para gerar o QR Code da página pública.
+          <p className={cn("text-sm", surfaces.subtitle)}>
+            Defina o <strong className={surfaces.title}>slug</strong> do seu negócio para gerar o QR Code da página pública.
           </p>
         </div>
       </div>
@@ -441,7 +451,7 @@ export function PersonalizationShareQr({
   const previewSection = (
     <div className="shrink-0 flex flex-col items-center w-full max-w-[300px] mx-auto lg:mx-0">
       {!usePortalPreview && (
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 w-full text-center">
+        <p className={cn("text-xs font-semibold uppercase tracking-wide mb-2 w-full text-center", surfaces.muted)}>
           Pré-visualização
         </p>
       )}
@@ -516,20 +526,20 @@ export function PersonalizationShareQr({
           </p>
         </div>
       </div>
-      {!qrReady && <p className="text-[11px] text-gray-400 mt-2">Gerando QR…</p>}
+      {!qrReady && <p className={cn("text-[11px] mt-2", surfaces.muted)}>Gerando QR…</p>}
     </div>
   );
 
   return (
     <div className="space-y-4">
-      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
+      <div className={cn(surfaces.panel, "p-5 space-y-4")}>
         <div className="flex items-start gap-3">
-          <div className="size-10 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
-            <QrCode className="size-5 text-gray-800" strokeWidth={2} aria-hidden />
+          <div className={cn("size-10 rounded-xl border flex items-center justify-center shrink-0", isDark ? "bg-white/[0.06] border-white/10" : "bg-gray-100 border-gray-200")}>
+            <QrCode className={cn("size-5", surfaces.title)} strokeWidth={2} aria-hidden />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900">QR Code para agendar</h3>
-            <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">
+            <h3 className={cn("text-sm font-bold", surfaces.title)}>QR Code para agendar</h3>
+            <p className={cn("text-xs mt-0.5 leading-relaxed", surfaces.muted)}>
               Personalize cores e módulos do QR, copie o link, imprima ou exporte PDF em A4.
             </p>
           </div>
@@ -537,7 +547,7 @@ export function PersonalizationShareQr({
 
         <div className="space-y-4 min-w-0">
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Paletas rápidas</p>
+              <p className={cn("text-xs font-medium uppercase tracking-wide mb-2", surfaces.muted)}>Paletas rápidas</p>
               <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
                 {presetPalettes.map((p) => (
                   <button
@@ -550,7 +560,7 @@ export function PersonalizationShareQr({
                     }}
                     className={cn(
                       "relative aspect-square rounded-xl border-2 transition-all overflow-hidden",
-                      fgColor === p.fg && bgColor === p.bg ? "border-primary ring-2 ring-primary/25" : "border-gray-200 hover:border-gray-300"
+                      fgColor === p.fg && bgColor === p.bg ? "border-primary ring-2 ring-primary/25" : isDark ? "border-white/10 hover:border-white/20" : "border-gray-200 hover:border-gray-300"
                     )}
                     style={{ background: p.bg }}
                   >
@@ -573,10 +583,10 @@ export function PersonalizationShareQr({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <span className="text-xs text-gray-500 block mb-1">Cor do QR</span>
+                <span className={cn("text-xs block mb-1", surfaces.muted)}>Cor do QR</span>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <div
-                    className="w-9 h-9 rounded-lg border border-gray-200 overflow-hidden shrink-0 shadow-sm"
+                    className={cn("w-9 h-9 rounded-lg border overflow-hidden shrink-0 shadow-sm", isDark ? "border-white/10" : "border-gray-200")}
                     style={{ background: fgColor }}
                   >
                     <input
@@ -586,14 +596,14 @@ export function PersonalizationShareQr({
                       className="opacity-0 w-full h-full cursor-pointer"
                     />
                   </div>
-                  <span className="text-xs font-mono text-gray-500 truncate">{fgColor}</span>
+                  <span className={cn("text-xs font-mono truncate", surfaces.muted)}>{fgColor}</span>
                 </label>
               </div>
               <div>
-                <span className="text-xs text-gray-500 block mb-1">Fundo do cartão</span>
+                <span className={cn("text-xs block mb-1", surfaces.muted)}>Fundo do cartão</span>
                 <label className="flex items-center gap-2 cursor-pointer">
                   <div
-                    className="w-9 h-9 rounded-lg border border-gray-200 overflow-hidden shrink-0 shadow-sm"
+                    className={cn("w-9 h-9 rounded-lg border overflow-hidden shrink-0 shadow-sm", isDark ? "border-white/10" : "border-gray-200")}
                     style={{ background: bgColor }}
                   >
                     <input
@@ -603,13 +613,13 @@ export function PersonalizationShareQr({
                       className="opacity-0 w-full h-full cursor-pointer"
                     />
                   </div>
-                  <span className="text-xs font-mono text-gray-500 truncate">{bgColor}</span>
+                  <span className={cn("text-xs font-mono truncate", surfaces.muted)}>{bgColor}</span>
                 </label>
               </div>
             </div>
 
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Estilo dos módulos</p>
+              <p className={cn("text-xs font-medium uppercase tracking-wide mb-2", surfaces.muted)}>Estilo dos módulos</p>
               <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                 {QR_STYLE_OPTIONS.map((opt) => (
                   <button
@@ -619,8 +629,8 @@ export function PersonalizationShareQr({
                     className={cn(
                       "px-2 py-2 rounded-xl border text-[11px] font-medium transition-all flex flex-col items-center gap-0.5",
                       qrDotsType === opt.value
-                        ? "border-primary bg-primary/10 text-gray-900"
-                        : "border-gray-200 text-gray-500 hover:border-gray-300"
+                        ? cn("border-primary bg-primary/10", surfaces.title)
+                        : styleBtnIdle
                     )}
                   >
                     <span className="text-base leading-none">{opt.preview}</span>
@@ -631,7 +641,7 @@ export function PersonalizationShareQr({
             </div>
 
             <label className="flex items-center justify-between gap-3 cursor-pointer py-1">
-              <span className="text-sm text-gray-700">Logo no centro do QR</span>
+              <span className={cn("text-sm", surfaces.label)}>Logo no centro do QR</span>
               <input
                 type="checkbox"
                 checked={showLogoInQr}
@@ -641,7 +651,7 @@ export function PersonalizationShareQr({
             </label>
             {showLogoInQr && (
               <div>
-                <span className="text-xs text-gray-500 block mb-1">Tamanho da logo no QR</span>
+                <span className={cn("text-xs block mb-1", surfaces.muted)}>Tamanho da logo no QR</span>
                 <div className="flex items-center gap-2">
                   <input
                     type="range"
@@ -652,14 +662,14 @@ export function PersonalizationShareQr({
                     onChange={(e) => setLogoSize(Number(e.target.value))}
                     className="flex-1 h-1.5 accent-primary"
                   />
-                  <span className="text-xs text-gray-500 w-10 text-right">{Math.round(logoSize * 100)}%</span>
+                  <span className={cn("text-xs w-10 text-right", surfaces.muted)}>{Math.round(logoSize * 100)}%</span>
                 </div>
               </div>
             )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Arredondamento do cartão</label>
+                <label className={cn("text-xs block mb-1", surfaces.muted)}>Arredondamento do cartão</label>
                 <input
                   type="range"
                   min={8}
@@ -668,10 +678,10 @@ export function PersonalizationShareQr({
                   onChange={(e) => setCardRadius(Number(e.target.value))}
                   className="w-full h-1.5 accent-primary"
                 />
-                <span className="text-[10px] text-gray-400">{cardRadius}px</span>
+                <span className={cn("text-[10px]", surfaces.muted)}>{cardRadius}px</span>
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Espaço interno</label>
+                <label className={cn("text-xs block mb-1", surfaces.muted)}>Espaço interno</label>
                 <input
                   type="range"
                   min={12}
@@ -680,37 +690,37 @@ export function PersonalizationShareQr({
                   onChange={(e) => setCardPadding(Number(e.target.value))}
                   className="w-full h-1.5 accent-primary"
                 />
-                <span className="text-[10px] text-gray-400">{cardPadding}px</span>
+                <span className={cn("text-[10px]", surfaces.muted)}>{cardPadding}px</span>
               </div>
             </div>
 
             <div className="space-y-2">
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Texto acima do QR</label>
+                <label className={cn("text-xs block mb-1", surfaces.muted)}>Texto acima do QR</label>
                 <input
                   type="text"
                   value={topText}
                   onChange={(e) => setTopText(e.target.value)}
-                  className="w-full h-10 bg-gray-50 border border-gray-200 rounded-xl px-3 text-gray-900 text-sm outline-none focus:border-primary"
+                  className={inputCls}
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-500 block mb-1">Texto abaixo do QR</label>
+                <label className={cn("text-xs block mb-1", surfaces.muted)}>Texto abaixo do QR</label>
                 <input
                   type="text"
                   value={bottomText}
                   onChange={(e) => setBottomText(e.target.value)}
-                  className="w-full h-10 bg-gray-50 border border-gray-200 rounded-xl px-3 text-gray-900 text-sm outline-none focus:border-primary"
+                  className={inputCls}
                 />
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-200">
-              <span className="text-[11px] font-mono text-gray-600 flex-1 truncate">{qrDataUrl}</span>
+            <div className={cn("flex items-center gap-2 p-2.5 rounded-xl border", surfaces.cardInset)}>
+              <span className={cn("text-[11px] font-mono flex-1 truncate", surfaces.muted)}>{qrDataUrl}</span>
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="shrink-0 text-xs px-3 py-1.5 rounded-lg bg-white border border-gray-200 hover:bg-gray-100 font-semibold text-gray-800 flex items-center gap-1"
+                className={cn("shrink-0 text-xs px-3 py-1.5 rounded-lg border font-semibold flex items-center gap-1", surfaces.btnSecondary)}
               >
                 <AnimatePresence mode="wait">
                   {justCopied ? (
@@ -753,12 +763,12 @@ export function PersonalizationShareQr({
                 {savingPdf ? "Gerando…" : "Salvar PDF"}
               </button>
             </div>
-            <p className="text-[11px] text-gray-400 text-center">
+            <p className={cn("text-[11px] text-center", surfaces.muted)}>
               PDF em A4 · Export em alta resolução (as imagens são convertidas no navegador para evitar erro de captura)
             </p>
 
           {!usePortalPreview && (
-            <div className="border-t border-gray-100 pt-4 lg:hidden">{previewSection}</div>
+            <div className={cn("border-t pt-4 lg:hidden", isDark ? "border-white/[0.06]" : "border-gray-100")}>{previewSection}</div>
           )}
         </div>
       </div>

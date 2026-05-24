@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
 import { MOCK_CLIENTS } from "@/lib/mock-data";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 
 const AVAILABLE_TIMES = [
   "08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
@@ -37,6 +39,9 @@ function collaboratorsForService(service: ServiceRow | null, allActive: CollabRo
 }
 
 export default function NovoAgendamentoPage() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
   const { business } = useDashboard();
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [collaborators, setCollaborators] = useState<CollabRow[]>([]);
@@ -132,7 +137,7 @@ export default function NovoAgendamentoPage() {
         <div className="flex gap-3 justify-center">
           <Link
             href="/dashboard/agendamentos/novo"
-            className="px-4 py-2.5 bg-white border border-gray-200 hover:border-primary/40 text-gray-700 font-semibold rounded-xl text-sm"
+            className={cn("px-4 py-2.5 font-semibold rounded-xl text-sm border", surfaces.btnSecondary, "hover:border-primary/40")}
           >
             Novo agendamento
           </Link>
@@ -160,13 +165,13 @@ export default function NovoAgendamentoPage() {
       <div className="mb-6 flex items-center gap-3">
         <Link
           href="/dashboard/agendamentos"
-          className="size-9 flex items-center justify-center rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600"
+          className={cn("size-9 flex items-center justify-center rounded-lg border transition-colors", surfaces.btnSecondary)}
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Novo agendamento</h1>
-          <p className="text-gray-600 text-sm mt-0.5">Preencha os dados abaixo</p>
+          <h1 className={cn("text-2xl font-bold", surfaces.title)}>Novo agendamento</h1>
+          <p className={cn("text-sm mt-0.5", surfaces.subtitle)}>Preencha os dados abaixo</p>
         </div>
       </div>
 
@@ -178,8 +183,8 @@ export default function NovoAgendamentoPage() {
 
       <div className="space-y-6">
         {/* Cliente */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-          <h2 className="text-sm font-bold text-gray-900 mb-3">Cliente</h2>
+        <div className={cn(surfaces.panel, "p-5")}>
+          <h2 className={cn("text-sm font-bold mb-3", surfaces.title)}>Cliente</h2>
           <div className="relative mb-3">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 text-base">person_search</span>
             <input
@@ -230,8 +235,8 @@ export default function NovoAgendamentoPage() {
         </div>
 
         {/* Serviço */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-          <h2 className="text-sm font-bold text-gray-900 mb-3">Serviço</h2>
+        <div className={cn(surfaces.panel, "p-5")}>
+          <h2 className={cn("text-sm font-bold mb-3", surfaces.title)}>Serviço</h2>
           {activeServices.length === 0 ? (
             <p className="text-sm text-gray-500">
               Nenhum serviço ativo.{" "}
@@ -273,8 +278,8 @@ export default function NovoAgendamentoPage() {
 
         {/* Profissional */}
         {selectedService && (
-          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-            <h2 className="text-sm font-bold text-gray-900 mb-3">Profissional</h2>
+          <div className={cn(surfaces.panel, "p-5")}>
+            <h2 className={cn("text-sm font-bold mb-3", surfaces.title)}>Profissional</h2>
             {collabsForService.length === 0 ? (
               <p className="text-sm text-gray-500">
                 Nenhum profissional disponível. Ative um colaborador ou vincule-o ao serviço em{" "}
@@ -311,8 +316,8 @@ export default function NovoAgendamentoPage() {
         )}
 
         {/* Data e horário */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-          <h2 className="text-sm font-bold text-gray-900 mb-3">Data e horário</h2>
+        <div className={cn(surfaces.panel, "p-5")}>
+          <h2 className={cn("text-sm font-bold mb-3", surfaces.title)}>Data e horário</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs text-gray-500 block mb-1">Data</label>
@@ -341,8 +346,8 @@ export default function NovoAgendamentoPage() {
         </div>
 
         {/* Observações */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-          <label className="text-sm font-bold text-gray-900 block mb-2">Observações</label>
+        <div className={cn(surfaces.panel, "p-5")}>
+          <label className={cn("text-sm font-bold block mb-2", surfaces.title)}>Observações</label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -355,7 +360,7 @@ export default function NovoAgendamentoPage() {
         <div className="flex gap-3">
           <Link
             href="/dashboard/agendamentos"
-            className="flex-1 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold rounded-xl text-sm text-center"
+            className={cn("flex-1 py-3 font-semibold rounded-xl text-sm text-center border", surfaces.btnSecondary)}
           >
             Cancelar
           </Link>

@@ -12,8 +12,9 @@ import {
 } from "recharts";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 
 const DAYS_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -460,6 +461,7 @@ export default function AnalyticsPage() {
   }, [filtered, popularSlots]);
 
   const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
   const tooltipStyle = isDark
     ? {
         background: "#0f1c15",
@@ -605,20 +607,20 @@ export default function AnalyticsPage() {
     <div className="w-full">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-600 text-sm mt-1">Métricas e insights do seu negócio</p>
+          <h1 className={cn("text-2xl font-bold", surfaces.title)}>Analytics</h1>
+          <p className={cn("text-sm mt-1", surfaces.subtitle)}>Métricas e insights do seu negócio</p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
             onClick={exportCsv}
-            className="px-3 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5"
+            className={cn("px-3 py-2 text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5 border", surfaces.btnSecondary)}
           >
             <span className="material-symbols-outlined text-base">download</span>
             Exportar CSV
           </button>
-          <div className="flex gap-1 p-1 bg-white border border-gray-200 rounded-xl">
+          <div className={cn("flex gap-1 p-1 rounded-xl border", isDark ? "bg-white/5 border-white/10" : "bg-white border-gray-200")}>
             {(
               [
                 { key: "hoje", label: "Hoje" },
@@ -648,7 +650,7 @@ export default function AnalyticsPage() {
         {metricCards.map((metric) => (
           <div
             key={metric.label}
-            className="bg-white border border-gray-200 rounded-xl p-3 md:p-4 shadow-sm min-w-0"
+            className={cn(surfaces.panel, "p-3 md:p-4 min-w-0")}
           >
             <p className="text-[10px] md:text-xs text-gray-500 mb-1 truncate">{metric.label}</p>
             <p className="text-lg md:text-2xl font-bold text-gray-900 mb-0.5 tabular-nums truncate">
@@ -669,8 +671,8 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 mb-4">
-        <div className="xl:col-span-5 bg-white border border-gray-200 rounded-xl p-4 md:p-5 shadow-sm min-w-0">
-          <h2 className="text-sm font-bold text-gray-900 mb-3">Agendamentos por período</h2>
+        <div className={cn(surfaces.panel, "xl:col-span-5 p-4 md:p-5 min-w-0")}>
+          <h2 className={cn("text-sm font-bold mb-3", surfaces.title)}>Agendamentos por período</h2>
           <div className={period === "30d" ? "overflow-x-auto" : ""}>
             <div className={period === "30d" ? "min-w-[640px]" : ""}>
               <ResponsiveContainer width="100%" height={200}>
@@ -707,8 +709,8 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        <div className="xl:col-span-4 bg-white border border-gray-200 rounded-xl p-4 shadow-sm min-w-0">
-          <h2 className="text-sm font-bold text-gray-900 mb-3">Funil (status)</h2>
+        <div className={cn(surfaces.panel, "xl:col-span-4 p-4 min-w-0")}>
+          <h2 className={cn("text-sm font-bold mb-3", surfaces.title)}>Funil (status)</h2>
           <p className="text-[11px] text-gray-500 mb-2">
             Proporção sobre o total de agendamentos no período selecionado.
           </p>
@@ -737,8 +739,8 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        <div className="xl:col-span-3 bg-white border border-gray-200 rounded-xl p-4 shadow-sm min-w-0">
-          <h2 className="text-sm font-bold text-gray-900 mb-3">Evolução de clientes</h2>
+        <div className={cn(surfaces.panel, "xl:col-span-3 p-4 min-w-0")}>
+          <h2 className={cn("text-sm font-bold mb-3", surfaces.title)}>Evolução de clientes</h2>
           <p className="text-[11px] text-gray-500 mb-2">Últimos 6 meses (com identificação de cliente).</p>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={clientEvolution} barSize={8}>
@@ -765,8 +767,8 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-5 shadow-sm mb-4 overflow-hidden">
-        <h2 className="text-sm font-bold text-gray-900 mb-2">Horários mais populares</h2>
+      <div className={cn(surfaces.panel, "p-4 md:p-5 mb-4 overflow-hidden")}>
+        <h2 className={cn("text-sm font-bold mb-2", surfaces.title)}>Horários mais populares</h2>
         <p className="text-[11px] text-gray-500 mb-3">
           Ranqueados por volume no período selecionado ({period}).
         </p>
@@ -843,13 +845,13 @@ export default function AnalyticsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white border border-gray-200 rounded-xl p-4 md:p-5 shadow-sm lg:col-span-2">
-          <h2 className="text-sm font-bold text-gray-900 mb-4">Insights automáticos</h2>
+        <div className={cn(surfaces.panel, "p-4 md:p-5 lg:col-span-2")}>
+          <h2 className={cn("text-sm font-bold mb-4", surfaces.title)}>Insights automáticos</h2>
           <div className="grid sm:grid-cols-2 gap-3">
             {insights.map((insight, i) => (
               <div
                 key={i}
-                className="flex gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100"
+                className={cn("flex gap-3 p-3 rounded-xl border", surfaces.cardInset, "rounded-xl")}
               >
                 <div
                   className={`size-8 rounded-lg flex items-center justify-center flex-shrink-0 ${insight.color}`}

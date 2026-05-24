@@ -28,9 +28,10 @@ import {
   regenerateImpersonateToken,
   startImpersonation,
 } from "@/lib/auth/impersonation-client";
-import { formatDateTimePtBr, getAuthHeaders } from "@/lib/utils";
+import { cn, formatDateTimePtBr, getAuthHeaders } from "@/lib/utils";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 import {
   getSupportContactUrl,
   isYwpSupportActorEmail,
@@ -71,7 +72,9 @@ function StripeQuerySync() {
 
 export default function ContaPage() {
   const { theme } = useTheme();
-  const isLight = theme === "light";
+  const isDark = theme === "dark";
+  const isLight = !isDark;
+  const surfaces = getDashboardSurfaces(isDark);
   const { showAlert, showConfirm, showPhraseConfirm } = useAppAlert();
   const { business, profile, user } = useDashboard();
   const supportContactUrl = getSupportContactUrl();
@@ -354,7 +357,7 @@ export default function ContaPage() {
         </p>
       </div>
 
-      <div className="flex gap-1 p-1 bg-white border border-gray-200 rounded-xl mb-6 shadow-sm">
+      <div className={cn("flex gap-1 p-1 mb-6", surfaces.panel)}>
         {[
           { key: "plano", label: "Meu plano", icon: "workspace_premium" },
           { key: "seguranca", label: "Segurança", icon: "security" },
@@ -551,7 +554,7 @@ export default function ContaPage() {
             <BillingDocumentForm businessId={business.id} business={business} />
           ) : null}
 
-          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+          <div className={cn(surfaces.panel, "p-5")}>
             <h3 className="text-sm font-bold text-gray-900 mb-3">O que está incluído</h3>
             <div className="space-y-2">
               {planInfo.features.map((line) => (
@@ -563,7 +566,7 @@ export default function ContaPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+          <div className={cn(surfaces.panel, "overflow-hidden")}>
             <div className="p-4 border-b border-gray-200">
               <h3 className="text-sm font-bold text-gray-900">Histórico de faturas</h3>
               <p className="text-xs text-gray-500 mt-1">Use o portal Stripe para PDF e histórico completo.</p>
@@ -598,7 +601,7 @@ export default function ContaPage() {
       {tab === "seguranca" && (
         <div className="space-y-4">
           {!user?.isImpersonating && (
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-3">
+            <div className={cn(surfaces.panel, "p-5 space-y-3")}>
               <h3 className="text-sm font-bold text-gray-900">Acesso compartilhado ao dashboard</h3>
               <p className="text-xs text-gray-500 leading-relaxed">
                 Cada conta já possui um token fixo na base de dados; você pode copiá-lo para quem autorizar ou para
@@ -682,7 +685,7 @@ export default function ContaPage() {
           )}
 
           {!user?.isImpersonating && (
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-3">
+            <div className={cn(surfaces.panel, "p-5 space-y-3")}>
               <h3 className="text-sm font-bold text-gray-900">Acessar a conta de outro usuário</h3>
               <label className="text-xs font-medium text-gray-600">Acessar a conta de outro usuário (cole o token)</label>
               <input
@@ -725,7 +728,7 @@ export default function ContaPage() {
             </div>
           )}
 
-          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+          <div className={cn(surfaces.panel, "p-5")}>
             <h3 className="text-sm font-bold text-gray-900 mb-4">Conta vinculada</h3>
             {user?.isImpersonating ? (
               <div
@@ -777,7 +780,7 @@ export default function ContaPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm space-y-4">
+          <div className={cn(surfaces.panel, "p-5 space-y-4")}>
             <h3 className="text-sm font-bold text-gray-900">Sessão e acesso compartilhado</h3>
             <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
               <span className="material-symbols-outlined text-primary text-xl">computer</span>
@@ -878,7 +881,7 @@ export default function ContaPage() {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-3 shadow-sm">
+          <div className={cn(surfaces.panel, "p-5 space-y-3")}>
             <button
               type="button"
               disabled={signOutLoading}

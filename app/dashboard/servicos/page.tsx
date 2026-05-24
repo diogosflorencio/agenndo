@@ -19,6 +19,10 @@ import {
 import { useAppAlert } from "@/components/app-alert-provider";
 import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 import {
+  normalizeRealDurationForSave,
+  validateServiceDurations,
+} from "@/lib/service-duration";
+import {
   emptyVariantSlot,
   normalizeVariantGallery,
   type ServiceVariantItem,
@@ -28,6 +32,7 @@ type ServiceRow = {
   id: string;
   name: string;
   duration_minutes: number;
+  real_duration_minutes: number | null;
   price_cents: number;
   emoji: string | null;
   image_url: string | null;
@@ -58,7 +63,7 @@ export default function ServicosPage() {
   const [listError, setListError] = useState<string | null>(null);
 
   const selectServices =
-    "id, name, duration_minutes, price_cents, emoji, image_url, description_public, variant_gallery, active, archived_at, collaborator_services(collaborator_id, collaborators(id, name, color, avatar_url))";
+    "id, name, duration_minutes, real_duration_minutes, price_cents, emoji, image_url, description_public, variant_gallery, active, archived_at, collaborator_services(collaborator_id, collaborators(id, name, color, avatar_url))";
 
   const load = useCallback(() => {
     if (!business?.id) return;
@@ -123,6 +128,7 @@ export default function ServicosPage() {
         business_id: business.id,
         name: `${s.name} (cópia)`,
         duration_minutes: s.duration_minutes,
+        real_duration_minutes: s.real_duration_minutes,
         price_cents: s.price_cents,
         emoji: s.emoji,
         active: s.active,
@@ -247,11 +253,15 @@ export default function ServicosPage() {
             .filter(Boolean) as CollaboratorOption[];
           const anyProf = collabs.length === 0;
           return (
-            <div key={service.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-all group flex flex-col min-h-0">
-              <div className="p-3.5 flex-1">
-                <div className="flex items-start justify-between gap-2 mb-2.5">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="size-9 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center text-lg shrink-0 border border-gray-200/80">
+            <div key={service.id} className={cn(surfaces.serviceCard, "group flex flex-col min-h-0")}>
+              <div className="p-3 flex-1">
+                <div className="flex flex-row gap-3">
+                  <div
+                    className={cn(
+                      "size-12 shrink-0 flex items-center justify-center overflow-hidden text-lg",
+                      surfaces.serviceCardMedia
+                    )}
+                  >
                       {service.image_url ? (
                         <Image src={service.image_url} alt="" width={36} height={36} className="size-full object-cover" unoptimized />
                       ) : service.emoji ? (
@@ -259,60 +269,69 @@ export default function ServicosPage() {
                           {service.emoji}
                         </span>
                       ) : (
-                        <span className="material-symbols-outlined text-gray-400 text-[22px]" aria-hidden>
+                        <span className={cn("material-symbols-outlined text-[22px]", surfaces.muted)} aria-hidden>
                           category
                         </span>
                       )}
-                    </div>
-                    <h3 className="text-gray-900 font-bold text-sm leading-tight truncate">{service.name}</h3>
                   </div>
-                  <div className={`shrink-0 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${service.active ? "bg-primary/10 text-primary" : "bg-gray-500/10 text-gray-500"}`}>
-                    <span className={`size-1 rounded-full ${service.active ? "bg-primary" : "bg-gray-500"}`} />
-                    {service.active ? "Ativo" : "Off"}
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-x-3 gap-y-1 mb-2.5 text-[11px]">
-                  <div className="flex items-center gap-1 text-gray-500">
-                    <span className="material-symbols-outlined text-[14px]">schedule</span>
-                    {service.duration_minutes}min
-                  </div>
-                  <div className="flex items-center gap-1 text-primary font-bold">
-                    <span className="material-symbols-outlined text-[14px]">attach_money</span>
-                    {formatCurrency(service.price_cents / 100)}
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 min-h-[22px]">
-                  <div className="flex -space-x-1">
-                    {(anyProf ? [{ id: "all", name: "Todos", color: null, avatar_url: null }] : collabs).slice(0, 4).map((c) => (
-                      <div
-                        key={c.id}
-                        className="size-5 rounded-full border border-white overflow-hidden flex items-center justify-center text-[8px] font-bold text-gray-900 shrink-0"
-                        style={{ backgroundColor: c.avatar_url ? undefined : c.color ?? "#94a3b8" }}
-                        title={anyProf ? "Qualquer profissional" : c.name}
-                      >
-                        {anyProf ? (
-                          "∗"
-                        ) : c.avatar_url ? (
-                          <Image src={c.avatar_url} alt="" width={20} height={20} className="size-full object-cover" unoptimized />
-                        ) : (
-                          c.name[0]
-                        )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className={cn("font-bold text-sm leading-tight line-clamp-2", surfaces.title)}>{service.name}</h3>
+                      <div className={cn("shrink-0", service.active ? surfaces.accentBadge : surfaces.accentBadgeMuted)}>
+                        <span className={cn("size-1 rounded-full", service.active ? "bg-primary" : "bg-gray-500")} />
+                        {service.active ? "Ativo" : "Off"}
                       </div>
-                    ))}
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-1.5 text-[11px]">
+                      <div className={cn("flex items-center gap-1", surfaces.muted)}>
+                        <span className="material-symbols-outlined text-[14px]">schedule</span>
+                        {service.duration_minutes}min
+                      </div>
+                      <div className="flex items-center gap-1 text-primary font-bold">
+                        <span className="material-symbols-outlined text-[14px]">attach_money</span>
+                        {formatCurrency(service.price_cents / 100)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 min-h-[20px]">
+                      <div className="flex -space-x-1">
+                        {(anyProf ? [{ id: "all", name: "Todos", color: null, avatar_url: null }] : collabs).slice(0, 4).map((c) => (
+                          <div
+                            key={c.id}
+                            className={cn(
+                              "size-5 rounded-full overflow-hidden flex items-center justify-center text-[8px] font-bold shrink-0 border",
+                              isDark ? "border-[#0a100e] text-gray-900" : "border-white text-gray-900"
+                            )}
+                            style={{ backgroundColor: c.avatar_url ? undefined : c.color ?? "#94a3b8" }}
+                            title={anyProf ? "Qualquer profissional" : c.name}
+                          >
+                            {anyProf ? (
+                              "∗"
+                            ) : c.avatar_url ? (
+                              <Image src={c.avatar_url} alt="" width={20} height={20} className="size-full object-cover" unoptimized />
+                            ) : (
+                              c.name[0]
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <span className={cn("text-[10px] line-clamp-1 leading-tight", surfaces.muted)}>
+                        {anyProf ? "Todos os profissionais" : collabs.map((c) => c.name.split(" ")[0]).join(", ")}
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-gray-500 line-clamp-2 leading-tight">
-                    {anyProf ? "Todos os profissionais" : collabs.map((c) => c.name.split(" ")[0]).join(", ")}
-                  </span>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-px bg-gray-100 border-t border-gray-200 mt-auto">
+              <div className={surfaces.serviceCardActions}>
                 <button
                   type="button"
                   onClick={() => {
                     setEditService(service);
                     setShowModal(true);
                   }}
-                  className="bg-white hover:bg-gray-50 text-[10px] font-semibold text-gray-600 py-2 transition-colors flex items-center justify-center gap-0.5"
+                  className={cn(
+                    "text-[10px] font-semibold py-2 transition-colors flex items-center justify-center gap-0.5",
+                    surfaces.serviceCardActionBtn
+                  )}
                 >
                   <span className="material-symbols-outlined text-[14px]">edit</span>
                   Editar
@@ -321,7 +340,10 @@ export default function ServicosPage() {
                   type="button"
                   disabled={busyId === service.id}
                   onClick={() => void duplicateService(service)}
-                  className="bg-white hover:bg-gray-50 disabled:opacity-50 text-[10px] font-semibold text-gray-600 py-2 transition-colors flex items-center justify-center gap-0.5"
+                  className={cn(
+                    "disabled:opacity-50 text-[10px] font-semibold py-2 transition-colors flex items-center justify-center gap-0.5",
+                    surfaces.serviceCardActionBtn
+                  )}
                 >
                   <span className="material-symbols-outlined text-[14px]">content_copy</span>
                   Dup.
@@ -330,7 +352,10 @@ export default function ServicosPage() {
                   type="button"
                   disabled={busyId === service.id}
                   onClick={() => void toggleActive(service)}
-                  className="bg-white hover:bg-gray-50 disabled:opacity-50 text-[10px] font-semibold text-gray-600 py-2 transition-colors flex items-center justify-center gap-0.5"
+                  className={cn(
+                    "disabled:opacity-50 text-[10px] font-semibold py-2 transition-colors flex items-center justify-center gap-0.5",
+                    surfaces.serviceCardActionBtn
+                  )}
                 >
                   <span className="material-symbols-outlined text-[14px]">{service.active ? "visibility_off" : "visibility"}</span>
                   {service.active ? "Off" : "On"}
@@ -340,7 +365,12 @@ export default function ServicosPage() {
                 type="button"
                 disabled={busyId === service.id}
                 onClick={() => void archiveService(service)}
-                className="w-full bg-white hover:bg-red-50 disabled:opacity-50 text-[10px] font-semibold text-red-600 py-2.5 border-t border-gray-200 transition-colors flex items-center justify-center gap-1"
+                className={cn(
+                  "w-full disabled:opacity-50 text-[10px] font-semibold py-2 transition-colors flex items-center justify-center gap-1 border-t",
+                  isDark
+                    ? cn(surfaces.serviceCardActionBtn, "hover:bg-red-950/40 text-red-400 border-primary/20")
+                    : "bg-white hover:bg-red-50 text-red-600 border-gray-200"
+                )}
               >
                 <span className="material-symbols-outlined text-[14px]">inventory_2</span>
                 Arquivar
@@ -355,7 +385,12 @@ export default function ServicosPage() {
             setEditService(null);
             setShowModal(true);
           }}
-          className="flex flex-col items-center justify-center gap-2 p-6 bg-white border border-dashed border-gray-200 rounded-xl hover:border-primary/40 hover:bg-primary/5 transition-all group min-h-[140px]"
+          className={cn(
+            "flex flex-col items-center justify-center gap-2 p-6 border border-dashed rounded-xl transition-all group min-h-[120px]",
+            isDark
+              ? "border-primary/10 bg-[#080c0a] hover:border-primary/18 hover:bg-[#0a100e]"
+              : "bg-white border-gray-200 hover:border-primary/40 hover:bg-primary/5"
+          )}
         >
           <div className="size-10 rounded-lg bg-gray-100 group-hover:bg-primary/20 flex items-center justify-center transition-colors">
             <span className="material-symbols-outlined text-gray-500 group-hover:text-primary text-xl transition-colors">add</span>
@@ -377,7 +412,7 @@ export default function ServicosPage() {
                 key={s.id}
                 className={cn(
                   "flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3",
-                  surfaces.cardInset
+                  surfaces.panel
                 )}
               >
                 <div className="min-w-0 flex items-center gap-3">
@@ -409,7 +444,7 @@ export default function ServicosPage() {
                   className={cn(
                     "shrink-0 text-xs font-bold px-4 py-2 rounded-lg border disabled:opacity-50 transition-colors",
                     isDark
-                      ? "border-primary/35 bg-primary/10 text-primary hover:bg-primary/20"
+                      ? cn("border", surfaces.accentSelected, "text-primary hover:bg-primary/20")
                       : "border-primary/30 bg-white text-gray-800 hover:bg-primary/10 hover:border-primary/40"
                   )}
                 >
@@ -447,6 +482,47 @@ function padVariantSlots(raw: unknown): ServiceVariantItem[] {
   const p = [...n];
   while (p.length < 3) p.push(emptyVariantSlot());
   return p.slice(0, 3);
+}
+
+function DurationFieldLabel({
+  label,
+  hint,
+  badge,
+  isDark,
+}: {
+  label: string;
+  hint: string;
+  badge?: string;
+  isDark: boolean;
+}) {
+  return (
+    <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+      <span className={cn("text-sm font-medium", isDark ? "text-gray-300" : "text-gray-600")}>{label}</span>
+      {badge ? (
+        <span
+          className={cn(
+            "rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
+            isDark ? "bg-violet-500/20 text-violet-300" : "bg-violet-100 text-violet-700"
+          )}
+        >
+          {badge}
+        </span>
+      ) : null}
+      <button
+        type="button"
+        title={hint}
+        aria-label={hint}
+        className={cn(
+          "inline-flex size-5 items-center justify-center rounded-full transition-colors",
+          isDark
+            ? "text-gray-500 hover:bg-white/10 hover:text-gray-300"
+            : "text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+        )}
+      >
+        <span className="material-symbols-outlined text-[16px] leading-none">info</span>
+      </button>
+    </div>
+  );
 }
 
 function ServiceModalFooterActions({
@@ -501,13 +577,17 @@ function ServiceModal({
   onSaved: () => void;
 }) {
   const { showAlert } = useAppAlert();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
   const initialLinked = (service?.collaborator_services ?? [])
     .map((cs) => cs.collaborator_id || cs.collaborators?.id)
     .filter((id): id is string => Boolean(id));
 
   const [form, setForm] = useState({
     name: service?.name ?? "",
-    duration: service?.duration_minutes ?? 30,
+    totalDuration: service?.duration_minutes ?? 30,
+    realDuration: service?.real_duration_minutes ?? null as number | null,
     price: service ? service.price_cents / 100 : 0,
     emoji: service?.emoji ?? null,
     active: service?.active ?? true,
@@ -581,7 +661,8 @@ function ServiceModal({
       JSON.stringify({
         form: {
           name: (service?.name ?? "").trim(),
-          duration: service?.duration_minutes ?? 30,
+          totalDuration: service?.duration_minutes ?? 30,
+          realDuration: service?.real_duration_minutes ?? null,
           price: service ? service.price_cents / 100 : 0,
           emoji: service?.emoji ?? null,
           active: service?.active ?? true,
@@ -595,6 +676,7 @@ function ServiceModal({
     [
       service?.name,
       service?.duration_minutes,
+      service?.real_duration_minutes,
       service?.price_cents,
       service?.emoji,
       service?.active,
@@ -610,7 +692,8 @@ function ServiceModal({
       JSON.stringify({
         form: {
           name: form.name.trim(),
-          duration: form.duration,
+          totalDuration: form.totalDuration,
+          realDuration: form.realDuration,
           price: form.price,
           emoji: form.emoji,
           active: form.active,
@@ -628,6 +711,11 @@ function ServiceModal({
 
   const persistService = async (): Promise<boolean> => {
     if (!form.name.trim()) return false;
+    const durationError = validateServiceDurations(form.totalDuration, form.realDuration);
+    if (durationError) {
+      setModalError(durationError);
+      return false;
+    }
     setSaving(true);
     setModalError(null);
     const supabase = createClient();
@@ -653,7 +741,8 @@ function ServiceModal({
     const row = {
       business_id: businessId,
       name: form.name.trim(),
-      duration_minutes: form.duration,
+      duration_minutes: form.totalDuration,
+      real_duration_minutes: normalizeRealDurationForSave(form.totalDuration, form.realDuration),
       price_cents: Math.round(form.price * 100),
       emoji: emojiVal,
       active: form.active,
@@ -740,8 +829,8 @@ function ServiceModal({
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 lg:gap-10 lg:items-start">
         {/* Coluna identidade (desktop esquerda) */}
         <div className="space-y-5 lg:col-span-5">
-          <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Identidade na página pública</h3>
+          <section className={cn(surfaces.panel, "rounded-2xl p-4 sm:p-5")}>
+            <h3 className={cn("text-xs font-bold uppercase tracking-wide", surfaces.muted)}>Identidade na página pública</h3>
             <p className="mt-1 text-[11px] leading-snug text-gray-500">
               Foto opcional; sem foto usamos ícone ou emoji.
             </p>
@@ -826,8 +915,8 @@ function ServiceModal({
             </div>
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-            <label className="mb-2 block text-sm font-medium text-gray-600">Ícone (opcional)</label>
+          <section className={cn(surfaces.panel, "rounded-2xl p-4 sm:p-5")}>
+            <label className={cn("mb-2 block text-sm font-medium", surfaces.label)}>Ícone (opcional)</label>
             <p className="mb-3 text-xs text-gray-500">
               Atalhos ou qualquer emoji (atalho do sistema). Vazio = sem ícone.
             </p>
@@ -874,8 +963,8 @@ function ServiceModal({
             </div>
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-            <label className="mb-1.5 block text-sm font-medium text-gray-600">Nome do serviço *</label>
+          <section className={cn(surfaces.panel, "rounded-2xl p-4 sm:p-5")}>
+            <label className={cn("mb-1.5 block text-sm font-medium", surfaces.label)}>Nome do serviço *</label>
             <input
               type="text"
               value={form.name}
@@ -900,30 +989,77 @@ function ServiceModal({
 
         {/* Coluna preço, variações e equipe (desktop direita) */}
         <div className="space-y-5 lg:col-span-7">
-          <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-            <h3 className="text-xs font-bold uppercase tracking-wide text-gray-500">Tempo e valor</h3>
-            <div className="mt-4 grid grid-cols-2 gap-4">
+          <section className={cn(surfaces.panel, "rounded-2xl p-4 sm:p-5")}>
+            <h3 className={cn("text-xs font-bold uppercase tracking-wide", surfaces.muted)}>Tempo e valor</h3>
+            <div className="mt-4 space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-600">Duração (min)</label>
+                <DurationFieldLabel
+                  isDark={isDark}
+                  label="Duração total do serviço"
+                  hint="Tempo que o cliente ficará no estabelecimento até o serviço ser concluído"
+                />
                 <input
                   type="number"
                   min={5}
-                  max={240}
+                  max={480}
                   step={5}
-                  value={form.duration}
-                  onChange={(e) => setForm({ ...form, duration: Number(e.target.value) })}
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none focus:border-primary"
+                  value={form.totalDuration}
+                  onChange={(e) => {
+                    const next = Number(e.target.value);
+                    setForm((prev) => ({
+                      ...prev,
+                      totalDuration: next,
+                      realDuration:
+                        prev.realDuration != null && next < prev.realDuration ? next : prev.realDuration,
+                    }));
+                  }}
+                  className={cn("h-11 w-full rounded-xl border px-4 text-sm outline-none focus:border-primary", surfaces.input)}
                 />
+                <p className={cn("mt-1.5 text-[11px] leading-snug", surfaces.muted)}>
+                  Exibida ao cliente na página de agendamento como &quot;Duração&quot;.
+                </p>
+              </div>
+              <div
+                className={cn(
+                  "rounded-xl border border-dashed px-3 py-3",
+                  isDark ? cn(surfaces.accentCard, "border-primary/25") : "border-gray-200 bg-gray-50/80"
+                )}
+              >
+                <DurationFieldLabel
+                  isDark={isDark}
+                  label="Tempo real de ocupação da agenda"
+                  hint="Tempo que será bloqueado na sua agenda. Use quando conseguir atender outros clientes enquanto este serviço está em andamento"
+                  badge="Avançado"
+                />
+                <input
+                  type="number"
+                  min={5}
+                  max={Math.min(480, form.totalDuration)}
+                  step={5}
+                  value={form.realDuration ?? ""}
+                  placeholder={`Igual à duração total (${form.totalDuration} min)`}
+                  onChange={(e) => {
+                    const raw = e.target.value.trim();
+                    setForm((prev) => ({
+                      ...prev,
+                      realDuration: raw === "" ? null : Number(raw),
+                    }));
+                  }}
+                  className={cn("h-11 w-full rounded-xl border px-4 text-sm outline-none focus:border-primary", surfaces.input)}
+                />
+                <p className={cn("mt-1.5 text-[11px] leading-snug", surfaces.muted)}>
+                  Opcional. Se vazio, a agenda usa a duração total para bloquear o horário.
+                </p>
               </div>
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-gray-600">Preço (R$)</label>
+                <label className={cn("mb-1.5 block text-sm font-medium", surfaces.label)}>Preço (R$)</label>
                 <input
                   type="number"
                   min={0}
                   step={0.01}
                   value={form.price}
                   onChange={(e) => setForm({ ...form, price: Number(e.target.value) })}
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none focus:border-primary"
+                  className={cn("h-11 w-full rounded-xl border px-4 text-sm outline-none focus:border-primary", surfaces.input)}
                 />
               </div>
             </div>
@@ -949,8 +1085,8 @@ function ServiceModal({
             </div>
           )}
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-            <label className="block text-sm font-medium text-gray-800">Quem faz este serviço</label>
+          <section className={cn(surfaces.panel, "rounded-2xl p-4 sm:p-5")}>
+            <label className={cn("block text-sm font-medium", surfaces.label)}>Quem faz este serviço</label>
             <p className="mt-1 text-[11px] leading-snug text-gray-500">
               Nenhum marcado = <strong className="text-gray-700">qualquer profissional ativo</strong> pode atender.
             </p>

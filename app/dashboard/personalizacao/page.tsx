@@ -23,6 +23,7 @@ import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicato
 import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 import { useRegisterDashboardUnsavedNavigation } from "@/lib/dashboard-navigation-guard";
 import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 import { PersonalizationShareQr } from "@/components/personalization-share-qr";
 import { SocialBrandIcon, socialBrandAccent } from "@/components/social-brand-icon";
 import {
@@ -105,6 +106,7 @@ export default function PersonalizacaoPage() {
   const router = useRouter();
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
   const { business } = useDashboard();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
@@ -675,8 +677,8 @@ export default function PersonalizacaoPage() {
         <div className="order-1 min-w-0 lg:col-span-3">
           <div
             className={cn(
-              "mb-5 flex gap-1 overflow-x-auto rounded-xl border p-1 shadow-sm [-webkit-overflow-scrolling:touch]",
-              isDark ? "border-white/[0.08] bg-[#111318]" : "border-gray-200 bg-white"
+              "mb-5 flex gap-1 overflow-x-auto p-1 [-webkit-overflow-scrolling:touch]",
+              surfaces.panel
             )}
           >
             {[
@@ -706,12 +708,7 @@ export default function PersonalizacaoPage() {
 
           {activeTab === "aparencia" && (
             <div className="space-y-5">
-              <div
-                className={cn(
-                  "rounded-xl border p-5 shadow-sm",
-                  isDark ? "border-white/[0.08] bg-[#111318]" : "border-gray-200 bg-white"
-                )}
-              >
+              <div className={cn(surfaces.panel, "p-5")}>
                 <div className="mb-3">
                   <h3 className={cn("text-sm font-bold", isDark ? "text-white" : "text-gray-900")}>Cor principal</h3>
                   <p className={cn("text-xs mt-0.5", isDark ? "text-gray-400" : "text-gray-500")}>
@@ -812,7 +809,7 @@ export default function PersonalizacaoPage() {
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+              <div className={cn(surfaces.panel, "p-5")}>
                 <h3 className="text-sm font-bold text-gray-900 mb-4">Logo / Foto de perfil</h3>
                 <div className="flex flex-wrap items-start gap-4">
                   <div className="size-16 rounded-xl overflow-hidden border-2 shrink-0 bg-gray-50 flex items-center justify-center">
@@ -856,7 +853,7 @@ export default function PersonalizacaoPage() {
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+              <div className={cn(surfaces.panel, "p-5")}>
                 <h3 className="text-sm font-bold text-gray-900 mb-1">Foto de capa</h3>
                 <p className="text-xs text-gray-500 mb-4">
                   Recomendado: imagem larga, por exemplo <strong className="font-medium text-gray-600">1920 × 640 px</strong> (ou
@@ -904,7 +901,7 @@ export default function PersonalizacaoPage() {
                 )}
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+              <div className={cn(surfaces.panel, "p-5")}>
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-sm font-bold text-gray-900">Tema da página pública</h3>
@@ -928,7 +925,7 @@ export default function PersonalizacaoPage() {
                 { label: "Nome do negócio", key: "businessName" as const, placeholder: "Nome do seu negócio" },
                 { label: "Tagline / Slogan", key: "tagline" as const, placeholder: "Frase curta sobre o seu negócio" },
               ].map((field) => (
-                <div key={field.key} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <div key={field.key} className={cn(surfaces.panel, "p-4")}>
                   <label className="text-sm font-medium text-gray-700 block mb-2">{field.label}</label>
                   <input
                     type="text"
@@ -940,7 +937,7 @@ export default function PersonalizacaoPage() {
                 </div>
               ))}
 
-              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div className={cn(surfaces.panel, "p-4")}>
                 <label className="text-sm font-medium text-gray-700 block mb-2">Sobre o negócio</label>
                 <textarea
                   value={form.about}
@@ -953,7 +950,7 @@ export default function PersonalizacaoPage() {
                 <p className="text-xs text-gray-500 mt-1 text-right">{form.about.length}/500</p>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div className={cn(surfaces.panel, "p-4")}>
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-sm font-medium text-gray-700">Galeria de fotos</label>
                   <span className="text-xs text-gray-500">
@@ -1036,7 +1033,7 @@ export default function PersonalizacaoPage() {
 
           {activeTab === "contato" && (
             <div className="space-y-4">
-              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div className={cn(surfaces.panel, "p-4")}>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Redes sociais</label>
                 <p className="text-xs text-gray-500 mb-4 leading-relaxed">
                   Escolha a rede e informe o usuário ou página. Na página pública aparece o ícone da rede com esse texto.
@@ -1123,7 +1120,7 @@ export default function PersonalizacaoPage() {
                 { label: "WhatsApp", key: "whatsapp" as const, icon: "chat", placeholder: "(11) 99999-9999" },
                 { label: "Endereço", key: "address" as const, icon: "location_on", placeholder: "Rua, número, Cidade/UF" },
               ].map((field) => (
-                <div key={field.key} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <div key={field.key} className={cn(surfaces.panel, "p-4")}>
                   <label className="text-sm font-medium text-gray-700 block mb-2">{field.label}</label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 text-base">
@@ -1148,7 +1145,7 @@ export default function PersonalizacaoPage() {
                 </div>
               ))}
 
-              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <div className={cn(surfaces.panel, "p-4")}>
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold text-gray-900">Botão WhatsApp flutuante</p>
@@ -1165,7 +1162,7 @@ export default function PersonalizacaoPage() {
 
           {activeTab === "compartilhar" && (
             <div className="space-y-4">
-              <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
+              <div className={cn(surfaces.panel, "p-5")}>
                 <h3 className="text-sm font-bold text-gray-900 mb-3">Seu link público</h3>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 h-11 bg-gray-50 border border-gray-200 rounded-xl px-4 flex items-center min-w-0">
@@ -1238,7 +1235,7 @@ export default function PersonalizacaoPage() {
         >
           {activeTab === "compartilhar" && business.slug ? (
             <>
-              <p className="mb-3 hidden text-xs font-bold uppercase tracking-wider text-gray-500 lg:block">
+              <p className={cn("mb-3 hidden text-xs font-bold uppercase tracking-wider lg:block", surfaces.muted)}>
                 Pré-visualização do QR Code
               </p>
               <div
@@ -1304,11 +1301,12 @@ function PagePreview({
 }) {
   const accent = form.primaryColor;
   const isDark = form.darkPage;
+  const previewSurfaces = getDashboardSurfaces(isDark);
   /** Modo claro: cores em formato arbitrário para não serem sobrescritas por `[data-theme="dark"] .text-gray-*` / `.bg-white` do painel. */
   const titleCls = isDark ? "text-white" : "text-[#111827]";
   const subCls = isDark ? "text-gray-400" : "text-[#4b5563]";
   const mutedCls = isDark ? "text-gray-500" : "text-[#6b7280]";
-  const cardCls = isDark ? "bg-[#14221A] border-[#213428]" : "bg-[#ffffff] border-[#e5e7eb]";
+  const cardCls = isDark ? previewSurfaces.panel : "bg-[#ffffff] border-[#e5e7eb]";
   const cardHover = isDark ? "hover:border-white/25" : "hover:border-[#d1d5db]";
   const avatarBorder = isDark ? "border-[#020403]" : "border-[#f9fafb]";
   const floatBtn =

@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
+import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 
 type Filter = "todos" | "frequentes" | "inativos" | "noshow";
 
@@ -22,6 +24,9 @@ type ClientRow = {
 };
 
 export default function ClientesPage() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
   const { business } = useDashboard();
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,8 +76,8 @@ export default function ClientesPage() {
   return (
     <div className="w-full p-4 md:p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-        <p className="text-gray-600 text-sm mt-1">{clients.length} clientes cadastrados</p>
+        <h1 className={cn("text-2xl font-bold", surfaces.title)}>Clientes</h1>
+        <p className={cn("text-sm mt-1", surfaces.subtitle)}>{clients.length} clientes cadastrados</p>
       </div>
 
       <div className="flex flex-col md:flex-row gap-3 mb-6">
@@ -91,7 +96,7 @@ export default function ClientesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome ou telefone..."
-              className="w-full h-10 bg-white border border-gray-200 rounded-xl pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-primary transition-colors"
+              className={cn("w-full h-10 rounded-xl pl-9 pr-4 text-sm outline-none focus:border-primary transition-colors", surfaces.input)}
             />
           </div>
         </div>
@@ -105,7 +110,10 @@ export default function ClientesPage() {
             <button
               key={f.key}
               onClick={() => setFilter(f.key)}
-              className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${filter === f.key ? "bg-primary text-black" : "bg-white border border-gray-200 text-gray-600 hover:text-gray-900 hover:border-gray-300"}`}
+              className={cn(
+                "px-3 py-2 rounded-xl text-xs font-semibold transition-all border",
+                filter === f.key ? "bg-primary text-black border-transparent" : cn(surfaces.btnSecondary, surfaces.subtitle, "hover:opacity-90")
+              )}
             >
               {f.label}
             </button>
@@ -120,7 +128,7 @@ export default function ClientesPage() {
             <Link
               key={client.id}
               href={`/dashboard/clientes/${client.id}`}
-              className="bg-white border border-gray-200 rounded-xl p-4 text-left hover:border-gray-300 transition-all group block"
+              className={cn(surfaces.panel, "p-4 text-left transition-all group block", isDark ? "hover:border-primary/25" : "hover:border-gray-300")}
             >
               <div className="flex items-start gap-3">
                 <div className="size-11 rounded-xl bg-gradient-to-br from-blue-400/20 to-purple-400/20 border border-gray-200 flex items-center justify-center text-gray-900 font-bold flex-shrink-0">

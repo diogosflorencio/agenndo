@@ -17,6 +17,7 @@ import {
   BOOKING_TZ,
 } from "@/lib/public-booking";
 import { hasFullServiceAccess } from "@/lib/billing-access";
+import { getServiceBlockingDurationMinutes } from "@/lib/service-duration";
 import { normalizeVariantGallery, variantEffectivePriceCents } from "@/lib/service-variants";
 
 export const runtime = "nodejs";
@@ -103,13 +104,13 @@ export async function POST(req: Request) {
 
   const { data: svc, error: svcErr } = await admin
     .from("services")
-    .select("id, business_id, duration_minutes, price_cents, active, archived_at, variant_gallery")
+    .select("id, business_id, duration_minutes, real_duration_minutes, price_cents, active, archived_at, variant_gallery")
     .eq("id", serviceId)
     .maybeSingle();
   if (svcErr || !svc?.id || svc.business_id !== bid || !svc.active || svc.archived_at != null) {
     return NextResponse.json({ error: "Serviço inválido ou indisponível" }, { status: 400 });
   }
-  const durationMinutes = Number(svc.duration_minutes) || 30;
+  const blockingDurationMinutes = getServiceBlockingDurationMinutes(svc);
   const priceCentsBase = Number(svc.price_cents) || 0;
 
   const variantOptions = normalizeVariantGallery(svc.variant_gallery);
@@ -199,7 +200,7 @@ export async function POST(req: Request) {
 
   const { data: apts } = await admin
     .from("appointments")
-    .select("time_start, time_end, status, collaborator_id, services(duration_minutes)")
+    .select("time_start, time_end, status, collaborator_id, services(duration_minutes, real_duration_minutes)")
     .eq("business_id", bid)
     .eq("date", dateStr);
 
@@ -222,7 +223,7 @@ export async function POST(req: Request) {
     const slots = computeSlotsForCollaborator({
       dateStr,
       schedule,
-      durationMinutes,
+      durationMinutes: blockingDurationMinutes,
       bufferMinutes,
       minAdvanceHours,
       collaboratorId: cid,
@@ -251,7 +252,7 @@ export async function POST(req: Request) {
     !isSlotStillFree({
       dateStr,
       timeStart: timeNorm,
-      durationMinutes,
+      durationMinutes: blockingDurationMinutes,
       bufferMinutes,
       collaboratorId: resolvedCollab,
       appointments,
@@ -311,11 +312,11 @@ export async function POST(req: Request) {
     clientId = ins.id as string;
   }
 
-  const timeEnd = endTimeFromStart(timeNorm, durationMinutes);
+  const timeEnd = endTimeFromStart(timeNorm, blockingDurationMinutes);
 
   const { data: freshApts } = await admin
     .from("appointments")
-    .select("time_start, time_end, status, collaborator_id, services(duration_minutes)")
+    .select("time_start, time_end, status, collaborator_id, services(duration_minutes, real_duration_minutes)")
     .eq("business_id", bid)
     .eq("date", dateStr);
   appointments = mapAppointmentBlockRows(freshApts ?? []);
@@ -324,7 +325,7 @@ export async function POST(req: Request) {
     !isSlotStillFree({
       dateStr,
       timeStart: timeNorm,
-      durationMinutes,
+      durationMinutes: blockingDurationMinutes,
       bufferMinutes,
       collaboratorId: resolvedCollab,
       appointments,

@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS public.services (
   business_id UUID NOT NULL REFERENCES public.businesses(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
   duration_minutes INT NOT NULL DEFAULT 30,
+  real_duration_minutes INT NULL,
   price_cents INT NOT NULL DEFAULT 0,
   emoji TEXT DEFAULT '✂️',
   image_url TEXT,

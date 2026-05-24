@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback, useMemo, useLayoutEffect, useRef } fr
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { useTheme } from "@/lib/theme-context";
+import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 import { recalcClientTotalSpent } from "@/lib/appointment-finance";
 import { recalculateCommissionAmountForAppointment } from "@/lib/commission-sync";
 import { CommissionsModule } from "@/components/dashboard/commissions-module";
@@ -65,13 +66,18 @@ async function recalcClientIds(supabase: ReturnType<typeof createClient>, ids: s
 
 function FinanceManualModalFooter({ saving }: { saving: boolean }) {
   const requestClose = useFullScreenOverlayRequestClose();
+  const { theme } = useTheme();
+  const surfaces = getDashboardSurfaces(theme === "dark");
   return (
     <>
       <button
         type="button"
         disabled={saving}
         onClick={() => void requestClose()}
-        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 pr-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 disabled:opacity-50 sm:w-auto sm:min-w-[140px] lg:pr-[4.75rem]"
+        className={cn(
+          "relative inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3 pr-4 text-sm font-semibold transition-colors disabled:opacity-50 sm:w-auto sm:min-w-[140px] lg:pr-[4.75rem]",
+          surfaces.btnSecondary
+        )}
       >
         <span className="flex min-w-0 flex-1 justify-center">Cancelar</span>
         <HotkeyHint action="cancel" layout="floating-end" />
@@ -91,13 +97,18 @@ function FinanceManualModalFooter({ saving }: { saving: boolean }) {
 
 function FinanceEditModalFooter({ saving }: { saving: boolean }) {
   const requestClose = useFullScreenOverlayRequestClose();
+  const { theme } = useTheme();
+  const surfaces = getDashboardSurfaces(theme === "dark");
   return (
     <>
       <button
         type="button"
         disabled={saving}
         onClick={() => void requestClose()}
-        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 pr-4 text-sm font-semibold text-gray-900 transition-colors hover:bg-gray-50 disabled:opacity-50 sm:w-auto sm:min-w-[140px] lg:pr-[4.75rem]"
+        className={cn(
+          "relative inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-3 pr-4 text-sm font-semibold transition-colors disabled:opacity-50 sm:w-auto sm:min-w-[140px] lg:pr-[4.75rem]",
+          surfaces.btnSecondary
+        )}
       >
         <span className="flex min-w-0 flex-1 justify-center">Cancelar</span>
         <HotkeyHint action="cancel" layout="floating-end" />
@@ -150,6 +161,7 @@ export default function FinanceiroPage() {
   const [editError, setEditError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const isDark = theme === "dark";
+  const surfaces = getDashboardSurfaces(isDark);
   const tooltipStyle = isDark
     ? { background: "#0f1c15", border: "1px solid rgba(255,255,255,0.1)", borderRadius: "8px", fontSize: "12px" }
     : { background: "#fff", border: "1px solid #e5e7eb", borderRadius: "8px", fontSize: "12px" };
@@ -495,26 +507,32 @@ export default function FinanceiroPage() {
     <div className="w-full">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Financeiro</h1>
-          <p className="text-gray-600 text-sm mt-1">Acompanhe sua receita e pagamentos</p>
+          <h1 className={cn("text-2xl font-bold", surfaces.title)}>Financeiro</h1>
+          <p className={cn("text-sm mt-1", surfaces.subtitle)}>Acompanhe sua receita e pagamentos</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-1 p-1 bg-gray-100 rounded-xl mr-1">
+          <div className={cn("flex gap-1 p-1 rounded-xl mr-1 border", isDark ? "bg-white/5 border-white/10" : "bg-gray-100 border-gray-200")}>
             <button
               type="button"
               onClick={() => setFinanceTab("revenue")}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                financeTab === "revenue" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={cn(
+                "px-3 py-2 rounded-lg text-xs font-bold transition-all",
+                financeTab === "revenue"
+                  ? cn(isDark ? "bg-white/10 text-white" : "bg-white shadow-sm text-gray-900")
+                  : cn(surfaces.subtitle, isDark ? "hover:text-white" : "hover:text-gray-900")
+              )}
             >
               Receita
             </button>
             <button
               type="button"
               onClick={() => setFinanceTab("commissions")}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition-all ${
-                financeTab === "commissions" ? "bg-white shadow-sm text-gray-900" : "text-gray-600 hover:text-gray-900"
-              }`}
+              className={cn(
+                "px-3 py-2 rounded-lg text-xs font-bold transition-all",
+                financeTab === "commissions"
+                  ? cn(isDark ? "bg-white/10 text-white" : "bg-white shadow-sm text-gray-900")
+                  : cn(surfaces.subtitle, isDark ? "hover:text-white" : "hover:text-gray-900")
+              )}
             >
               Comissões
             </button>
@@ -524,7 +542,7 @@ export default function FinanceiroPage() {
               <button
                 type="button"
                 onClick={exportCsv}
-                className="px-3 py-2.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5"
+                className={cn("px-3 py-2.5 text-sm font-semibold rounded-xl transition-all flex items-center gap-1.5 border", surfaces.btnSecondary)}
               >
                 <span className="material-symbols-outlined text-base">download</span>
                 Exportar CSV
@@ -557,19 +575,19 @@ export default function FinanceiroPage() {
           { label: "Este mês", value: formatCurrency(totalMonth / 100), sub: "Receita bruta", color: "text-primary" },
           { label: "Pendente", value: formatCurrency(pendingMonth / 100), sub: "A receber", color: "text-yellow-600" },
         ].map((card) => (
-          <div key={card.label} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-            <p className="text-xs text-gray-500 mb-2">{card.label}</p>
+          <div key={card.label} className={cn(surfaces.panel, "p-4")}>
+            <p className={cn("text-xs mb-2", surfaces.muted)}>{card.label}</p>
             <p className={`text-xl font-bold ${card.color}`}>{card.value}</p>
-            <p className="text-xs text-gray-500 mt-1">{card.sub}</p>
+            <p className={cn("text-xs mt-1", surfaces.muted)}>{card.sub}</p>
           </div>
         ))}
       </div>
 
       {/* Period toggle + chart */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6 shadow-sm">
+      <div className={cn(surfaces.panel, "p-5 mb-6")}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-bold text-gray-900">Receita</h2>
-          <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+          <h2 className={cn("text-sm font-bold", surfaces.title)}>Receita</h2>
+          <div className={cn("flex gap-1 p-1 rounded-lg", isDark ? "bg-white/5" : "bg-gray-100")}>
             {[
               { key: "day", label: "Dia" },
               { key: "week", label: "Semana" },
@@ -623,8 +641,8 @@ export default function FinanceiroPage() {
 
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
         {/* By service */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <h2 className="text-sm font-bold text-gray-900 mb-4">Por serviço</h2>
+        <div className={cn(surfaces.panel, "p-5")}>
+          <h2 className={cn("text-sm font-bold mb-4", surfaces.title)}>Por serviço</h2>
           <div className="space-y-3">
             {SERVICE_REVENUE.map((item, i) => (
               <div key={item.name}>
@@ -650,8 +668,8 @@ export default function FinanceiroPage() {
         </div>
 
         {/* By collaborator */}
-        <div className="bg-white border border-gray-200 rounded-xl p-5">
-          <h2 className="text-sm font-bold text-gray-900 mb-4">Por colaborador</h2>
+        <div className={cn(surfaces.panel, "p-5")}>
+          <h2 className={cn("text-sm font-bold mb-4", surfaces.title)}>Por colaborador</h2>
           <ResponsiveContainer width="100%" height={160}>
             <BarChart data={COLLAB_REVENUE} layout="vertical" barSize={16}>
               <XAxis type="number" hide />
@@ -675,9 +693,9 @@ export default function FinanceiroPage() {
       </div>
 
       {/* Transactions table */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-sm font-bold text-gray-900">Entradas</h2>
+      <div className={cn(surfaces.panel, "overflow-hidden")}>
+        <div className={cn("flex items-center justify-between p-4 border-b", isDark ? "border-white/10" : "border-gray-200")}>
+          <h2 className={cn("text-sm font-bold", surfaces.title)}>Entradas</h2>
           <button
             type="button"
             onClick={exportCsv}
@@ -777,96 +795,142 @@ export default function FinanceiroPage() {
         >
           <form
             id="finance-manual-add-form"
-            className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6"
+            className={cn(surfaces.panel, "overflow-hidden")}
             onSubmit={(e) => {
               e.preventDefault();
               void submitManualAdd();
             }}
           >
-            <div className="grid gap-4 lg:grid-cols-2">
-              <label className="block text-xs font-medium text-gray-600">
-                Data
+            <div className={cn(surfaces.accentCard, "p-5 border-b", isDark ? "border-white/[0.06] rounded-none" : "border-gray-100 rounded-none")}>
+              <div className="flex items-start gap-3">
+                <div className="size-11 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-primary text-2xl">payments</span>
+                </div>
+                <div className="min-w-0">
+                  <p className={cn("text-sm font-bold", surfaces.accentCardTitle)}>Novo lançamento avulso</p>
+                  <p className={cn("text-xs mt-1 leading-relaxed", surfaces.accentCardBody)}>
+                    Use para vendas, gorjetas ou receitas fora da agenda. Campos opcionais ajudam a organizar relatórios.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-5 sm:p-6 space-y-6">
+              <section>
+                <h3 className={cn("text-[11px] font-bold uppercase tracking-wide mb-3", surfaces.muted)}>Valor e data</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className={cn("block text-xs font-medium", surfaces.label)}>
+                    Data
+                    <input
+                      type="date"
+                      required
+                      value={manualForm.date}
+                      onChange={(e) => setManualForm((f) => ({ ...f, date: e.target.value }))}
+                      className={cn("mt-1.5 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
+                    />
+                  </label>
+                  <label className={cn("block text-xs font-medium", surfaces.label)}>
+                    Valor (R$)
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      required
+                      placeholder="ex.: 150 ou 150,50"
+                      value={manualForm.amount}
+                      onChange={(e) => setManualForm((f) => ({ ...f, amount: e.target.value }))}
+                      className={cn("mt-1.5 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <section>
+                <h3 className={cn("text-[11px] font-bold uppercase tracking-wide mb-3", surfaces.muted)}>Cliente</h3>
+                <div className={cn(surfaces.cardInset, "p-4 space-y-4")}>
+                  <label className={cn("block text-xs font-medium", surfaces.label)}>
+                    Cliente cadastrado (opcional)
+                    <select
+                      value={manualForm.client_id}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        const c = clients.find((x) => x.id === v);
+                        setManualForm((f) => ({
+                          ...f,
+                          client_id: v,
+                          client_name: c ? c.name : f.client_name,
+                        }));
+                      }}
+                      className={cn("mt-1.5 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
+                    >
+                      <option value="">(nenhum)</option>
+                      {clients.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className={cn("block text-xs font-medium", surfaces.label)}>
+                    Nome no lançamento (opcional)
+                    <input
+                      type="text"
+                      value={manualForm.client_name}
+                      onChange={(e) => setManualForm((f) => ({ ...f, client_name: e.target.value }))}
+                      placeholder="Texto livre se não usar cliente acima"
+                      className={cn("mt-1.5 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <section>
+                <h3 className={cn("text-[11px] font-bold uppercase tracking-wide mb-3", surfaces.muted)}>Detalhes do atendimento</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className={cn("block text-xs font-medium", surfaces.label)}>
+                    Serviço (opcional)
+                    <input
+                      type="text"
+                      value={manualForm.service_name}
+                      onChange={(e) => setManualForm((f) => ({ ...f, service_name: e.target.value }))}
+                      placeholder="Ex.: Corte, barba, pacote…"
+                      className={cn("mt-1.5 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
+                    />
+                  </label>
+                  <label className={cn("block text-xs font-medium", surfaces.label)}>
+                    Colaborador (opcional)
+                    <input
+                      type="text"
+                      value={manualForm.collaborator_name}
+                      onChange={(e) => setManualForm((f) => ({ ...f, collaborator_name: e.target.value }))}
+                      placeholder="Quem realizou o atendimento"
+                      className={cn("mt-1.5 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
+                    />
+                  </label>
+                </div>
+              </section>
+
+              <label
+                className={cn(
+                  "flex cursor-pointer items-center gap-3 rounded-xl border p-4 transition-colors",
+                  manualForm.paid
+                    ? cn(surfaces.accentSelected, "border")
+                    : cn(surfaces.cardInset, "hover:border-primary/20")
+                )}
+              >
                 <input
-                  type="date"
-                  required
-                  value={manualForm.date}
-                  onChange={(e) => setManualForm((f) => ({ ...f, date: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                  type="checkbox"
+                  checked={manualForm.paid}
+                  onChange={(e) => setManualForm((f) => ({ ...f, paid: e.target.checked }))}
+                  className="size-4 rounded border-gray-300 accent-primary"
                 />
-              </label>
-              <label className="block text-xs font-medium text-gray-600">
-                Valor (R$)
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  required
-                  placeholder="ex.: 150 ou 150,50"
-                  value={manualForm.amount}
-                  onChange={(e) => setManualForm((f) => ({ ...f, amount: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
-                />
-              </label>
-              <label className="block text-xs font-medium text-gray-600 lg:col-span-2">
-                Cliente cadastrado (opcional)
-                <select
-                  value={manualForm.client_id}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    const c = clients.find((x) => x.id === v);
-                    setManualForm((f) => ({
-                      ...f,
-                      client_id: v,
-                      client_name: c ? c.name : f.client_name,
-                    }));
-                  }}
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
-                >
-                  <option value="">(nenhum)</option>
-                  {clients.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-xs font-medium text-gray-600 lg:col-span-2">
-                Nome no lançamento (opcional)
-                <input
-                  type="text"
-                  value={manualForm.client_name}
-                  onChange={(e) => setManualForm((f) => ({ ...f, client_name: e.target.value }))}
-                  placeholder="Ex.: texto livre se não usar cliente acima"
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
-                />
-              </label>
-              <label className="block text-xs font-medium text-gray-600">
-                Serviço (opcional)
-                <input
-                  type="text"
-                  value={manualForm.service_name}
-                  onChange={(e) => setManualForm((f) => ({ ...f, service_name: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
-                />
-              </label>
-              <label className="block text-xs font-medium text-gray-600">
-                Colaborador (opcional)
-                <input
-                  type="text"
-                  value={manualForm.collaborator_name}
-                  onChange={(e) => setManualForm((f) => ({ ...f, collaborator_name: e.target.value }))}
-                  className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
-                />
+                <div>
+                  <p className={cn("text-sm font-semibold", surfaces.title)}>Já pago</p>
+                  <p className={cn("text-xs mt-0.5", surfaces.muted)}>
+                    Atualiza o total gasto do cliente cadastrado quando marcado.
+                  </p>
+                </div>
               </label>
             </div>
-            <label className="mt-5 flex cursor-pointer items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={manualForm.paid}
-                onChange={(e) => setManualForm((f) => ({ ...f, paid: e.target.checked }))}
-                className="rounded border-gray-300"
-              />
-              Já pago
-            </label>
           </form>
         </DashboardFullScreenOverlay>
       )}
@@ -894,7 +958,7 @@ export default function FinanceiroPage() {
           }
           footer={<FinanceEditModalFooter saving={editSaving} />}
         >
-          <div className="space-y-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className={cn(surfaces.panel, "p-5 sm:p-6 space-y-4")}>
             {editingRecord.appointment_id ? (
               <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Ligado a um agendamento. Ao alterar o valor, o preço do agendamento é atualizado para manter o mesmo
@@ -909,17 +973,17 @@ export default function FinanceiroPage() {
               }}
             >
               <div className="grid gap-4 lg:grid-cols-2">
-                <label className="block text-xs font-medium text-gray-600">
+                <label className={cn("block text-xs font-medium", surfaces.label)}>
                   Data
                   <input
                     type="date"
                     required
                     value={editForm.date}
                     onChange={(e) => setEditForm((f) => ({ ...f, date: e.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                    className={cn("mt-1 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
                   />
                 </label>
-                <label className="block text-xs font-medium text-gray-600">
+                <label className={cn("block text-xs font-medium", surfaces.label)}>
                   Valor (R$)
                   <input
                     type="text"
@@ -927,10 +991,10 @@ export default function FinanceiroPage() {
                     required
                     value={editForm.amount}
                     onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                    className={cn("mt-1 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
                   />
                 </label>
-                <label className="block text-xs font-medium text-gray-600 lg:col-span-2">
+                <label className={cn("block text-xs font-medium lg:col-span-2", surfaces.label)}>
                   Cliente cadastrado (opcional)
                   <select
                     value={editForm.client_id}
@@ -943,7 +1007,7 @@ export default function FinanceiroPage() {
                         client_name: c ? c.name : f.client_name,
                       }));
                     }}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                    className={cn("mt-1 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
                   >
                     <option value="">(nenhum)</option>
                     {clients.map((c) => (
@@ -953,40 +1017,40 @@ export default function FinanceiroPage() {
                     ))}
                   </select>
                 </label>
-                <label className="block text-xs font-medium text-gray-600 lg:col-span-2">
+                <label className={cn("block text-xs font-medium lg:col-span-2", surfaces.label)}>
                   Nome no lançamento (opcional)
                   <input
                     type="text"
                     value={editForm.client_name}
                     onChange={(e) => setEditForm((f) => ({ ...f, client_name: e.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                    className={cn("mt-1 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
                   />
                 </label>
-                <label className="block text-xs font-medium text-gray-600">
+                <label className={cn("block text-xs font-medium", surfaces.label)}>
                   Serviço (opcional)
                   <input
                     type="text"
                     value={editForm.service_name}
                     onChange={(e) => setEditForm((f) => ({ ...f, service_name: e.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                    className={cn("mt-1 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
                   />
                 </label>
-                <label className="block text-xs font-medium text-gray-600">
+                <label className={cn("block text-xs font-medium", surfaces.label)}>
                   Colaborador (opcional)
                   <input
                     type="text"
                     value={editForm.collaborator_name}
                     onChange={(e) => setEditForm((f) => ({ ...f, collaborator_name: e.target.value }))}
-                    className="mt-1 w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm text-gray-900"
+                    className={cn("mt-1 w-full rounded-xl border px-3 py-2.5 text-sm outline-none focus:border-primary", surfaces.input)}
                   />
                 </label>
               </div>
-              <label className="mt-5 flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+              <label className={cn("mt-5 flex cursor-pointer items-center gap-2 text-sm", surfaces.label)}>
                 <input
                   type="checkbox"
                   checked={editForm.paid}
                   onChange={(e) => setEditForm((f) => ({ ...f, paid: e.target.checked }))}
-                  className="rounded border-gray-300"
+                  className="rounded border-gray-300 accent-primary"
                 />
                 Já pago
               </label>
