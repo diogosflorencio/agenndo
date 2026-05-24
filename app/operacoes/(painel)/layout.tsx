@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { isPlatformOperator } from "@/lib/platform-operator";
+import { OperacoesSessionKeepAlive } from "@/components/operacoes/operacoes-session-keepalive";
 import { OperacoesShell } from "@/components/operacoes/operacoes-shell";
 
 export default async function OperacoesPainelLayout({ children }: { children: React.ReactNode }) {
@@ -15,5 +16,10 @@ export default async function OperacoesPainelLayout({ children }: { children: Re
     redirect("/operacoes/entrar?error=sem_acesso");
   }
 
-  return <OperacoesShell userEmail={user.email ?? null}>{children}</OperacoesShell>;
+  return (
+    <>
+      <OperacoesSessionKeepAlive />
+      <OperacoesShell userEmail={user.email ?? null}>{children}</OperacoesShell>
+    </>
+  );
 }

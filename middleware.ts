@@ -53,10 +53,8 @@ export async function middleware(request: NextRequest) {
   const corsBlock = handleCors(request);
   if (corsBlock) return corsBlock;
 
-  let response = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
+  let supabaseResponse = NextResponse.next({
+    request,
   });
 
   const supabase = createServerClient(
@@ -68,17 +66,22 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+          supabaseResponse = NextResponse.next({
+            request,
+          });
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            supabaseResponse.cookies.set(name, value, options)
           );
         },
       },
     }
   );
 
+  // Renova cookies de sessão a cada request (evita logout ao sair/voltar à página).
   await supabase.auth.getUser();
 
-  return withCorsHeaders(request, response);
+  return withCorsHeaders(request, supabaseResponse);
 }
 
 export const config = {

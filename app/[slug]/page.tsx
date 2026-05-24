@@ -976,7 +976,7 @@ function PublicPageInner() {
             {([1, 2, 3, 4, 5] as Step[]).map((s) => (
               <div key={s} className="flex items-center flex-1">
                 <div
-                  className={`size-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                  className={`size-7 shrink-0 rounded-full grid place-items-center transition-all ${
                     step > s
                       ? "bg-[var(--public-accent)] text-black"
                       : step === s
@@ -984,7 +984,11 @@ function PublicPageInner() {
                         : bookUi.stepIdle
                   }`}
                 >
-                  {step > s ? <span className="material-symbols-outlined text-sm">check</span> : s}
+                  {step > s ? (
+                    <span className="material-symbols-outlined text-[16px] leading-none">check</span>
+                  ) : (
+                    <span className="text-xs font-bold leading-none tabular-nums">{s}</span>
+                  )}
                 </div>
                 {s < 5 && (
                   <div className={`flex-1 h-px mx-1 ${step > s ? "bg-[var(--public-accent)]" : bookUi.stepLine}`} />
