@@ -37,15 +37,6 @@ const nextConfig = {
       },
     ];
   },
-  async rewrites() {
-    return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: "blog.agenndo.com.br" }],
-        destination: "/blog/:path*",
-      },
-    ];
-  },
   async redirects() {
     return [
       { source: "/operacao-interna", destination: "/operacoes", permanent: true },

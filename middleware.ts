@@ -50,6 +50,13 @@ function withCorsHeaders(request: NextRequest, response: NextResponse): NextResp
 }
 
 export async function middleware(request: NextRequest) {
+  const hostname = request.headers.get("host") || "";
+  if (hostname.startsWith("blog.")) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/blog${url.pathname}`;
+    return NextResponse.rewrite(url);
+  }
+
   const corsBlock = handleCors(request);
   if (corsBlock) return corsBlock;
 
