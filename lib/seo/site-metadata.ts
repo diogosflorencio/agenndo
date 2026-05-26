@@ -1,45 +1,37 @@
 /**
- * Metadados canônicos do marketing site - única fonte para layout, home e OG/Twitter.
- */
-/**
- * `<title>` da home (SERP / aba do navegador). Inclui marca, “agendamento” e termos de comparação.
- * Evite alongar demais: o Google costuma truncar ~55–65 caracteres na busca.
+ * Metadados canônicos do marketing site — única fonte para layout, home e OG/Twitter.
+ * Prioriza keywords de descoberta (quem ainda não conhece o Agenndo) sobre branded search.
  */
 export const SITE_TITLE_DEFAULT =
-  "Agenndo - agendamento online | compare Agendor, Gendo e outros";
+  "Agendamento Online Grátis para Prestadores de Serviço | Agenndo";
 
-/** Evita keyword stuffing; inclui intenção de busca “comparação / mercado brasileiro” de forma factual. */
 export const SITE_DESCRIPTION =
-  "Software completo de agendamento online (YWP / YourWebPlace): clientes marcam horário 24h por link ou QR Code; você gerencia agenda, equipe, financeiro e lembretes. Para salões, clínicas, estética, barbearias, consultórios e qualquer negócio por hora marcada. Quem avalia soluções conhecidas no Brasil como Agendor ou Gendo no mesmo segmento pode comparar recursos e testar o Agenndo à parte - produto independente, sem vínculo com essas marcas.";
+  "Crie sua agenda online profissional em minutos. Receba agendamentos 24h, envie lembretes automáticos e gerencie seus clientes. Grátis para começar.";
 
 export const SITE_KEYWORDS = [
+  "sistema de agendamento online",
+  "plataforma de agendamento gratuita",
+  "agendamento online para salão",
+  "agendamento online para clínica",
+  "agenda online para prestador de serviço",
+  "como criar agenda online",
+  "aplicativo de agendamento",
+  "agendamento online Brasil",
   "Agenndo",
-  "agenndo",
-  "agendamento",
-  "agendamento online",
-  "Agendor",
-  "Gendo",
   "software agendamento online",
-  "sistema de agendamento",
-  "software agendamento Brasil",
-  "site para agendar horário",
   "marcar horário online",
-  "plataforma de agendamento",
-  "agenda online para prestador",
-  "agenda para salão",
+  "agenda para salão de beleza",
   "agendamento clínica estética",
-  "software para prestador",
-  "gestão de horários",
+  "agendamento barbearia",
+  "agendamento personal trainer",
   "link de agendamento",
   "QR code agendamento",
-  "YWP",
-  "YourWebPlace",
+  "agenda online grátis",
+  "sistema de agenda para prestador",
 ] as const;
 
-/** `<title>` da página /agendamento-online (reforça long-tail sem repetir a home inteira). */
 export const AGENDAMENTO_ONLINE_TITLE =
-  "Agenndo - software de agendamento online | Agendor, Gendo e alternativas";
+  "Como Funciona o Agendamento Online | Agenndo";
 
-/** Página focada em SEO long-tail (/agendamento-online). */
 export const AGENDAMENTO_ONLINE_DESCRIPTION =
-  "Agenndo: sistema completo de agendamento online com página pública, agenda, equipe, lembretes e painel para prestadores. Mesmo tipo de solução que equipes costumam pesquisar ao lado de nomes como Agendor ou Gendo - aqui você testa um produto independente da YWP (YourWebPlace), em português, com período de avaliação.";
+  "Veja como criar sua página de agendamento online gratuitamente. Ideal para salões, clínicas, barbearias e qualquer prestador de serviço.";

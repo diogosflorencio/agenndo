@@ -1,24 +1,30 @@
 import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/site-url";
 import { getPublicSlugSeo } from "@/lib/seo/public-slug-seo";
-import { buildLocalBusinessJsonLd } from "@/lib/seo/local-business-jsonld";
+import { buildLocalBusinessJsonLd, buildBreadcrumbJsonLd } from "@/lib/seo/local-business-jsonld";
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const slug = params.slug;
   const base = getSiteUrl();
-  const { business, personalization } = await getPublicSlugSeo(slug);
+  const { business, personalization, service_names } = await getPublicSlugSeo(slug);
 
   let title = "Agendar horário online";
   let description =
     "Marque seu horário online com segurança. Página de agendamento Agenndo, software completo para prestadores (YWP / YourWebPlace).";
 
   if (business?.name) {
-    const cityPart = business.city ? ` (${business.city})` : "";
-    title = `${business.name} · agendar online${cityPart}`;
-    const tag = personalization?.tagline?.trim();
-    description = tag
-      ? `${tag} Agende em ${business.name}${cityPart}. Link oficial de agendamento; plataforma Agenndo (YWP).`
-      : `Agende horário em ${business.name}${cityPart}. Link oficial de agendamento; plataforma Agenndo (YWP).`;
+    title = business.city
+      ? `${business.name} — Agendamento Online em ${business.city} | Agenndo`
+      : `${business.name} — Agende Online | Agenndo`;
+
+    const parts: string[] = [];
+    parts.push(`Agende com ${business.name}${business.city ? ` em ${business.city}` : ""}.`);
+    if (business.segment) parts.push(business.segment + ".");
+    if (service_names.length) parts.push(`Serviços: ${service_names.slice(0, 3).join(", ")}.`);
+    parts.push("Agendamento online pelo Agenndo.");
+
+    const full = parts.join(" ");
+    description = full.length <= 155 ? full : full.slice(0, 152) + "...";
   }
 
   const canonical = `${base}/${encodeURIComponent(slug)}`;
@@ -31,7 +37,10 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     title,
     description,
     manifest: `/${slug}/manifest`,
-    alternates: { canonical },
+    alternates: {
+      canonical,
+      languages: { "pt-BR": canonical, "x-default": canonical },
+    },
     robots: { index: true, follow: true },
     openGraph: {
       title,
@@ -67,13 +76,22 @@ export default async function PublicBookingSlugLayout({
   const slug = params.slug;
   const seo = await getPublicSlugSeo(slug);
   const canonical = `${base}/${encodeURIComponent(slug)}`;
-  const jsonLd = buildLocalBusinessJsonLd(seo, canonical, base);
+
+  const localBiz = buildLocalBusinessJsonLd(seo, canonical, base);
+  const breadcrumb = buildBreadcrumbJsonLd(seo.business?.name ?? null, canonical, base);
+
+  const graph = [localBiz, breadcrumb].filter(Boolean);
 
   return (
     <>
-      {jsonLd ? (
-        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      ) : null}
+      {graph.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({ "@context": "https://schema.org", "@graph": graph }),
+          }}
+        />
+      )}
       {children}
     </>
   );

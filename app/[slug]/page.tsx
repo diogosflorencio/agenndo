@@ -604,7 +604,7 @@ function PublicPageInner() {
                 {hasBanner && personalization?.banner_url ? (
                   <img
                     src={personalization.banner_url}
-                    alt=""
+                    alt={`Banner de ${business.name}`}
                     className="absolute inset-x-0 top-1/2 -translate-y-1/2 w-full min-h-full object-cover object-center"
                   />
                 ) : (
@@ -648,7 +648,7 @@ function PublicPageInner() {
                       <Image
                         key={business.logo_url}
                         src={business.logo_url}
-                        alt=""
+                        alt={`Logo de ${business.name}`}
                         width={112}
                         height={112}
                         className="size-full object-cover"
@@ -820,7 +820,7 @@ function PublicPageInner() {
                         }
                       >
                         {c.avatar_url ? (
-                          <Image src={c.avatar_url} alt="" width={44} height={44} className="size-full object-cover" unoptimized />
+                          <Image src={c.avatar_url} alt={`Foto de ${c.name}`} width={44} height={44} className="size-full object-cover" unoptimized />
                         ) : (
                           c.name[0]?.toUpperCase()
                         )}
@@ -856,7 +856,7 @@ function PublicPageInner() {
                   >
                     <div className={cn("size-12 rounded-xl overflow-hidden shrink-0 border", bookUi.serviceCardMedia, publicMediaTileClass)}>
                       {service.image_url ? (
-                        <Image src={service.image_url} alt="" width={56} height={56} className="size-full object-cover" unoptimized />
+                        <Image src={service.image_url} alt={service.name} width={56} height={56} className="size-full object-cover" unoptimized />
                       ) : service.emoji ? (
                         <span className={publicEmojiClass("md")}>{service.emoji}</span>
                       ) : (
@@ -899,7 +899,7 @@ function PublicPageInner() {
                     {/* eslint-disable-next-line @next/next/no-img-element -- dimensões intrínsecas no mosaico */}
                     <img
                       src={src}
-                      alt=""
+                      alt={`${business.name} — foto ${gi + 1}`}
                       className={cn(
                         "w-full h-auto rounded-xl border block",
                         isDark ? "border-white/10" : "border-gray-200/80"
@@ -969,7 +969,7 @@ function PublicPageInner() {
                 <Image
                   key={business.logo_url}
                   src={business.logo_url}
-                  alt=""
+                  alt={`Logo de ${business.name}`}
                   width={44}
                   height={44}
                   className="size-11 object-cover"
@@ -1102,7 +1102,7 @@ function PublicPageInner() {
                     )}
                   >
                     {service.image_url ? (
-                      <Image src={service.image_url} alt="" width={48} height={48} className="size-full object-cover" unoptimized />
+                      <Image src={service.image_url} alt={service.name} width={48} height={48} className="size-full object-cover" unoptimized />
                     ) : service.emoji ? (
                       <span className={publicEmojiClass("md")}>{service.emoji}</span>
                     ) : (
@@ -1149,7 +1149,7 @@ function PublicPageInner() {
                 )}
               >
                 {selectedService.image_url ? (
-                  <Image src={selectedService.image_url} alt="" width={64} height={64} className="size-full object-cover" unoptimized />
+                  <Image src={selectedService.image_url} alt={selectedService.name} width={64} height={64} className="size-full object-cover" unoptimized />
                 ) : selectedService.emoji ? (
                   <span className={publicEmojiClass("md")}>{selectedService.emoji}</span>
                 ) : (
@@ -1206,7 +1206,7 @@ function PublicPageInner() {
                       >
                         <div className="relative w-full shrink-0 bg-black/10 aspect-[3/4]">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={opt.url} alt="" className="absolute inset-0 size-full object-cover" loading="lazy" />
+                          <img src={opt.url} alt={opt.title || selectedService.name} className="absolute inset-0 size-full object-cover" loading="lazy" />
                         </div>
                         <div className="p-1.5 sm:p-3 space-y-0.5 sm:space-y-1 flex-1 flex flex-col min-w-0">
                           {opt.title ? (
@@ -1313,7 +1313,7 @@ function PublicPageInner() {
                       }
                     >
                       {collab.avatar_url ? (
-                        <Image src={collab.avatar_url} alt="" width={48} height={48} className="size-full object-cover" unoptimized />
+                        <Image src={collab.avatar_url} alt={`Foto de ${collab.name}`} width={48} height={48} className="size-full object-cover" unoptimized />
                       ) : (
                         <span style={{ color }}>{collab.name[0]}</span>
                       )}

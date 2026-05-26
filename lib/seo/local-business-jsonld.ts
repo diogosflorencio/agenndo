@@ -13,22 +13,30 @@ export function buildLocalBusinessJsonLd(seo: PublicSlugSeo, canonical: string, 
     personalization?.tagline?.trim() ||
     `Agendamento online em ${business.name}${business.city ? ` (${business.city})` : ""}.`;
 
+  const sameAs: string[] = [];
+  if (personalization?.instagram_url?.trim()) sameAs.push(personalization.instagram_url.trim());
+  if (personalization?.facebook_url?.trim()) sameAs.push(personalization.facebook_url.trim());
+
+  const address: Record<string, string> = {
+    "@type": "PostalAddress",
+    addressCountry: "BR",
+  };
+  if (business.city) address.addressLocality = business.city;
+  if (personalization?.address_line?.trim()) address.streetAddress = personalization.address_line.trim();
+
+  const hasAddress = address.addressLocality || address.streetAddress;
+
   return {
-    "@context": "https://schema.org",
     "@type": "LocalBusiness",
     name: business.name,
     url: canonical,
     ...(images.length ? { image: images } : {}),
     description: desc.slice(0, 500),
-    ...(business.city
-      ? {
-          address: {
-            "@type": "PostalAddress",
-            addressLocality: business.city,
-            addressCountry: "BR",
-          },
-        }
-      : {}),
+    ...(hasAddress ? { address } : {}),
+    ...(business.city ? { areaServed: { "@type": "City", name: business.city } } : {}),
+    ...(business.phone ? { telephone: business.phone } : {}),
+    ...(sameAs.length ? { sameAs } : {}),
+    priceRange: "$$",
     potentialAction: {
       "@type": "ReserveAction",
       target: {
@@ -43,5 +51,20 @@ export function buildLocalBusinessJsonLd(seo: PublicSlugSeo, canonical: string, 
       url: siteUrl,
       publisher: { "@type": "Organization", name: "YWP (YourWebPlace)", url: siteUrl },
     },
+  };
+}
+
+export function buildBreadcrumbJsonLd(
+  businessName: string | null,
+  canonical: string,
+  siteUrl: string,
+) {
+  if (!businessName) return null;
+  return {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Início", item: siteUrl },
+      { "@type": "ListItem", position: 2, name: businessName, item: canonical },
+    ],
   };
 }

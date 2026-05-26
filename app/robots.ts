@@ -34,7 +34,11 @@ export default function robots(): MetadataRoute.Robots {
       { userAgent: "anthropic-ai", allow: "/" },
       { userAgent: "ClaudeBot", allow: "/" },
     ],
-    sitemap: [`${base}/sitemap.xml`, `${base}/sitemap_index.xml`],
+    sitemap: [
+      `${base}/sitemap.xml`,
+      `${base}/sitemap_index.xml`,
+      `https://blog.agenndo.com.br/sitemap.xml`,
+    ],
     host,
   };
 }

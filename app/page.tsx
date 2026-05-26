@@ -12,7 +12,10 @@ const description = SITE_DESCRIPTION;
 export const metadata: Metadata = {
   title: { absolute: titleDefault },
   description,
-  alternates: { canonical: siteUrl },
+  alternates: {
+    canonical: siteUrl,
+    languages: { "pt-BR": siteUrl, "x-default": siteUrl },
+  },
   robots: {
     index: true,
     follow: true,
@@ -33,6 +36,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@agenndo",
     title: titleDefault,
     description,
   },

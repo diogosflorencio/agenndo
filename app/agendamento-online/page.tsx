@@ -9,21 +9,27 @@ import { getSiteUrl } from "@/lib/site-url";
 
 const siteUrl = getSiteUrl();
 
+const canonical = `${siteUrl}/agendamento-online`;
+
 export const metadata: Metadata = {
   title: { absolute: AGENDAMENTO_ONLINE_TITLE },
   description: AGENDAMENTO_ONLINE_DESCRIPTION,
   keywords: [...SITE_KEYWORDS, "comparar software de agenda", "plataforma agendamento Brasil"],
-  alternates: { canonical: `${siteUrl}/agendamento-online` },
+  alternates: {
+    canonical,
+    languages: { "pt-BR": canonical, "x-default": canonical },
+  },
   openGraph: {
     title: AGENDAMENTO_ONLINE_TITLE,
     description: AGENDAMENTO_ONLINE_DESCRIPTION,
-    url: `${siteUrl}/agendamento-online`,
+    url: canonical,
     siteName: "Agenndo",
     locale: "pt_BR",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
+    site: "@agenndo",
     title: AGENDAMENTO_ONLINE_TITLE,
     description: AGENDAMENTO_ONLINE_DESCRIPTION,
   },
@@ -46,23 +52,34 @@ const SEGMENTOS = [
 
 const jsonLd = {
   "@context": "https://schema.org",
-  "@type": "SoftwareApplication",
-  name: "Agenndo",
-  applicationCategory: "BusinessApplication",
-  operatingSystem: "Web",
-  inLanguage: "pt-BR",
-  description: AGENDAMENTO_ONLINE_DESCRIPTION,
-  url: `${siteUrl}/agendamento-online`,
-  provider: {
-    "@type": "Organization",
-    name: "YWP (YourWebPlace)",
-    url: siteUrl,
-  },
-  offers: {
-    "@type": "Offer",
-    priceCurrency: "BRL",
-    description: "Planos conforme perfil do negócio; período de teste para novos cadastros.",
-  },
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      name: "Agenndo",
+      applicationCategory: "BusinessApplication",
+      operatingSystem: "Web",
+      inLanguage: "pt-BR",
+      description: AGENDAMENTO_ONLINE_DESCRIPTION,
+      url: canonical,
+      provider: {
+        "@type": "Organization",
+        name: "YWP (YourWebPlace)",
+        url: siteUrl,
+      },
+      offers: {
+        "@type": "Offer",
+        priceCurrency: "BRL",
+        description: "Planos conforme perfil do negócio; período de teste para novos cadastros.",
+      },
+    },
+    {
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Início", item: siteUrl },
+        { "@type": "ListItem", position: 2, name: "Agendamento Online", item: canonical },
+      ],
+    },
+  ],
 };
 
 export default function AgendamentoOnlinePage() {

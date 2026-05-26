@@ -85,6 +85,13 @@ export const metadata: Metadata = {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     apple: "/icon.svg",
   },
+  alternates: {
+    canonical: siteUrl,
+    languages: {
+      "pt-BR": siteUrl,
+      "x-default": siteUrl,
+    },
+  },
   openGraph: {
     type: "website",
     locale: "pt_BR",
@@ -95,6 +102,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@agenndo",
+    creator: "@agenndo",
     title: titleDefault,
     description,
   },
@@ -134,6 +143,10 @@ const jsonLd = {
       logo: `${siteUrl}/icon.svg`,
       description:
         "Empresa por trás do Agenndo: software de agendamento online e gestão para prestadores de serviço.",
+      sameAs: [
+        "https://www.instagram.com/agenndo",
+        "https://blog.agenndo.com.br",
+      ],
       brand: {
         "@type": "Brand",
         name: "Agenndo",
@@ -147,6 +160,14 @@ const jsonLd = {
       url: siteUrl,
       inLanguage: "pt-BR",
       publisher: { "@id": `${siteUrl}/#organization` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: {
+          "@type": "EntryPoint",
+          urlTemplate: `${siteUrl}/{slug}`,
+        },
+        "query-input": "required name=slug",
+      },
     },
     {
       "@type": "BreadcrumbList",

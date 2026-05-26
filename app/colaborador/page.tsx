@@ -8,17 +8,29 @@ const title = "Colaborador - entrar e ver comissões | Agenndo";
 const description =
   "Instruções para profissionais da equipe: use o mesmo e-mail que o empregador vinculou e entre com Google em agenndo.com/colaborador para acessar Minhas comissões.";
 
+const canonical = `${getSiteUrl()}/colaborador`;
+
 export const metadata: Metadata = {
   title: { absolute: title },
   description,
   robots: { index: true, follow: true },
+  alternates: {
+    canonical,
+    languages: { "pt-BR": canonical, "x-default": canonical },
+  },
   openGraph: {
     title,
     description,
-    url: "/colaborador",
+    url: canonical,
     siteName: "Agenndo",
     locale: "pt_BR",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@agenndo",
+    title,
+    description,
   },
 };
 

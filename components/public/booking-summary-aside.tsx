@@ -108,7 +108,7 @@ export function PublicBookingSummaryAside({
                 const thumb = pv?.url || selectedService.image_url;
                 if (thumb) {
                   return (
-                    <Image src={thumb} alt="" width={72} height={72} className="size-full object-cover" unoptimized />
+                    <Image src={thumb} alt={selectedService.name} width={72} height={72} className="size-full object-cover" unoptimized />
                   );
                 }
                 if (selectedService.emoji) {
@@ -137,7 +137,7 @@ export function PublicBookingSummaryAside({
                 {selectedCollab && selectedCollab !== "any" && selectedCollab.avatar_url ? (
                   <Image
                     src={selectedCollab.avatar_url}
-                    alt=""
+                    alt={`Foto de ${selectedCollab.name}`}
                     width={40}
                     height={40}
                     className="size-10 rounded-full object-cover border border-white/10 shrink-0"
