@@ -19,6 +19,7 @@ import {
   normalizeGalleryUrlsFromDb,
 } from "@/lib/public-gallery";
 import { useAppAlert } from "@/components/app-alert-provider";
+import { ImageCropModal } from "@/components/dashboard/image-crop-modal";
 import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
 import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 import { useRegisterDashboardUnsavedNavigation } from "@/lib/dashboard-navigation-guard";
@@ -142,6 +143,8 @@ export default function PersonalizacaoPage() {
 
   const [uploading, setUploading] = useState<"logo" | "banner" | "gallery" | null>(null);
   const [uploadLabel, setUploadLabel] = useState<string | null>(null);
+  const [cropFile, setCropFile] = useState<File | null>(null);
+  const [cropTarget, setCropTarget] = useState<"logo" | "banner" | null>(null);
 
   const [activeTab, setActiveTab] = useState<"aparencia" | "conteudo" | "contato" | "compartilhar">("aparencia");
   const [copied, setCopied] = useState(false);
@@ -353,10 +356,16 @@ export default function PersonalizacaoPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const onPickLogo = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onPickLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !business?.id || blockMediaActions) return;
+    setCropFile(file);
+    setCropTarget("logo");
+  };
+
+  const uploadLogoFile = async (file: File) => {
+    if (!business?.id) return;
     setUploading("logo");
     setUploadLabel("Otimizando e enviando logo…");
     try {
@@ -386,10 +395,16 @@ export default function PersonalizacaoPage() {
     }
   };
 
-  const onPickBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onPickBanner = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !business?.id || blockMediaActions) return;
+    setCropFile(file);
+    setCropTarget("banner");
+  };
+
+  const uploadBannerFile = async (file: File) => {
+    if (!business?.id) return;
     setUploading("banner");
     setUploadLabel("Otimizando e enviando capa…");
     try {
@@ -416,6 +431,23 @@ export default function PersonalizacaoPage() {
       setUploadLabel(null);
     }
   };
+
+  const handleCropConfirm = useCallback(
+    (croppedFile: File) => {
+      const target = cropTarget;
+      setCropFile(null);
+      setCropTarget(null);
+      if (target === "logo") void uploadLogoFile(croppedFile);
+      else if (target === "banner") void uploadBannerFile(croppedFile);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cropTarget, business?.id, form.logoUrl, form.bannerUrl]
+  );
+
+  const handleCropCancel = useCallback(() => {
+    setCropFile(null);
+    setCropTarget(null);
+  }, []);
 
   const onPickGallery = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1253,6 +1285,14 @@ export default function PersonalizacaoPage() {
           )}
         </aside>
       </div>
+
+      <ImageCropModal
+        imageFile={cropFile}
+        aspect={cropTarget === "banner" ? 3 : 1}
+        title={cropTarget === "banner" ? "Ajustar foto de capa" : "Ajustar logo"}
+        onConfirm={handleCropConfirm}
+        onCancel={handleCropCancel}
+      />
 
       {uploading && (
         <div

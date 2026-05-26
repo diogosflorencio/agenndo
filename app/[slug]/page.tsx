@@ -124,6 +124,7 @@ function PublicPageInner() {
   const [clientName, setClientName] = useState("");
 
   const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [authUserName, setAuthUserName] = useState<string | null>(null);
   const [bookingMeta, setBookingMeta] = useState<{
     maxFutureDays: number;
     minAdvanceHours: number;
@@ -249,13 +250,41 @@ function PublicPageInner() {
 
   useEffect(() => {
     const supabase = createClient();
-    void supabase.auth.getUser().then(({ data }) => setAuthUserId(data.user?.id ?? null));
+    function metaName(meta: Record<string, unknown> | undefined): string | null {
+      if (!meta) return null;
+      const n = (meta.full_name ?? meta.name ?? "") as string;
+      return n.trim() || null;
+    }
+    async function resolveUserName(userId: string, fallback: string | null): Promise<string | null> {
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", userId)
+        .maybeSingle();
+      return data?.full_name?.trim() || fallback;
+    }
+    void supabase.auth.getUser().then(async ({ data: authData }) => {
+      const uid = authData.user?.id ?? null;
+      setAuthUserId(uid);
+      if (!uid) return;
+      const fallback = metaName(authData.user?.user_metadata as Record<string, unknown> | undefined);
+      const name = await resolveUserName(uid, fallback);
+      setAuthUserName(name);
+      if (name && !clientName) setClientName(name);
+    });
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAuthUserId(session?.user?.id ?? null);
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const uid = session?.user?.id ?? null;
+      setAuthUserId(uid);
+      if (!uid) { setAuthUserName(null); return; }
+      const fallback = metaName(session?.user?.user_metadata as Record<string, unknown> | undefined);
+      const name = await resolveUserName(uid, fallback);
+      setAuthUserName(name);
+      if (name) setClientName(name);
     });
     return () => subscription.unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -573,14 +602,10 @@ function PublicPageInner() {
                 )}
               >
                 {hasBanner && personalization?.banner_url ? (
-                  <Image
+                  <img
                     src={personalization.banner_url}
                     alt=""
-                    fill
-                    className="object-cover"
-                    priority
-                    sizes="100vw"
-                    unoptimized
+                    className="absolute inset-x-0 top-1/2 -translate-y-1/2 w-full min-h-full object-cover object-center"
                   />
                 ) : (
                   <div
@@ -959,14 +984,26 @@ function PublicPageInner() {
               <p className={cn("text-[11px]", bookUi.muted)}>Novo agendamento</p>
             </div>
           </div>
-          {!authUserId && (
+          {authUserId ? (
+            <Link
+              href="/conta"
+              className={cn(
+                "text-xs font-semibold px-3 py-2 rounded-lg shrink-0 flex items-center gap-1.5",
+                isDark ? "text-gray-300 hover:text-white hover:bg-white/5" : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+              )}
+            >
+              <span className="material-symbols-outlined text-sm">person</span>
+              Área do cliente
+            </Link>
+          ) : (
             <Link
               href={`/entrar?slug=${encodeURIComponent(slug)}`}
               className={cn(
-                "text-xs px-2 py-2 rounded-lg shrink-0",
+                "text-xs px-3 py-2 rounded-lg shrink-0 flex items-center gap-1.5",
                 isDark ? "text-gray-400 hover:text-white hover:bg-white/5" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
               )}
             >
+              <span className="material-symbols-outlined text-sm">login</span>
               Entrar
             </Link>
           )}
@@ -1523,6 +1560,7 @@ function PublicPageInner() {
             notes={notes}
             setNotes={setNotes}
             authUserId={authUserId}
+            authUserName={authUserName}
             bookError={bookError}
             bookingSubmitting={bookingSubmitting}
             minAdvanceHours={bookingMeta?.minAdvanceHours}

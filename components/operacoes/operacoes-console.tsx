@@ -36,7 +36,7 @@ export function OperacoesConsole() {
   const [planFilter, setPlanFilter] = useState("all");
   const [kindFilter, setKindFilter] = useState<"all" | "prestador" | "cliente" | "funcionario">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "ativo" | "inativo">("all");
-  const [sort, setSort] = useState<OperacoesSortKey>("activity_desc");
+  const [sort, setSort] = useState<OperacoesSortKey>("created_desc");
   const [subscribersOnly, setSubscribersOnly] = useState(false);
   const [withNotesOnly, setWithNotesOnly] = useState(false);
   const [page, setPage] = useState(1);

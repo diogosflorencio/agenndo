@@ -32,6 +32,7 @@ type Props = {
   notes: string;
   setNotes: (v: string) => void;
   authUserId: string | null;
+  authUserName: string | null;
   bookError: string | null;
   bookingSubmitting: boolean;
   minAdvanceHours: number | null | undefined;
@@ -54,6 +55,7 @@ export function PublicBookingConfirmStep({
   notes,
   setNotes,
   authUserId,
+  authUserName,
   bookError,
   bookingSubmitting,
   minAdvanceHours,
@@ -68,20 +70,64 @@ export function PublicBookingConfirmStep({
       subtitle="Revise os detalhes e informe seu nome"
       left={
         <div className="space-y-5">
+          {/* Nome do cliente */}
           <div>
             <label className={cn("text-sm font-medium block mb-2", bookUi.label)}>
               Seu nome <span className={bookUi.muted}>(obrigatório)</span>
             </label>
-            <input
-              type="text"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="Como quer ser chamado(a)"
-              className={cn(
-                "w-full h-11 border focus:border-[var(--public-accent)] rounded-xl px-4 outline-none transition-colors text-sm",
-                bookUi.input
-              )}
-            />
+            {authUserId && authUserName ? (
+              <div className="space-y-2">
+                <div
+                  className={cn(
+                    "flex items-center gap-3 h-11 border rounded-xl px-4 text-sm",
+                    bookUi.input
+                  )}
+                >
+                  <span className={cn("material-symbols-outlined text-base text-[var(--public-accent)]")}>person</span>
+                  <span className={cn("flex-1 font-medium truncate", bookUi.title)}>{clientName || authUserName}</span>
+                  <span className={cn("text-[10px] uppercase tracking-wide font-semibold text-[var(--public-accent)]")}>
+                    Logado
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/entrar?slug=${encodeURIComponent(slug)}&switch=1`}
+                    className={cn(
+                      "text-xs font-semibold flex items-center gap-1 hover:underline",
+                      isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"
+                    )}
+                  >
+                    <span className="material-symbols-outlined text-sm">swap_horiz</span>
+                    Trocar login
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="Como quer ser chamado(a)"
+                  className={cn(
+                    "w-full h-11 border focus:border-[var(--public-accent)] rounded-xl px-4 outline-none transition-colors text-sm",
+                    bookUi.input
+                  )}
+                />
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/entrar?slug=${encodeURIComponent(slug)}`}
+                    className={cn(
+                      "text-xs font-semibold flex items-center gap-1 hover:underline",
+                      isDark ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"
+                    )}
+                  >
+                    <span className="material-symbols-outlined text-sm">person_add</span>
+                    Crie uma conta ou faça login (opcional)
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -100,30 +146,18 @@ export function PublicBookingConfirmStep({
             />
           </div>
 
-          <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-            <span className={cn(publicMaterialIconClass("sm", false), "text-amber-500 self-center")}>info</span>
-            <p className={cn("text-xs leading-relaxed", isDark ? "text-amber-200" : "text-amber-900")}>
-              Você pode agendar sem criar conta: basta informar seu nome. Com conta de cliente você acompanha histórico
-              e cancelamentos em{" "}
-              <Link href="/conta" className="font-semibold text-[var(--public-accent)] hover:underline">
-                Minha conta
-              </Link>{" "}
-              após o vínculo com o negócio.
-            </p>
-          </div>
-
           {!authUserId && (
-            <Link
-              href={`/entrar?slug=${encodeURIComponent(slug)}`}
-              className={cn(
-                "block w-full py-3 font-semibold rounded-xl text-sm transition-all text-center",
-                isDark
-                  ? "bg-white/5 border border-white/10 hover:bg-white/10 text-white"
-                  : "bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-900"
-              )}
-            >
-              Entrar / Criar conta
-            </Link>
+            <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+              <span className={cn(publicMaterialIconClass("sm", false), "text-amber-500 self-center")}>info</span>
+              <p className={cn("text-xs leading-relaxed", isDark ? "text-amber-200" : "text-amber-900")}>
+                Você pode agendar sem criar conta: basta informar seu nome. Com conta de cliente você acompanha histórico
+                e cancelamentos em{" "}
+                <Link href="/conta" className="font-semibold text-[var(--public-accent)] hover:underline">
+                  Minha conta
+                </Link>
+                .
+              </p>
+            </div>
           )}
 
           {bookError && (

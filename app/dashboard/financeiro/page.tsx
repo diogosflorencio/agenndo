@@ -493,9 +493,55 @@ export default function FinanceiroPage() {
   }, [business?.id, editingRecord, editForm, loadRecords]);
 
   const exportCsv = () => {
-    const rows: string[] = ["Relatório Financeiro - Agenndo", `Exportado em,${new Date().toLocaleString("pt-BR")}`, "", "Indicador;Valor", `Este mês;${formatCurrency(totalMonth / 100)}`, `Pendente;${formatCurrency(pendingMonth / 100)}`, "", "data;cliente;serviço;colaborador;valor;pago"];
-    records.forEach((r) => rows.push(`${r.date};${r.client_name ?? ""};${r.service_name ?? ""};${r.collaborator_name ?? ""};${(r.amount_cents / 100).toFixed(2)};${r.paid ? "Sim" : "Não"}`));
-    const blob = new Blob(["\uFEFF" + rows.join("\n")], { type: "text/csv;charset=utf-8" });
+    const sep = ";";
+    const lines: string[] = [];
+    const h = (title: string) => { lines.push(""); lines.push(title); };
+
+    lines.push("RELATÓRIO FINANCEIRO — AGENNDO");
+    lines.push(`Exportado em${sep}${new Date().toLocaleString("pt-BR")}`);
+    lines.push(`Negócio${sep}${business?.name ?? ""}`);
+
+    h("═══ RESUMO ═══");
+    lines.push(`Indicador${sep}Valor (R$)`);
+    lines.push(`Total do período${sep}${(totalMonth / 100).toFixed(2)}`);
+    lines.push(`Recebido${sep}${(paidMonth / 100).toFixed(2)}`);
+    lines.push(`Pendente${sep}${(pendingMonth / 100).toFixed(2)}`);
+    lines.push(`Hoje${sep}${(todayTotal / 100).toFixed(2)}`);
+    lines.push(`Última semana${sep}${(weekTotal / 100).toFixed(2)}`);
+    lines.push(`Total de lançamentos${sep}${records.length}`);
+
+    h("═══ RECEITA POR SERVIÇO ═══");
+    lines.push(`Serviço${sep}Receita (R$)${sep}% do total${sep}Lançamentos`);
+    const svcCounts: Record<string, number> = {};
+    records.forEach((r) => { const n = r.service_name ?? "Outros"; svcCounts[n] = (svcCounts[n] ?? 0) + 1; });
+    SERVICE_REVENUE.forEach((s) =>
+      lines.push(`${s.name}${sep}${(s.value / 100).toFixed(2)}${sep}${s.pct}%${sep}${svcCounts[s.name] ?? 0}`)
+    );
+
+    h("═══ RECEITA POR COLABORADOR ═══");
+    lines.push(`Colaborador${sep}Receita (R$)${sep}Lançamentos`);
+    const collabCounts: Record<string, number> = {};
+    records.forEach((r) => { const n = r.collaborator_name ?? "-"; collabCounts[n] = (collabCounts[n] ?? 0) + 1; });
+    COLLAB_REVENUE.forEach((c) =>
+      lines.push(`${c.name}${sep}${(c.value / 100).toFixed(2)}${sep}${collabCounts[c.name] ?? 0}`)
+    );
+
+    h("═══ EVOLUÇÃO DE RECEITA ═══");
+    lines.push(`Período${sep}Receita (R$)`);
+    revenueChartData.forEach((d) =>
+      lines.push(`${d.label}${sep}${(d.receita / 100).toFixed(2)}`)
+    );
+
+    h("═══ LANÇAMENTOS DETALHADOS ═══");
+    lines.push(`Data${sep}Cliente${sep}Serviço${sep}Colaborador${sep}Valor (R$)${sep}Status${sep}Origem${sep}ID`);
+    records.forEach((r) =>
+      lines.push(
+        `${r.date}${sep}${r.client_name ?? ""}${sep}${r.service_name ?? ""}${sep}${r.collaborator_name ?? ""}${sep}${(r.amount_cents / 100).toFixed(2)}${sep}${r.paid ? "Pago" : "Pendente"}${sep}${r.appointment_id ? "Agendamento" : "Manual"}${sep}${r.id}`
+      )
+    );
+
+    const csv = lines.join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `financeiro-agenndo-${new Date().toISOString().slice(0, 10)}.csv`;

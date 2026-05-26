@@ -493,19 +493,82 @@ export default function AnalyticsPage() {
         })
       : -1;
 
+  const topServices = useMemo(() => {
+    const map = new Map<string, { count: number; revenue: number; cancelados: number }>();
+    filtered.forEach((a) => {
+      const name = serviceName(a);
+      const cur = map.get(name) ?? { count: 0, revenue: 0, cancelados: 0 };
+      cur.count += 1;
+      if (a.status !== "cancelado") cur.revenue += a.price_cents ?? 0;
+      if (a.status === "cancelado") cur.cancelados += 1;
+      map.set(name, cur);
+    });
+    return Array.from(map.entries())
+      .map(([name, v]) => ({ name, ...v }))
+      .sort((a, b) => b.count - a.count);
+  }, [filtered]);
+
   const exportCsv = () => {
-    const rows: string[] = [
-      "Relatório Analytics - Agenndo",
-      `Período,${period}`,
-      "",
-      "Rótulo,Agendamentos,Receita (centavos)",
-    ];
+    const sep = ";";
+    const lines: string[] = [];
+    const h = (title: string) => { lines.push(""); lines.push(title); };
+
+    lines.push("RELATÓRIO ANALYTICS — AGENNDO");
+    lines.push(`Exportado em${sep}${new Date().toLocaleString("pt-BR")}`);
+    lines.push(`Período${sep}${period}`);
+
+    h("═══ INDICADORES (KPIs) ═══");
+    lines.push(`Indicador${sep}Valor${sep}Período anterior${sep}Variação`);
+    lines.push(`Agendamentos${sep}${kpis.agendamentos.curr}${sep}${kpis.agendamentos.prev}${sep}${mAg.text}`);
+    lines.push(`Receita (R$)${sep}${centsToReais(kpis.receita.curr).toFixed(2)}${sep}${centsToReais(kpis.receita.prev).toFixed(2)}${sep}${mRec.text}`);
+    lines.push(`Ticket médio (R$)${sep}${centsToReais(kpis.ticket.curr).toFixed(2)}${sep}${centsToReais(kpis.ticket.prev).toFixed(2)}${sep}${mTicket.text}`);
+    lines.push(`Novos clientes${sep}${kpis.novosClientes.curr}${sep}${kpis.novosClientes.prev}${sep}${mNovos.text}`);
+    lines.push(`Taxa de presença (%)${sep}${kpis.taxaPresenca.curr ?? "—"}${sep}${kpis.taxaPresenca.prev ?? "—"}${sep}${mTaxa.text}`);
+    lines.push(`Taxa de cancelamento (%)${sep}${kpis.taxaCancel.curr}${sep}${kpis.taxaCancel.prev}${sep}`);
+
+    h("═══ EVOLUÇÃO POR PERÍODO ═══");
+    lines.push(`Rótulo${sep}Agendamentos${sep}Receita (R$)`);
     barSeries.forEach((r) =>
-      rows.push(`${r.label},${r.agendamentos},${r.receita}`)
+      lines.push(`${r.label}${sep}${r.agendamentos}${sep}${centsToReais(r.receita).toFixed(2)}`)
     );
-    rows.push("", "Dia da semana;Horário;Agendamentos");
-    HEATMAP_DATA.forEach((h) => rows.push(`${h.day};${h.hour};${h.value}`));
-    const csv = rows.join("\n");
+
+    h("═══ FUNIL DE CONVERSÃO ═══");
+    lines.push(`Etapa${sep}Quantidade${sep}% do total`);
+    funnelData.forEach((f) =>
+      lines.push(`${f.step}${sep}${f.value}${sep}${f.pct}%`)
+    );
+
+    h("═══ TOP SERVIÇOS ═══");
+    lines.push(`Serviço${sep}Agendamentos${sep}Receita (R$)${sep}Cancelamentos${sep}Taxa cancel. (%)`);
+    topServices.forEach((s) => {
+      const rate = s.count > 0 ? Math.round((s.cancelados / s.count) * 100) : 0;
+      lines.push(`${s.name}${sep}${s.count}${sep}${centsToReais(s.revenue).toFixed(2)}${sep}${s.cancelados}${sep}${rate}%`);
+    });
+
+    h("═══ EVOLUÇÃO DE CLIENTES (6 MESES) ═══");
+    lines.push(`Mês${sep}Novos${sep}Recorrentes${sep}Total`);
+    clientEvolution.forEach((m) =>
+      lines.push(`${m.mes}${sep}${m.novos}${sep}${m.recorrentes}${sep}${m.novos + m.recorrentes}`)
+    );
+
+    h("═══ HORÁRIOS MAIS POPULARES ═══");
+    lines.push(`Dia / Hora${sep}Agendamentos`);
+    popularSlots.forEach(([label, count]) =>
+      lines.push(`${label}${sep}${count}`)
+    );
+
+    h("═══ MAPA DE CALOR (dia × hora) ═══");
+    lines.push(`Dia${sep}Hora${sep}Agendamentos`);
+    HEATMAP_DATA.filter((h) => h.value > 0).forEach((h) =>
+      lines.push(`${h.day}${sep}${h.hour}h${sep}${h.value}`)
+    );
+
+    if (insights.length > 0) {
+      h("═══ INSIGHTS ═══");
+      insights.forEach((i) => lines.push(i.text));
+    }
+
+    const csv = lines.join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);

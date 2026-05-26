@@ -253,7 +253,8 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
       <div
         className={cn(
           "fixed inset-0 z-[300] flex min-h-[100dvh] flex-col",
-          modal.type === "unsaved" ||
+          modal.type === "alert" ||
+            modal.type === "unsaved" ||
             (modal.type === "confirm" && modal.presentation === "dialog")
             ? "items-center justify-center p-4 sm:p-6"
             : ""
@@ -276,21 +277,31 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
           }}
         />
         {modal.type === "alert" ? (
-          <div role="alertdialog" aria-modal="true" aria-labelledby={titleId} className={panelClass}>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-10 sm:pb-8 sm:pt-10">
-              <h2 id={titleId} className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-                {modal.title}
-              </h2>
-              <p className="mt-4 max-w-prose text-base leading-relaxed text-gray-300 whitespace-pre-wrap break-words sm:text-lg">
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            className="relative z-[2] w-[min(100%,26rem)] rounded-2xl border border-white/12 bg-[#14221A] shadow-[0_24px_80px_rgba(0,0,0,0.55)] outline-none animate-fade-in"
+          >
+            <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-primary text-xl">check_circle</span>
+                </div>
+                <h2 id={titleId} className="text-lg font-bold tracking-tight text-white">
+                  {modal.title}
+                </h2>
+              </div>
+              <p className="text-sm leading-relaxed text-gray-300 whitespace-pre-wrap break-words">
                 {modal.message}
               </p>
             </div>
-            <div className="flex shrink-0 justify-stretch border-t border-white/10 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-10 sm:py-6">
+            <div className="flex border-t border-white/10 px-5 py-4 sm:px-6 sm:pb-5">
               <button
                 ref={primaryBtnRef}
                 type="button"
                 onClick={closeAlert}
-                className="min-h-12 w-full rounded-xl bg-primary px-6 text-base font-bold text-black transition-opacity hover:opacity-90 active:opacity-80 sm:min-h-11 sm:max-w-xs sm:mx-auto"
+                className="min-h-11 w-full rounded-xl bg-primary px-6 text-sm font-bold text-black transition-opacity hover:opacity-90 active:opacity-80"
               >
                 OK
               </button>

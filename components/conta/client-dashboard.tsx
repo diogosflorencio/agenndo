@@ -717,11 +717,12 @@ function ProfilePanel({
       const trimmedName = fullName.trim();
       if (!trimmedName) throw new Error("Informe seu nome");
 
-      const { error: profErr } = await supabase
-        .from("profiles")
-        .update({ full_name: trimmedName })
-        .eq("id", user.id);
+      const [{ error: profErr }, { error: metaErr }] = await Promise.all([
+        supabase.from("profiles").update({ full_name: trimmedName }).eq("id", user.id),
+        supabase.auth.updateUser({ data: { full_name: trimmedName } }),
+      ]);
       if (profErr) throw new Error(profErr.message);
+      if (metaErr) throw new Error(metaErr.message);
 
       const phoneDigits = phoneDigitsOnly(phone);
       if (links.length > 0) {
