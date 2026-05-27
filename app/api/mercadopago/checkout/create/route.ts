@@ -3,7 +3,16 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMercadoPagoConfig } from "@/lib/mercadopago/config";
 import { mpCreatePreference, mercadoPagoWebhookUrl } from "@/lib/mercadopago/api";
 import { getBusinessMpAccessToken } from "@/lib/mercadopago/business-mp";
-import { computeAppointmentDueCents } from "@/lib/business-payment-policy";
+import {
+  computeAppointmentDueCents,
+  normalizePaymentPolicy,
+  type DepositMode,
+} from "@/lib/business-payment-policy";
+
+function firstJoinedBusiness<T>(row: T | T[] | null | undefined): T | null {
+  if (row == null) return null;
+  return Array.isArray(row) ? (row[0] ?? null) : row;
+}
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,7 +65,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
   }
 
-  const biz = apt.businesses as Record<string, unknown> | null;
+  const biz = firstJoinedBusiness(apt.businesses);
   if (!biz) return NextResponse.json({ error: "Negócio não encontrado" }, { status: 404 });
 
   const mp = await getBusinessMpAccessToken(admin, apt.business_id);
@@ -64,12 +73,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Mercado Pago não conectado para este negócio." }, { status: 400 });
   }
 
+  const depositMode: DepositMode = biz.deposit_mode === "fixed" ? "fixed" : "percent";
   const due = computeAppointmentDueCents(apt.price_cents, {
-    payment_policy: String(biz.payment_policy ?? "off"),
-    deposit_mode: String(biz.deposit_mode ?? "percent"),
+    payment_policy: normalizePaymentPolicy(biz.payment_policy),
+    deposit_mode: depositMode,
     deposit_percent: typeof biz.deposit_percent === "number" ? biz.deposit_percent : null,
     deposit_fixed_cents: typeof biz.deposit_fixed_cents === "number" ? biz.deposit_fixed_cents : null,
-    payment_client_message: typeof biz.payment_client_message === "string" ? biz.payment_client_message : null,
     mp_checkout_enabled: Boolean(biz.mp_checkout_enabled),
     mp_connected: true,
   });
@@ -80,7 +89,7 @@ export async function POST(req: Request) {
   }
 
   const amount = dueCents / 100;
-  const bizName = typeof biz.name === "string" ? biz.name : "Serviço";
+  const bizName = biz.name?.trim() || "Serviço";
 
   const preference = await mpCreatePreference(mp.accessToken, {
     externalReference: apt.id,
