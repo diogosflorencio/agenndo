@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { operacoesActivityMs } from "@/lib/operacoes/activity-time";
 import { operacoesKindLabel } from "@/lib/operacoes/classify-row";
 import {
   formatPrice,
@@ -20,7 +21,9 @@ import { operacoesSurface, useOperacoesShell } from "./operacoes-shell";
 function fmtDate(iso: string | null) {
   if (!iso) return "—";
   try {
-    return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+    const ms = operacoesActivityMs(iso);
+    if (Number.isNaN(ms)) return iso;
+    return new Date(ms).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
   } catch {
     return iso;
   }

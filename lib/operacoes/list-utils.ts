@@ -1,4 +1,5 @@
 import { isPaidPlanId, PLAN_ORDER, type PlanId } from "@/lib/plans";
+import { operacoesActivityMs } from "./activity-time";
 import type { OperacoesNoteEntry, OperacoesNotesMap } from "./notes-storage";
 import { noteHasText } from "./notes-storage";
 import type { OperacoesSortKey, UnifiedRow } from "./types";
@@ -12,8 +13,7 @@ function planSortIndex(plan: PlanId): number {
 }
 
 function activityTs(row: UnifiedRow): number {
-  const ref = row.lastAppointmentAt ?? row.createdAt;
-  return new Date(ref).getTime();
+  return operacoesActivityMs(row.lastAppointmentAt ?? row.createdAt);
 }
 
 export function whatsAppHref(phone: string | null): string | null {

@@ -44,11 +44,6 @@ export function PublicBookingSplitLayout({
         )}
         style={isDark ? ({ ["--pa-glow-soft"]: rgbaFromHex(accent, 0.25) } as CSSProperties) : undefined}
       >
-        <div
-          className="hidden lg:block h-1 w-full bg-[var(--public-accent)]"
-          style={{ boxShadow: `0 0 20px ${rgbaFromHex(accent, 0.5)}` }}
-        />
-
         <div className="lg:grid lg:grid-cols-2 lg:items-stretch">
           <div className={cn("min-w-0 lg:p-7 xl:p-8 lg:border-r", divider)}>
             <div className="hidden lg:block mb-6">

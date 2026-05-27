@@ -7,6 +7,7 @@ import {
   type PlanId,
 } from "@/lib/plans";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { appointmentActivityInstant, operacoesActivityMs } from "./activity-time";
 import { classifyOperacoesRowKind } from "./classify-row";
 import type { OperacoesOverview, UnifiedRow } from "./types";
 
@@ -20,7 +21,7 @@ function daysAgoIso(days: number): string {
 
 function resolveActive(lastApt: string | null, createdAt: string): "ativo" | "inativo" {
   const cutoff = new Date(daysAgoIso(INACTIVE_DAYS)).getTime();
-  const ref = lastApt ? new Date(lastApt).getTime() : new Date(createdAt).getTime();
+  const ref = lastApt ? operacoesActivityMs(lastApt) : operacoesActivityMs(createdAt);
   return ref >= cutoff ? "ativo" : "inativo";
 }
 
@@ -81,7 +82,6 @@ export async function fetchUnifiedRows(
   opts?: { siteBase?: string }
 ): Promise<UnifiedRow[]> {
   const siteBase = opts?.siteBase ?? getSiteUrl();
-  const cutoff = daysAgoIso(INACTIVE_DAYS);
 
   const [bizRes, profRes, tokRes, cliRes, collabRes, aptRes] = await Promise.all([
     supabase
@@ -108,9 +108,8 @@ export async function fetchUnifiedRows(
     supabase
       .from("appointments")
       .select("business_id, client_id, date, created_at")
-      .gte("created_at", cutoff)
       .order("created_at", { ascending: false })
-      .limit(5000),
+      .limit(15000),
   ]);
 
   const businesses = bizRes.data ?? [];
@@ -119,16 +118,31 @@ export async function fetchUnifiedRows(
   const clients = cliRes.data ?? [];
   const collaborators = collabRes.data ?? [];
 
+  const lastAptInstantByBusiness = new Map<string, number>();
   const lastAptByBusiness = new Map<string, string>();
+  const lastAptInstantByClient = new Map<string, number>();
   const lastAptByClient = new Map<string, string>();
   for (const a of aptRes.data ?? []) {
-    const d = a.date ?? a.created_at;
-    if (!d) continue;
-    if (a.business_id && !lastAptByBusiness.has(a.business_id)) {
-      lastAptByBusiness.set(a.business_id, d);
+    const created = typeof a.created_at === "string" ? a.created_at : "";
+    if (!created) continue;
+    const inst = appointmentActivityInstant(
+      typeof a.date === "string" ? a.date : null,
+      created
+    );
+    const iso = new Date(inst).toISOString();
+    if (a.business_id) {
+      const prev = lastAptInstantByBusiness.get(a.business_id);
+      if (prev == null || inst > prev) {
+        lastAptInstantByBusiness.set(a.business_id, inst);
+        lastAptByBusiness.set(a.business_id, iso);
+      }
     }
-    if (a.client_id && !lastAptByClient.has(a.client_id)) {
-      lastAptByClient.set(a.client_id, d);
+    if (a.client_id) {
+      const prev = lastAptInstantByClient.get(a.client_id);
+      if (prev == null || inst > prev) {
+        lastAptInstantByClient.set(a.client_id, inst);
+        lastAptByClient.set(a.client_id, iso);
+      }
     }
   }
 

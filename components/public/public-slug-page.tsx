@@ -3,7 +3,17 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, useCallback, useMemo, useRef, Suspense, type CSSProperties } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  startTransition,
+  Suspense,
+  type CSSProperties,
+} from "react";
+import { BookingStepPanel } from "@/components/public/booking-step-panel";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatBrazilPhoneFromDigits, formatCurrency, rgbaFromHex } from "@/lib/utils";
 import { recordPublicPageVisit } from "@/lib/visited-public-pages";
@@ -248,12 +258,16 @@ export function PublicPageInner({
     ) => {
       const segment = bookingStepToSegment(next);
       urlStepSegmentRef.current = segment;
-      setStep(next);
+      startTransition(() => {
+        setStep(next);
+      });
       if (entry === "booking" && slug) {
         const qs = bookingQuerySnapshot(opts);
         const dest = `/${slug}/agendar/${segment}${qs}`;
-        if (opts?.replace) void router.replace(dest, { scroll: false });
-        else void router.push(dest, { scroll: false });
+        startTransition(() => {
+          if (opts?.replace) void router.replace(dest, { scroll: false });
+          else void router.push(dest, { scroll: false });
+        });
       }
     },
     [entry, slug, router, bookingQuerySnapshot]
@@ -1257,7 +1271,7 @@ export function PublicPageInner({
             {([1, 2, 3, 4, 5] as Step[]).map((s) => (
               <div key={s} className="flex items-center flex-1">
                 <div
-                  className={`size-7 shrink-0 rounded-full grid place-items-center transition-all ${
+                  className={`size-7 shrink-0 rounded-full grid place-items-center transition-all duration-300 ease-out ${
                     step > s
                       ? "bg-[var(--public-accent)] text-black"
                       : step === s
@@ -1272,7 +1286,9 @@ export function PublicPageInner({
                   )}
                 </div>
                 {s < 5 && (
-                  <div className={`flex-1 h-px mx-1 ${step > s ? "bg-[var(--public-accent)]" : bookUi.stepLine}`} />
+                  <div
+                    className={`flex-1 h-px mx-1 transition-colors duration-300 ease-out ${step > s ? "bg-[var(--public-accent)]" : bookUi.stepLine}`}
+                  />
                 )}
               </div>
             ))}
@@ -1281,7 +1297,7 @@ export function PublicPageInner({
             {["Serviço", "Profissional", "Data", "Horário", "Confirmar"].map((label, i) => (
               <span
                 key={label}
-                className={`text-xs flex-1 text-center ${
+                className={`text-xs flex-1 text-center transition-colors duration-300 ease-out ${
                   step === i + 1 ? "text-[var(--public-accent)] font-semibold" : isDark ? "text-gray-500" : "text-gray-600"
                 }`}
               >
@@ -1292,7 +1308,8 @@ export function PublicPageInner({
         </div>
       </div>
 
-      <main className="relative z-10 max-w-4xl lg:max-w-5xl mx-auto px-4 sm:px-6 py-6 pb-32">
+      <main className="relative z-10 max-w-4xl lg:max-w-5xl mx-auto px-4 sm:px-6 py-6 pb-32 overflow-x-hidden">
+        <BookingStepPanel step={step} stepKey={`${step}-${servicePickPhase}`}>
         {step === 1 && servicePickPhase === "list" && (
           <div>
             <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Escolha o serviço</h2>
@@ -1810,6 +1827,7 @@ export function PublicPageInner({
             pixPayment={pixPaymentHint}
           />
         )}
+        </BookingStepPanel>
       </main>
 
       {step > 1 && selectedService && (

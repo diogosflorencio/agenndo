@@ -8,7 +8,7 @@ import {
   type PublicDateDisabledReason,
 } from "@/lib/public-booking";
 
-const MONTHS_SHORT = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const MONTHS_NOT_SHORT = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const WEEKDAYS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 function getDaysInMonth(year: number, month: number) {
@@ -210,7 +210,7 @@ export function PublicDatePicker({
         </button>
         <div className="min-w-0 flex-1 text-center">
           <p className={cn("text-sm lg:text-base font-bold", titleClass)}>
-            {MONTHS_SHORT[calMonth]} {calYear}
+            {MONTHS_NOT_SHORT[calMonth]} de {calYear}
           </p>
           <p className={cn("text-[11px] mt-0.5", isDark ? "text-white/45" : "text-gray-500")}>
             {bookingMeta == null ? "Carregando…" : "Toque num dia disponível"}
