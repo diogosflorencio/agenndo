@@ -33,6 +33,12 @@ export function resolveOperacoesSiteBase(request?: Request | null): string {
   if (request) {
     const fromRequest = resolveRequestSiteUrl(request);
     if (fromRequest) return fromRequest;
+    try {
+      const u = new URL(request.url);
+      if (u.host) return u.origin;
+    } catch {
+      /* ignore */
+    }
   }
   return getSiteUrl();
 }

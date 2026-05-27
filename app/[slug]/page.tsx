@@ -1,9 +1,9 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect, useCallback, useMemo, Suspense, type CSSProperties } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense, type CSSProperties } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { cn, formatBrazilPhoneFromDigits, formatCurrency, rgbaFromHex } from "@/lib/utils";
 import { recordPublicPageVisit } from "@/lib/visited-public-pages";
@@ -35,6 +35,7 @@ import { PUBLIC_GALLERY_MAX_IMAGES } from "@/lib/public-gallery";
 import { normalizeVariantGallery, variantEffectivePriceCents, type ServiceVariantItem } from "@/lib/service-variants";
 import { formatSocialDisplay, mergePersonalizationSocialLinks, socialProfileUrl } from "@/lib/social-links";
 import { SocialBrandIcon, socialBrandAccent } from "@/components/social-brand-icon";
+import { bookingStepToSegment, segmentToBookingStep } from "@/lib/public-booking-step-routes";
 
 function initialSliderStartMin(payload: PublicDayTimelinePayload): number {
   const now = new Date();
@@ -103,8 +104,23 @@ type ServiceRow = {
 };
 type CollabRow = { id: string; name: string; role: string | null; color: string | null; avatar_url: string | null };
 
-function PublicPageInner() {
+export type PublicPageEntry = "home" | "booking";
+
+export type PublicPageInnerProps = {
+  entry?: PublicPageEntry;
+  /** Segmento da rota `/[slug]/agendar/[step]` (ex.: `servico`, `profissional`) */
+  bookingStepSegment?: string;
+  /** Query `?service=` ao vir da página do negócio */
+  prefillServiceId?: string | null;
+};
+
+export function PublicPageInner({
+  entry = "home",
+  bookingStepSegment,
+  prefillServiceId = null,
+}: PublicPageInnerProps = {}) {
   const params = useParams();
+  const router = useRouter();
   const slug = typeof params?.slug === "string" ? params.slug : "";
 
   const [business, setBusiness] = useState<BusinessRow | null>(null);
@@ -113,8 +129,10 @@ function PublicPageInner() {
   const [collaborators, setCollaborators] = useState<CollabRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [view, setView] = useState<PageView>("home");
-  const [step, setStep] = useState<Step>(1);
+  const [view, setView] = useState<PageView>(entry === "booking" ? "booking" : "home");
+  const initialRouteStep =
+    entry === "booking" && bookingStepSegment ? segmentToBookingStep(bookingStepSegment) : null;
+  const [step, setStep] = useState<Step>(initialRouteStep ?? 1);
   const [selectedService, setSelectedService] = useState<ServiceRow | null>(null);
   const [selectedCollab, setSelectedCollab] = useState<CollabRow | "any" | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -148,6 +166,65 @@ function PublicPageInner() {
   const today = new Date();
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calYear, setCalYear] = useState(today.getFullYear());
+
+  const prefillAppliedRef = useRef<string | null>(null);
+
+  const goBookingStep = useCallback(
+    (next: Step, opts?: { replace?: boolean }) => {
+      setStep(next);
+      if (entry === "booking" && slug) {
+        const dest = `/${slug}/agendar/${bookingStepToSegment(next)}`;
+        if (opts?.replace) void router.replace(dest, { scroll: false });
+        else void router.push(dest, { scroll: false });
+      }
+    },
+    [entry, slug, router]
+  );
+
+  useEffect(() => {
+    if (entry !== "booking" || !bookingStepSegment || !slug) return;
+    const parsed = segmentToBookingStep(bookingStepSegment);
+    if (parsed === null) {
+      void router.replace(`/${slug}/agendar/servico`, { scroll: false });
+      return;
+    }
+    setStep((prev) => (prev !== parsed ? parsed : prev));
+  }, [bookingStepSegment, entry, slug, router]);
+
+  useEffect(() => {
+    if (entry !== "booking" || !prefillServiceId || !services.length || loading) return;
+    if (prefillAppliedRef.current === prefillServiceId) return;
+    const svc = services.find((s) => s.id === prefillServiceId);
+    if (!svc) return;
+    prefillAppliedRef.current = prefillServiceId;
+    setSelectedService(svc);
+    const v = normalizeVariantGallery(svc.variant_gallery);
+    const desc = svc.description_public?.trim();
+    if (v.length > 0 || desc) {
+      setServicePickPhase("detail");
+    } else {
+      setServicePickPhase("list");
+    }
+  }, [entry, prefillServiceId, services, loading]);
+
+  useEffect(() => {
+    if (entry !== "booking" || !slug || loading) return;
+    if (step >= 2 && !selectedService) {
+      goBookingStep(1, { replace: true });
+      return;
+    }
+    if (step >= 3 && selectedCollab === null) {
+      goBookingStep(2, { replace: true });
+      return;
+    }
+    if (step >= 4 && !selectedDate) {
+      goBookingStep(3, { replace: true });
+      return;
+    }
+    if (step >= 5 && !selectedTime) {
+      goBookingStep(4, { replace: true });
+    }
+  }, [entry, slug, loading, step, selectedService, selectedCollab, selectedDate, selectedTime, goBookingStep]);
 
   useEffect(() => {
     if (!slug) {
@@ -244,9 +321,9 @@ function PublicPageInner() {
     ) {
       setSelectedTime(null);
       setSelectedDate(null);
-      if (step >= 4) setStep(3);
+      if (step >= 4) goBookingStep(3, { replace: true });
     }
-  }, [bookingMeta, selectedDate, step]);
+  }, [bookingMeta, selectedDate, step, goBookingStep]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -364,7 +441,7 @@ function PublicPageInner() {
     };
   }, [view, step, business?.id, selectedService?.id, selectedDate, selectedCollab, slug]);
 
-  const resetBookingForm = useCallback(() => {
+  const resetWizardState = useCallback(() => {
     setStep(1);
     setSelectedService(null);
     setSelectedCollab(null);
@@ -379,42 +456,50 @@ function PublicPageInner() {
     setDayTimeline(null);
     setSliderStartMin(9 * 60);
     setSlotsError(null);
+    prefillAppliedRef.current = null;
   }, []);
 
   const goHome = useCallback(() => {
+    resetWizardState();
+    if (entry === "booking" && slug) {
+      void router.push(`/${slug}`, { scroll: false });
+      return;
+    }
     setView("home");
-    resetBookingForm();
-  }, [resetBookingForm]);
+  }, [entry, slug, router, resetWizardState]);
 
   const bookingBlocked = bookingMeta?.publicBookingLocked === true;
 
   useEffect(() => {
-    if (bookingMeta?.publicBookingLocked && view === "booking") {
-      setView("home");
-      resetBookingForm();
+    if (!bookingMeta?.publicBookingLocked || view !== "booking") return;
+    resetWizardState();
+    if (entry === "booking" && slug) {
+      void router.replace(`/${slug}`, { scroll: false });
+      return;
     }
-  }, [bookingMeta?.publicBookingLocked, view, resetBookingForm]);
+    setView("home");
+  }, [bookingMeta?.publicBookingLocked, view, resetWizardState, entry, slug, router]);
 
   const startBooking = useCallback(
     (prefillService?: ServiceRow | null) => {
-      if (bookingMeta?.publicBookingLocked) return;
-      setBooked(false);
-      setBookedCollabName(null);
-      resetBookingForm();
-      setView("booking");
+      if (bookingMeta?.publicBookingLocked || !slug) return;
+      const qs = new URLSearchParams();
+      if (prefillService) qs.set("service", prefillService.id);
+      const q = qs.toString() ? `?${qs}` : "";
+
       if (prefillService) {
-        setSelectedService(prefillService);
         const v = normalizeVariantGallery(prefillService.variant_gallery);
         const desc = prefillService.description_public?.trim();
         if (v.length > 0 || desc) {
-          setServicePickPhase("detail");
-          setSelectedVariantIndex(null);
+          void router.push(`/${slug}/agendar/servico${q}`);
         } else {
-          setStep(2);
+          void router.push(`/${slug}/agendar/profissional${q}`);
         }
+        return;
       }
+      void router.push(`/${slug}/agendar/servico`);
     },
-    [resetBookingForm, bookingMeta?.publicBookingLocked]
+    [slug, router, bookingMeta?.publicBookingLocked]
   );
 
   const maxFutureDays = bookingMeta?.maxFutureDays ?? 30;
@@ -1082,7 +1167,7 @@ function PublicPageInner() {
                       setServicePickPhase("detail");
                       setSelectedVariantIndex(null);
                     } else {
-                      setStep(2);
+                      goBookingStep(2);
                     }
                   }}
                   className={cn(
@@ -1242,7 +1327,7 @@ function PublicPageInner() {
             <button
               type="button"
               onClick={() => {
-                setStep(2);
+                goBookingStep(2);
                 setServicePickPhase("list");
               }}
               className="w-full py-3.5 rounded-xl font-bold text-black transition-transform hover:scale-[1.01] active:scale-[0.99]"
@@ -1271,7 +1356,7 @@ function PublicPageInner() {
                 type="button"
                 onClick={() => {
                   setSelectedCollab("any");
-                  setStep(3);
+                  goBookingStep(3);
                 }}
                 className={cn(
                   "flex items-center gap-4 p-4 rounded-2xl border hover:border-[color-mix(in_srgb,var(--public-accent)_35%,transparent)] text-left transition-all",
@@ -1296,7 +1381,7 @@ function PublicPageInner() {
                     type="button"
                     onClick={() => {
                       setSelectedCollab(collab);
-                      setStep(3);
+                      goBookingStep(3);
                     }}
                     className={cn(
                       "flex items-center gap-4 p-4 rounded-2xl border hover:border-[color-mix(in_srgb,var(--public-accent)_35%,transparent)] text-left transition-all",
@@ -1350,7 +1435,7 @@ function PublicPageInner() {
                 onSelectDate={(dateStr) => {
                   setSelectedDate(dateStr);
                   setSelectedTime(null);
-                  setStep(4);
+                  goBookingStep(4);
                 }}
                 bookingMeta={bookingMeta}
                 maxFutureDaysFallback={maxFutureDays}
@@ -1456,7 +1541,7 @@ function PublicPageInner() {
                   onClick={() => {
                     if (!sliderPositionValid) return;
                     setSelectedTime(minutesToTime(sliderStartMin));
-                    setStep(5);
+                    goBookingStep(5);
                   }}
                   style={{ boxShadow: `0 0 16px ${rgbaFromHex(accent, 0.25)}` }}
                   className="w-full py-3.5 bg-[var(--public-accent)] hover:brightness-95 disabled:opacity-45 disabled:cursor-not-allowed text-black font-bold rounded-xl text-base transition-all"
@@ -1510,7 +1595,7 @@ function PublicPageInner() {
                           onClick={() => {
                             if (!cell.available) return;
                             setSelectedTime(cell.start);
-                            setStep(5);
+                            goBookingStep(5);
                           }}
                           className={cn(
                             "py-3 lg:py-3.5 rounded-xl text-sm lg:text-base font-bold transition-all border",
@@ -1576,12 +1661,12 @@ function PublicPageInner() {
               type="button"
               onClick={() => {
                 if (step === 2) {
-                  setStep(1);
+                  goBookingStep(1);
                   setServicePickPhase("list");
                   setSelectedVariantIndex(null);
                   return;
                 }
-                setStep((step - 1) as Step);
+                goBookingStep((step - 1) as Step);
               }}
               className={cn(
                 "shrink-0 flex items-center justify-center size-10 rounded-xl border transition-colors",
@@ -1635,7 +1720,7 @@ export default function PublicPage() {
         </div>
       }
     >
-      <PublicPageInner />
+      <PublicPageInner entry="home" />
     </Suspense>
   );
 }
