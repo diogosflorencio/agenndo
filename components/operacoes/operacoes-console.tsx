@@ -14,7 +14,7 @@ import type { OperacoesOverview, OperacoesSortKey, UnifiedRow } from "@/lib/oper
 import { OperacoesPeopleList } from "./operacoes-people-list";
 import { operacoesSurface, useOperacoesShell } from "./operacoes-shell";
 
-const AUTO_REFRESH_MS = 45_000;
+const AUTO_REFRESH_SEC = 60;
 
 function fmtClock(d: Date) {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -29,6 +29,7 @@ export function OperacoesConsole() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [refreshIn, setRefreshIn] = useState(AUTO_REFRESH_SEC);
   const [notesMap, setNotesMap] = useState(loadOperacoesNotes);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -70,9 +71,21 @@ export function OperacoesConsole() {
   }, [load]);
 
   useEffect(() => {
+    if (!lastUpdated) return;
+    setRefreshIn(AUTO_REFRESH_SEC);
+  }, [lastUpdated]);
+
+  useEffect(() => {
     const id = window.setInterval(() => {
-      if (document.visibilityState === "visible") void load(true);
-    }, AUTO_REFRESH_MS);
+      if (document.visibilityState !== "visible") return;
+      setRefreshIn((prev) => {
+        if (prev <= 1) {
+          void load(true);
+          return AUTO_REFRESH_SEC;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     return () => clearInterval(id);
   }, [load]);
 
@@ -181,7 +194,8 @@ export function OperacoesConsole() {
         <div>
           <h1 className="text-2xl font-bold">Operações</h1>
           <p className={`text-sm mt-1 ${s.muted}`}>
-            Prestadores e clientes · até {OPERACOES_PAGE_SIZE} por página · atualização automática a cada 45s
+            Prestadores e clientes · até {OPERACOES_PAGE_SIZE} por página · atualização automática em{" "}
+            <span className="tabular-nums font-medium">{refreshIn}s</span>
             {lastUpdated ? ` · última às ${fmtClock(lastUpdated)}` : ""}
           </p>
         </div>
@@ -190,14 +204,14 @@ export function OperacoesConsole() {
             type="button"
             onClick={() => void load()}
             disabled={loading}
-            className={`px-4 py-2 rounded-xl border text-sm font-semibold ${s.border} hover:opacity-80 disabled:opacity-50`}
+            className={`px-4 py-2 rounded-xl border text-sm font-semibold transition-all duration-150 ${s.border} hover:opacity-80 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:hover:scale-100`}
           >
             {loading ? "Atualizando…" : "Atualizar"}
           </button>
           <button
             type="button"
             onClick={handleExport}
-            className={`px-4 py-2 rounded-lg border text-sm font-semibold ${s.border} bg-[#0a3d22]/40 ${s.accent}`}
+            className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-all duration-150 ${s.border} bg-[#0a3d22]/40 ${s.accent} hover:opacity-90 hover:scale-[1.02] active:scale-[0.98]`}
           >
             Exportar CSV
           </button>

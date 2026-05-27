@@ -105,6 +105,37 @@ function InnerTable({
   return <table className={s.innerTable}>{children}</table>;
 }
 
+function CopyChip({
+  label,
+  copiedLabel,
+  value,
+  copiedId,
+  btn,
+  s,
+  onCopy,
+}: {
+  label: string;
+  copiedLabel?: string;
+  value: string;
+  copiedId: string | null;
+  btn: string;
+  s: ReturnType<typeof operacoesSurface>;
+  onCopy: (t: string) => void;
+}) {
+  const copied = copiedId === value;
+  return (
+    <button
+      type="button"
+      className={`${btn} transition-all duration-150 hover:scale-[1.04] active:scale-[0.96] ${
+        copied ? s.btnPrimary : ""
+      }`}
+      onClick={() => onCopy(value)}
+    >
+      {copied ? (copiedLabel ?? "Copiado") : label}
+    </button>
+  );
+}
+
 function InfoCell({
   row,
   detailsCollapsed,
@@ -139,6 +170,7 @@ function InfoCell({
             ? "Dono do negócio"
             : null;
   const publicUrl = resolveRowPublicUrl(row);
+  const hasPublicLink = Boolean(row.publicSlug && publicUrl);
 
   return (
     <InnerTable s={s}>
@@ -230,16 +262,32 @@ function InfoCell({
           <td className={s.labelCell}>Atalhos</td>
           <td className="py-1">
             <div className="flex flex-wrap gap-1">
-              <button type="button" className={btn} onClick={() => onCopy(row.entityId)}>
-                {copiedId === row.entityId ? "Copiado" : "ID"}
-              </button>
-              {publicUrl ? (
-                <button type="button" className={btn} onClick={() => onCopy(publicUrl)}>
-                  Link
-                </button>
+              <CopyChip
+                label="ID"
+                copiedLabel="Copiado"
+                value={row.entityId}
+                copiedId={copiedId}
+                btn={btn}
+                s={s}
+                onCopy={onCopy}
+              />
+              {hasPublicLink && publicUrl ? (
+                <CopyChip
+                  label="Link"
+                  copiedLabel="Copiado"
+                  value={publicUrl}
+                  copiedId={copiedId}
+                  btn={btn}
+                  s={s}
+                  onCopy={onCopy}
+                />
               ) : null}
               {showDetailsToggle ? (
-                <button type="button" className={btn} onClick={onToggleDetails}>
+                <button
+                  type="button"
+                  className={`${btn} transition-all duration-150 hover:scale-[1.04] active:scale-[0.96]`}
+                  onClick={onToggleDetails}
+                >
                   {detailsCollapsed ? "Detalhes" : "Ocultar"}
                 </button>
               ) : null}
@@ -295,6 +343,7 @@ function ActionsCell({
   s,
   btn,
   theme,
+  copiedId,
   onExtendTrial,
   onChangePlan,
   onCopy,
@@ -306,6 +355,7 @@ function ActionsCell({
   s: ReturnType<typeof operacoesSurface>;
   btn: string;
   theme: "dark" | "light";
+  copiedId: string | null;
   onExtendTrial: (businessId: string, days: number) => void;
   onChangePlan: (businessId: string, plan: PlanId) => void;
   onCopy: (t: string) => void;
@@ -321,7 +371,12 @@ function ActionsCell({
               <td className="py-1">
                 <div className="flex flex-wrap gap-1">
                   {[7, 14, 30].map((d) => (
-                    <button key={d} type="button" className={btn} onClick={() => onExtendTrial(row.businessId!, d)}>
+                    <button
+                      key={d}
+                      type="button"
+                      className={`${btn} transition-all duration-150 hover:scale-[1.04] active:scale-[0.96]`}
+                      onClick={() => onExtendTrial(row.businessId!, d)}
+                    >
                       +{d}d
                     </button>
                   ))}
@@ -346,7 +401,7 @@ function ActionsCell({
                   <button
                     type="button"
                     onClick={() => onChangePlan(row.businessId!, planPick)}
-                    className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold ${s.btnPrimary}`}
+                    className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all duration-150 hover:scale-[1.04] active:scale-[0.96] ${s.btnPrimary}`}
                   >
                     Aplicar
                   </button>
@@ -359,9 +414,15 @@ function ActionsCell({
           <tr>
             <td className={s.labelCell}>Token</td>
             <td className="py-1">
-              <button type="button" className={btn} onClick={() => onCopy(row.impersonateToken!)}>
-                Copiar
-              </button>
+              <CopyChip
+                label="Copiar"
+                copiedLabel="Copiado!"
+                value={row.impersonateToken}
+                copiedId={copiedId}
+                btn={btn}
+                s={s}
+                onCopy={onCopy}
+              />
             </td>
           </tr>
         ) : null}
@@ -374,7 +435,7 @@ function ActionsCell({
               <button
                 type="button"
                 onClick={() => onDelete(row)}
-                className={`text-[11px] font-semibold px-2 py-1 rounded-md ${theme === "light" ? "text-red-700 hover:bg-red-50" : "text-red-400 hover:bg-red-500/10"}`}
+                className={`text-[11px] font-semibold px-2 py-1 rounded-md transition-all duration-150 hover:scale-[1.04] active:scale-[0.96] ${theme === "light" ? "text-red-700 hover:bg-red-50" : "text-red-400 hover:bg-red-500/10"}`}
               >
                 Excluir
               </button>
@@ -461,6 +522,7 @@ function PersonRow({
           s={s}
           btn={btn}
           theme={theme}
+          copiedId={copiedId}
           onExtendTrial={onExtendTrial}
           onChangePlan={onChangePlan}
           onCopy={onCopy}

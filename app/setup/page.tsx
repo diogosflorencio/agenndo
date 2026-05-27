@@ -13,6 +13,7 @@ import {
 } from "@/lib/pricing-lock";
 import { formatBrazilPhoneFromDigits, phoneDigitsOnly, slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { getEffectiveUserId } from "@/lib/supabase/effective-user";
 
 /** Mesmo número usado em `WhatsAppSupportWidget`; env opcional no deploy. */
 const SUPPORT_WHATSAPP =
@@ -117,7 +118,7 @@ export default function SetupPage() {
     }));
   }, [profileRec?.onboarding_inputs]);
 
-  /** Dono com negócio ou profissional já vinculado na equipe: não mostrar onboarding de criar negócio. */
+  /** Dono com negócio, cliente ou profissional já vinculado: não mostrar onboarding de criar negócio. */
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -127,7 +128,13 @@ export default function SetupPage() {
       } = await supabase.auth.getUser();
       if (!user || cancelled) return;
 
-      const { data: ownedBiz } = await supabase.from("businesses").select("id").eq("profile_id", user.id).maybeSingle();
+      const profileId = (await getEffectiveUserId(supabase)) ?? user.id;
+
+      const { data: ownedBiz } = await supabase
+        .from("businesses")
+        .select("id")
+        .eq("profile_id", profileId)
+        .maybeSingle();
       if (cancelled) return;
       if (ownedBiz?.id) {
         router.replace("/dashboard");
@@ -137,7 +144,7 @@ export default function SetupPage() {
       const { data: staffRows } = await supabase
         .from("collaborators")
         .select("id")
-        .eq("auth_user_id", user.id)
+        .eq("auth_user_id", profileId)
         .limit(1);
       if (cancelled) return;
       if (staffRows && staffRows.length > 0) {
@@ -248,11 +255,13 @@ export default function SetupPage() {
       return;
     }
 
+    const profileId = (await getEffectiveUserId(supabase)) ?? user.id;
+
     const slug = data.slug || slugify(data.businessName) || "meu-negocio";
     const { data: inserted, error: bizError } = await supabase
       .from("businesses")
       .insert({
-        profile_id: user.id,
+        profile_id: profileId,
         name: data.businessName || "Meu Negócio",
         slug,
         segment: data.segment || null,
@@ -268,7 +277,7 @@ export default function SetupPage() {
       localStorage.setItem("agenndo_setup_complete", "true");
       localStorage.setItem("agenndo_plan", planId);
       localStorage.setItem("agenndo_plan_price", String(effectivePlan.monthlyPrice));
-      await persistPricingIdentity(user.id);
+      await persistPricingIdentity(profileId);
       window.location.href = "/dashboard";
       return;
     }
@@ -277,7 +286,7 @@ export default function SetupPage() {
     localStorage.setItem("agenndo_plan", planId);
     localStorage.setItem("agenndo_plan_price", String(effectivePlan.monthlyPrice));
 
-    await persistPricingIdentity(user.id);
+    await persistPricingIdentity(profileId);
 
     if (planId !== "free") {
       try {

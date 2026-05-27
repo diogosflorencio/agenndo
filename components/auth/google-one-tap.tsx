@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { generateGoogleAuthNonce } from "@/lib/auth/google-nonce";
 import { syncAccountOnLogin } from "@/lib/auth/sync-account-on-login";
+import { resolveProviderLoginDestination } from "@/lib/auth/resolve-login-destination";
 import { createClient } from "@/lib/supabase/client";
 
 declare global {
@@ -109,8 +110,10 @@ export function GoogleOneTap({ nextPath, onError, disabled }: Props) {
                 loginContext: null,
               });
             }
-            const dest =
-              nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/dashboard";
+            const dest = await resolveProviderLoginDestination(
+              supabase,
+              nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/dashboard"
+            );
             router.push(dest);
             router.refresh();
           },

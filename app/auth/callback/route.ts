@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { syncAccountOnLogin } from "@/lib/auth/sync-account-on-login";
+import { resolveProviderLoginDestination } from "@/lib/auth/resolve-login-destination";
 import type { OAuthLoginContext } from "@/lib/auth/oauth-popup";
 
 function parseLoginContext(raw: string | null): OAuthLoginContext | null {
@@ -73,23 +74,8 @@ export async function GET(request: NextRequest) {
   } else if (resolvedContext === "cliente") {
     redirectTo = `${origin}${nextPath.startsWith("/") ? nextPath : `/${nextPath}`}`;
   } else {
-    const { data: ownedBiz } = await supabase
-      .from("businesses")
-      .select("id")
-      .eq("profile_id", user.id)
-      .limit(1)
-      .maybeSingle();
-    const { data: staffRows } = await supabase
-      .from("collaborators")
-      .select("id")
-      .eq("auth_user_id", user.id)
-      .limit(1);
-    const hasStaffLink = (staffRows?.length ?? 0) > 0;
-    if (!ownedBiz?.id && !hasStaffLink) {
-      redirectTo = `${origin}/setup`;
-    } else if (resolvedContext === "staff" || nextPath.includes("minhas-comissoes")) {
-      redirectTo = `${origin}/dashboard/minhas-comissoes`;
-    }
+    const dest = await resolveProviderLoginDestination(supabase, nextPath.startsWith("/") ? nextPath : `/${nextPath}`);
+    redirectTo = `${origin}${dest}`;
   }
 
   response.headers.set("Location", redirectTo);

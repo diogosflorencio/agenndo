@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { syncAccountOnLogin } from "@/lib/auth/sync-account-on-login";
+import { resolveProviderLoginDestination } from "@/lib/auth/resolve-login-destination";
 import {
   consumeOAuthBridgeRedirectState,
   OAUTH_POPUP_MESSAGE,
@@ -120,24 +121,10 @@ function OAuthBridgeInner() {
       });
 
       let path = nextPath;
-      if (resolvedContext !== "cliente") {
-        const { data: ownedBiz } = await supabase
-          .from("businesses")
-          .select("id")
-          .eq("profile_id", user.id)
-          .limit(1)
-          .maybeSingle();
-        const { data: staffRows } = await supabase
-          .from("collaborators")
-          .select("id")
-          .eq("auth_user_id", user.id)
-          .limit(1);
-        const hasStaffLink = (staffRows?.length ?? 0) > 0;
-        if (!ownedBiz?.id && !hasStaffLink) {
-          path = "/setup";
-        } else if (resolvedContext === "staff" || nextPath.includes("minhas-comissoes")) {
-          path = "/dashboard/minhas-comissoes";
-        }
+      if (resolvedContext === "cliente") {
+        path = nextPath.startsWith("/conta") ? nextPath : "/conta";
+      } else {
+        path = await resolveProviderLoginDestination(supabase, nextPath);
       }
 
       setStatus("Pronto");
