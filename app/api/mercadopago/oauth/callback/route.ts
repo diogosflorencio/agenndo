@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getMercadoPagoConfig } from "@/lib/mercadopago/config";
 import { mpExchangeOAuthCode } from "@/lib/mercadopago/api";
 import { mercadoPagoOAuthErrorMessage } from "@/lib/mercadopago/oauth-messages";
 import {
@@ -34,7 +35,10 @@ export async function GET(req: Request) {
   }
 
   try {
-    const tokens = await mpExchangeOAuthCode(code, parsed.codeVerifier || undefined);
+    const mpCfg = getMercadoPagoConfig();
+    const codeVerifier =
+      mpCfg?.oauthUsePkce && parsed.codeVerifier?.trim() ? parsed.codeVerifier.trim() : undefined;
+    const tokens = await mpExchangeOAuthCode(code, codeVerifier);
     let admin;
     try {
       admin = createAdminClient();

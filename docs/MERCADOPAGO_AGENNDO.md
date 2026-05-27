@@ -39,7 +39,7 @@ Opcional: `NEXT_PUBLIC_SITE_URL` — fallback de origem se redirect URI for outr
    - Produção: `https://www.agenndo.com.br/api/mercadopago/oauth/callback`
 2. **Webhook** URL = `https://SEU_DOMINIO/api/mercadopago/webhook`
 3. Eventos: pagamentos (`payment`)
-4. **PKCE**: o Agenndo envia `code_challenge` (S256). Se o app tiver PKCE obrigatório no painel, já está coberto.
+4. **PKCE** (opcional): padrão **off** (`MERCADOPAGO_OAUTH_USE_PKCE=false`). Só `true` se o app MP tiver **OAuth com PKCE** ligado; senão a URL de autorização retorna **400**.
 
 ### OAuth em desenvolvimento local
 

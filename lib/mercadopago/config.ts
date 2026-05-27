@@ -5,7 +5,14 @@ export type MercadoPagoConfig = {
   webhookSecret: string;
   publicKey: string;
   siteOrigin: string;
+  /** Só true se o app MP tiver "OAuth com PKCE" habilitado no painel. */
+  oauthUsePkce: boolean;
 };
+
+function parseOAuthUsePkce(): boolean {
+  const raw = process.env.MERCADOPAGO_OAUTH_USE_PKCE?.trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes";
+}
 
 export function getMercadoPagoConfig(): MercadoPagoConfig | null {
   const clientId = process.env.MERCADOPAGO_CLIENT_ID?.trim();
@@ -23,7 +30,15 @@ export function getMercadoPagoConfig(): MercadoPagoConfig | null {
     /* keep default */
   }
 
-  return { clientId, clientSecret, redirectUri, webhookSecret, publicKey, siteOrigin };
+  return {
+    clientId,
+    clientSecret,
+    redirectUri,
+    webhookSecret,
+    publicKey,
+    siteOrigin,
+    oauthUsePkce: parseOAuthUsePkce(),
+  };
 }
 
 export function mercadoPagoConfigured(): boolean {

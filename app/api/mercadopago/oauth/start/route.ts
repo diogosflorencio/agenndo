@@ -34,11 +34,11 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const returnTo = safeOAuthReturnPath(url.searchParams.get("returnTo"));
-  const pkce = createMercadoPagoPkcePair();
+  const pkce = cfg.oauthUsePkce ? createMercadoPagoPkcePair() : null;
   const state = signMercadoPagoOAuthState({
     userId: user.id,
     returnTo,
-    codeVerifier: pkce.verifier,
+    codeVerifier: pkce?.verifier ?? "",
   });
 
   const authorize = new URL("https://auth.mercadopago.com.br/authorization");
@@ -47,11 +47,14 @@ export async function GET(req: Request) {
   authorize.searchParams.set("platform_id", "mp");
   authorize.searchParams.set("state", state);
   authorize.searchParams.set("redirect_uri", cfg.redirectUri);
-  authorize.searchParams.set("code_challenge", pkce.challenge);
-  authorize.searchParams.set("code_challenge_method", "S256");
+  if (pkce) {
+    authorize.searchParams.set("code_challenge", pkce.challenge);
+    authorize.searchParams.set("code_challenge_method", "S256");
+  }
 
   return NextResponse.json({
     authorize_url: authorize.toString(),
     redirect_uri: cfg.redirectUri,
+    oauth_use_pkce: cfg.oauthUsePkce,
   });
 }
