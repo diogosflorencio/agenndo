@@ -26,9 +26,9 @@ Crie um app em [Mercado Pago Developers](https://www.mercadopago.com.br/develope
 |----------|------------|-----|
 | `MERCADOPAGO_CLIENT_ID` | App → Credenciais | OAuth |
 | `MERCADOPAGO_CLIENT_SECRET` | App → Credenciais | OAuth + API |
-| `MERCADOPAGO_REDIRECT_URI` | Você define | **Exatamente** `https://SEU_DOMINIO/api/mercadopago/oauth/callback` |
+| `MERCADOPAGO_REDIRECT_URI` | Você define | **OAuth:** `https://SEU_DOMINIO/api/mercadopago/oauth/callback` — **não** use a URL do webhook aqui |
 | `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` | App → Credenciais públicas | Payment Brick no browser |
-| `MERCADOPAGO_WEBHOOK_SECRET` | App → Webhooks → assinatura | `POST /api/mercadopago/webhook` |
+| `MERCADOPAGO_WEBHOOK_SECRET` | App → Webhooks → assinatura | Só para validar `POST /api/mercadopago/webhook` (URL do webhook é configurada no **painel** MP, não nesta variável) |
 | `APP_ENCRYPTION_KEY` | String longa aleatória (32+ chars) | Criptografia dos tokens OAuth + HMAC do `state` |
 
 Opcional: `NEXT_PUBLIC_SITE_URL` — fallback de origem se redirect URI for outro host.

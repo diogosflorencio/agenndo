@@ -17,7 +17,20 @@ export async function GET(req: Request) {
 
   const cfg = getMercadoPagoConfig();
   if (!cfg) {
-    return NextResponse.json({ error: "Mercado Pago não configurado no servidor." }, { status: 503 });
+    const rawRedirect = process.env.MERCADOPAGO_REDIRECT_URI?.trim() ?? "";
+    const misconfiguredWebhook =
+      rawRedirect.toLowerCase().includes("/webhook") ||
+      (rawRedirect.length > 0 && !rawRedirect.toLowerCase().endsWith("/api/mercadopago/oauth/callback"));
+    return NextResponse.json(
+      {
+        error: misconfiguredWebhook
+          ? "MERCADOPAGO_REDIRECT_URI está errado (parece URL de webhook). Use …/api/mercadopago/oauth/callback — o webhook é outra variável/URL no painel MP."
+          : "Mercado Pago não configurado no servidor.",
+        expected_redirect_uri: "https://www.agenndo.com.br/api/mercadopago/oauth/callback",
+        configured_redirect_uri: rawRedirect || null,
+      },
+      { status: misconfiguredWebhook ? 400 : 503 }
+    );
   }
 
   if (cfg.redirectUri.startsWith("http://")) {

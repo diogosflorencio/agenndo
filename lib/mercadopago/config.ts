@@ -23,6 +23,16 @@ export function getMercadoPagoConfig(): MercadoPagoConfig | null {
 
   if (!clientId || !clientSecret || !redirectUri) return null;
 
+  const redirectLower = redirectUri.toLowerCase();
+  if (redirectLower.includes("/webhook") || !redirectLower.endsWith("/api/mercadopago/oauth/callback")) {
+    console.error(
+      "[mercadopago] MERCADOPAGO_REDIRECT_URI inválido:",
+      redirectUri,
+      "— use https://SEU_DOMINIO/api/mercadopago/oauth/callback (não a URL do webhook)."
+    );
+    return null;
+  }
+
   let siteOrigin = "http://localhost:3000";
   try {
     siteOrigin = new URL(redirectUri).origin;
