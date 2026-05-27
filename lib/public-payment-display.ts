@@ -49,10 +49,18 @@ function formatBrl(cents: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 }
 
+/** Alinhado ao dashboard (mp_user_id + mp_connected_at); token como fallback. */
+export function isPublicMpConnected(row: Record<string, unknown>): boolean {
+  return Boolean(
+    row.mp_user_id &&
+      (row.mp_connected_at || row.mp_access_token_enc)
+  );
+}
+
 export function toPublicPaymentSettings(
   row: Record<string, unknown>
 ): PublicBusinessPaymentFields {
-  const mpConnected = Boolean(row.mp_user_id && row.mp_access_token_enc);
+  const mpConnected = isPublicMpConnected(row);
   return {
     payment_policy:
       row.payment_policy === "optional" ||

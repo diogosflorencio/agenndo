@@ -207,6 +207,17 @@ export function PublicPageInner({
     publicBookingLockMessage?: string | null;
     weeklyAvailability: AvailabilityDbRow[];
     availabilityOverrides: OverrideDbRow[];
+    payment?: {
+      payment_policy: BusinessRow["payment_policy"];
+      deposit_mode: "percent" | "fixed";
+      deposit_percent: number | null;
+      deposit_fixed_cents: number | null;
+      payment_client_message: string | null;
+      mp_checkout_enabled: boolean;
+      mp_connected: boolean;
+      public_pix_key?: string | null;
+      public_pix_suggest_enabled?: boolean;
+    };
   } | null>(null);
   const [slotTimeline, setSlotTimeline] = useState<PublicSlotCell[]>([]);
   const [dayTimeline, setDayTimeline] = useState<PublicDayTimelinePayload | null>(null);
@@ -463,6 +474,26 @@ export function PublicPageInner({
   }, [business?.slug, business?.name]);
 
   useEffect(() => {
+    const p = bookingMeta?.payment;
+    if (!p) return;
+    setBusiness((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        payment_policy: p.payment_policy ?? prev.payment_policy,
+        deposit_mode: p.deposit_mode ?? prev.deposit_mode,
+        deposit_percent: p.deposit_percent ?? prev.deposit_percent,
+        deposit_fixed_cents: p.deposit_fixed_cents ?? prev.deposit_fixed_cents,
+        payment_client_message: p.payment_client_message ?? prev.payment_client_message,
+        mp_checkout_enabled: p.mp_checkout_enabled ?? prev.mp_checkout_enabled,
+        mp_connected: p.mp_connected ?? prev.mp_connected,
+        public_pix_key: p.public_pix_key ?? prev.public_pix_key,
+        public_pix_suggest_enabled: p.public_pix_suggest_enabled ?? prev.public_pix_suggest_enabled,
+      };
+    });
+  }, [bookingMeta?.payment]);
+
+  useEffect(() => {
     if (!slug) return;
     fetch(`/api/public/booking-meta?slug=${encodeURIComponent(slug)}`)
       .then((r) => r.json())
@@ -489,6 +520,10 @@ export function PublicPageInner({
               close_time: (o.close_time as string | null) ?? null,
               breaks: o.breaks ?? [],
             })) as OverrideDbRow[],
+            payment:
+              j.payment && typeof j.payment === "object"
+                ? (j.payment as NonNullable<typeof bookingMeta>["payment"])
+                : undefined,
           });
         }
       })
@@ -769,30 +804,72 @@ export function PublicPageInner({
     return variantEffectivePriceCents(opt, base);
   }, [selectedService, selectedVariantIndex]);
 
-  const pixPaymentHint = useMemo(() => {
-    if (!business?.public_pix_suggest_enabled || !business.public_pix_key?.trim()) return null;
-    const custom = business.public_pix_suggest_message?.trim();
+  const paymentConfig = useMemo(() => {
+    const p = bookingMeta?.payment;
+    if (p) {
+      return {
+        payment_policy: p.payment_policy ?? ("off" as const),
+        deposit_mode: p.deposit_mode === "fixed" ? ("fixed" as const) : ("percent" as const),
+        deposit_percent: p.deposit_percent ?? null,
+        deposit_fixed_cents: p.deposit_fixed_cents ?? null,
+        payment_client_message: p.payment_client_message ?? null,
+        mp_checkout_enabled: Boolean(p.mp_checkout_enabled),
+        mp_connected: Boolean(p.mp_connected),
+        public_pix_key: p.public_pix_key ?? business?.public_pix_key ?? null,
+        public_pix_suggest_enabled: Boolean(
+          p.public_pix_suggest_enabled ?? business?.public_pix_suggest_enabled
+        ),
+        public_pix_suggest_message: business?.public_pix_suggest_message ?? null,
+      };
+    }
+    if (!business) return null;
     return {
-      pixKey: business.public_pix_key.trim(),
-      message: custom || DEFAULT_PUBLIC_PIX_SUGGEST_MESSAGE,
-      serviceTotalLabel: formatCurrency(selectedBookingPriceCents / 100),
-    };
-  }, [business, selectedBookingPriceCents]);
-
-  const onlinePaymentHint = useMemo(() => {
-    if (!business?.mp_connected || !business.mp_checkout_enabled) return null;
-    const policy = business.payment_policy ?? "off";
-    if (policy === "off") return null;
-    return buildPublicPaymentHint(selectedBookingPriceCents, {
-      payment_policy: policy,
-      deposit_mode: business.deposit_mode === "fixed" ? "fixed" : "percent",
+      payment_policy: business.payment_policy ?? ("off" as const),
+      deposit_mode: business.deposit_mode === "fixed" ? ("fixed" as const) : ("percent" as const),
       deposit_percent: business.deposit_percent ?? null,
       deposit_fixed_cents: business.deposit_fixed_cents ?? null,
       payment_client_message: business.payment_client_message ?? null,
       mp_checkout_enabled: Boolean(business.mp_checkout_enabled),
       mp_connected: Boolean(business.mp_connected),
-    });
-  }, [business, selectedBookingPriceCents]);
+      public_pix_key: business.public_pix_key ?? null,
+      public_pix_suggest_enabled: Boolean(business.public_pix_suggest_enabled),
+      public_pix_suggest_message: business.public_pix_suggest_message ?? null,
+    };
+  }, [business, bookingMeta?.payment]);
+
+  const pixPaymentHint = useMemo(() => {
+    if (!paymentConfig?.public_pix_suggest_enabled || !paymentConfig.public_pix_key?.trim()) return null;
+    const custom = paymentConfig.public_pix_suggest_message?.trim();
+    return {
+      pixKey: paymentConfig.public_pix_key.trim(),
+      message: custom || DEFAULT_PUBLIC_PIX_SUGGEST_MESSAGE,
+      serviceTotalLabel: formatCurrency(selectedBookingPriceCents / 100),
+    };
+  }, [paymentConfig, selectedBookingPriceCents]);
+
+  const onlinePaymentHint = useMemo(() => {
+    if (!paymentConfig?.mp_connected || !paymentConfig.mp_checkout_enabled) return null;
+    const policy = paymentConfig.payment_policy ?? "off";
+    if (policy === "off") return null;
+    return buildPublicPaymentHint(selectedBookingPriceCents, paymentConfig);
+  }, [paymentConfig, selectedBookingPriceCents]);
+
+  const publicPaymentSummary = useMemo(() => {
+    if (!paymentConfig) return null;
+    const parts: string[] = [];
+    if (
+      paymentConfig.mp_connected &&
+      paymentConfig.mp_checkout_enabled &&
+      paymentConfig.payment_policy &&
+      paymentConfig.payment_policy !== "off"
+    ) {
+      parts.push("Mercado Pago na confirmação");
+    }
+    if (paymentConfig.public_pix_suggest_enabled && paymentConfig.public_pix_key?.trim()) {
+      parts.push("Pix opcional");
+    }
+    return parts.length > 0 ? parts.join(" · ") : null;
+  }, [paymentConfig]);
 
   const accent = business?.primary_color?.trim() || "#13EC5B";
   const phoneDigits = (business?.phone ?? personalization?.whatsapp_number ?? "").replace(/\D/g, "") || "";
@@ -1077,6 +1154,17 @@ export function PublicPageInner({
                 <p className={cn("text-xs leading-relaxed lg:text-right", mutedCls)}>
                   {bookingBlocked ? "Agendamento pelo site indisponível no momento" : "Escolha serviço, profissional, data e horário"}
                 </p>
+                {publicPaymentSummary ? (
+                  <p
+                    className={cn(
+                      "text-[11px] leading-relaxed lg:text-right flex items-center gap-1.5 justify-center lg:justify-end",
+                      isDark ? "text-sky-300/90" : "text-sky-800"
+                    )}
+                  >
+                    <span className="material-symbols-outlined text-sm shrink-0">payments</span>
+                    {publicPaymentSummary}
+                  </p>
+                ) : null}
               </div>
             </div>
           </section>

@@ -30,14 +30,20 @@ export type PublicPageCatalogClient = {
 
 type CacheEntry = { data: PublicPageCatalogClient; fetchedAt: number };
 
+/** Incrementar quando o payload do catálogo mudar (ex.: campos de pagamento). */
+const CATALOG_CACHE_VERSION = 2;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 20_000;
 
 const cache = new Map<string, CacheEntry>();
 const inflight = new Map<string, Promise<PublicPageCatalogClient | null>>();
 
+function cacheKey(slug: string) {
+  return `v${CATALOG_CACHE_VERSION}:${slug.trim()}`;
+}
+
 export function getCachedPublicCatalog(slug: string): PublicPageCatalogClient | null {
-  const key = slug.trim();
+  const key = cacheKey(slug);
   if (!key) return null;
   const hit = cache.get(key);
   if (!hit) return null;
@@ -46,7 +52,7 @@ export function getCachedPublicCatalog(slug: string): PublicPageCatalogClient | 
 }
 
 export function setCachedPublicCatalog(slug: string, data: PublicPageCatalogClient) {
-  const key = slug.trim();
+  const key = cacheKey(slug);
   if (!key || !data.business) return;
   cache.set(key, { data, fetchedAt: Date.now() });
 }
@@ -60,8 +66,9 @@ export async function fetchPublicCatalog(
   slug: string,
   signal?: AbortSignal
 ): Promise<PublicPageCatalogClient | null> {
-  const key = slug.trim();
-  if (!key) return null;
+  const trimmed = slug.trim();
+  if (!trimmed) return null;
+  const key = cacheKey(trimmed);
 
   const fresh = getCachedPublicCatalog(key);
   if (fresh?.business) return fresh;

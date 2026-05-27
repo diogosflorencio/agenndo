@@ -7,6 +7,7 @@ import {
   type AvailabilityDbRow,
   type OverrideDbRow,
 } from "@/lib/public-booking";
+import { toPublicPaymentSettings } from "@/lib/public-payment-display";
 
 export const runtime = "nodejs";
 
@@ -28,13 +29,18 @@ export async function GET(req: Request) {
   const { data: biz, error: bizErr } = await admin
     .from("businesses")
     .select(
-      "id, plan, stripe_subscription_id, subscription_status, subscription_current_period_end, trial_ends_at, billing_issue_deadline, created_at"
+      "id, plan, stripe_subscription_id, subscription_status, subscription_current_period_end, trial_ends_at, billing_issue_deadline, created_at, payment_policy, deposit_mode, deposit_percent, deposit_fixed_cents, payment_client_message, mp_checkout_enabled, mp_user_id, mp_connected_at, mp_access_token_enc, public_pix_key, public_pix_suggest_enabled, public_pix_suggest_message"
     )
     .eq("slug", slug)
     .maybeSingle();
   if (bizErr || !biz?.id) return NextResponse.json({ error: "Negócio não encontrado" }, { status: 404 });
 
   const lock = getPublicBookingLockInfo(biz);
+  const payment = toPublicPaymentSettings(biz as Record<string, unknown>);
+  const pixKey =
+    typeof biz.public_pix_key === "string" && biz.public_pix_suggest_enabled
+      ? biz.public_pix_key.trim()
+      : "";
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
@@ -64,5 +70,10 @@ export async function GET(req: Request) {
     publicBookingLockMessage: lock.message,
     weeklyAvailability: buildMergedWeeklyAvailabilityRows((avRows ?? []) as AvailabilityDbRow[]),
     availabilityOverrides: normalizeAvailabilityOverrideRows((ovRows ?? []) as OverrideDbRow[]),
+    payment: {
+      ...payment,
+      public_pix_key: pixKey || null,
+      public_pix_suggest_enabled: Boolean(biz.public_pix_suggest_enabled && pixKey),
+    },
   });
 }

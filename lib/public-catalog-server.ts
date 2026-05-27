@@ -92,7 +92,7 @@ export async function fetchPublicPageCatalogBySlug(slug: string): Promise<Public
   const { data: biz } = await admin
     .from("businesses")
     .select(
-      "id, name, slug, city, phone, primary_color, segment, logo_url, public_pix_key, public_pix_suggest_enabled, public_pix_suggest_message, payment_policy, deposit_mode, deposit_percent, deposit_fixed_cents, payment_client_message, mp_checkout_enabled, mp_user_id, mp_access_token_enc"
+      "id, name, slug, city, phone, primary_color, segment, logo_url, public_pix_key, public_pix_suggest_enabled, public_pix_suggest_message, payment_policy, deposit_mode, deposit_percent, deposit_fixed_cents, payment_client_message, mp_checkout_enabled, mp_user_id, mp_connected_at, mp_access_token_enc"
     )
     .eq("slug", trimmed)
     .maybeSingle();
