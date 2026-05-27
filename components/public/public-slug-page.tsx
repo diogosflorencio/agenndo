@@ -1218,7 +1218,6 @@ export function PublicPageInner({
     </span>
   </button>
 )}
-        
 
         <PublicPwaInstallPrompt slug={slug} businessName={business.name} accentColor={accent} isDark={isDark} />
       </div>

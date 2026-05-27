@@ -83,7 +83,7 @@ export function GoogleOneTap({ nextPath, onError, disabled }: Props) {
           auto_select: false,
           cancel_on_tap_outside: true,
           nonce: hashedNonce,
-          use_fedcm_for_prompt: true,
+          use_fedcm_for_prompt: false,
           callback: async (resp) => {
             if (!resp?.credential) return;
             const rawNonce = nonceRef.current;

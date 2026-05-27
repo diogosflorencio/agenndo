@@ -5,11 +5,6 @@ import { cn } from "@/lib/utils";
 
 const DISMISS_PREFIX = "agenndo_pwa_install_dismiss_";
 
-type BeforeInstallPromptEvent = Event & {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-};
-
 function isMobileViewport(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(max-width: 767px)").matches;
@@ -29,6 +24,11 @@ function isStandaloneDisplay(): boolean {
   );
 }
 
+/**
+ * Convite para instalar atalho (PWA) na vitrine do cliente.
+ * Não usa `beforeinstallprompt.prompt()` — no Android isso pode abrir o pedido do Chrome
+ * “acessar outros apps e serviços neste dispositivo”. Instruções manuais são suficientes.
+ */
 export function PublicPwaInstallPrompt({
   slug,
   businessName,
@@ -42,7 +42,6 @@ export function PublicPwaInstallPrompt({
 }) {
   const [hydrated, setHydrated] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -59,23 +58,6 @@ export function PublicPwaInstallPrompt({
     return () => mq.removeEventListener("change", update);
   }, [slug]);
 
-  useEffect(() => {
-    if (!hydrated || !isMobile || isStandaloneDisplay()) return;
-    const onBip = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    };
-    window.addEventListener("beforeinstallprompt", onBip);
-    return () => window.removeEventListener("beforeinstallprompt", onBip);
-  }, [hydrated, isMobile]);
-
-  useEffect(() => {
-    if (!hydrated || !isMobile || isStandaloneDisplay()) return;
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/sw-public.js", { scope: "/" }).catch(() => {});
-    }
-  }, [hydrated, isMobile]);
-
   const dismiss = useCallback(() => {
     try {
       localStorage.setItem(`${DISMISS_PREFIX}${slug}`, "1");
@@ -83,25 +65,12 @@ export function PublicPwaInstallPrompt({
       /* */
     }
     setDismissed(true);
-    setDeferred(null);
   }, [slug]);
-
-  const runInstall = useCallback(async () => {
-    if (!deferred) return;
-    try {
-      await deferred.prompt();
-      await deferred.userChoice;
-    } catch {
-      /* */
-    }
-    setDeferred(null);
-    dismiss();
-  }, [deferred, dismiss]);
 
   if (!hydrated || !isMobile || isStandaloneDisplay() || dismissed) return null;
 
-  const showIOS = isIOS() && !deferred;
-  const showAndroid = Boolean(deferred);
+  const shortName =
+    businessName.length > 36 ? `${businessName.slice(0, 36)}…` : businessName;
 
   return (
     <>
@@ -132,26 +101,24 @@ export function PublicPwaInstallPrompt({
           <div className="min-w-0 flex-1 space-y-2">
             <p className="text-[13px] font-bold leading-tight">Acesso rápido no celular</p>
             <p className={cn("text-[11px] leading-snug", isDark ? "text-white/65" : "text-gray-600")}>
-              {showAndroid
-                ? `Instale o atalho de ${businessName.slice(0, 36)}${businessName.length > 36 ? "…" : ""} para abrir o agendamento em tela cheia com um toque.`
-                : showIOS
-                  ? "No iPhone/iPad: toque em Compartilhar (□↑) e em Adicionar à Tela de Início. Assim você volta ao agendamento como um app."
-                  : "Use o menu do navegador (⋮ ou Compartilhar) e escolha Instalar app ou Adicionar à tela inicial, se aparecer."}
+              {isIOS() ? (
+                <>
+                  No iPhone/iPad: toque em <strong>Compartilhar</strong> (□↑) e em{" "}
+                  <strong>Adicionar à Tela de Início</strong> para abrir o agendamento de {shortName} como um
+                  atalho.
+                </>
+              ) : (
+                <>
+                  No Chrome: menu <strong>⋮</strong> → <strong>Instalar app</strong> ou{" "}
+                  <strong>Adicionar à tela inicial</strong> para criar o atalho de {shortName}.
+                </>
+              )}
             </p>
             <p className={cn("text-[10px] leading-snug", isDark ? "text-white/45" : "text-gray-500")}>
-              Notificação de lembrete depende do negócio e do navegador; o atalho deixa esta página sempre à mão.
+              Se o navegador pedir permissão estranha (“outros apps”), pode tocar em Bloquear — o atalho funciona
+              pelo menu acima.
             </p>
             <div className="flex flex-wrap gap-2 pt-0.5">
-              {showAndroid && (
-                <button
-                  type="button"
-                  onClick={() => void runInstall()}
-                  className="px-3 py-2 rounded-xl text-xs font-bold text-black"
-                  style={{ backgroundColor: accentColor }}
-                >
-                  Instalar atalho
-                </button>
-              )}
               <button
                 type="button"
                 onClick={dismiss}
@@ -160,7 +127,7 @@ export function PublicPwaInstallPrompt({
                   isDark ? "bg-white/10 text-white" : "bg-gray-100 text-gray-800"
                 )}
               >
-                Agora não
+                Entendi
               </button>
             </div>
           </div>

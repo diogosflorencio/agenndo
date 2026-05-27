@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { corsHeadersForAllowedOrigin, isOriginAllowed } from "@/lib/cors";
+import { corsHeadersForAllowedOrigin, isOriginAllowed, isSameSiteAsRequest } from "@/lib/cors";
 
 const CORS_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
 const CORS_HEADERS = "Content-Type, Authorization, apikey, x-client-info, X-Requested-With";
@@ -9,6 +9,9 @@ const CORS_HEADERS = "Content-Type, Authorization, apikey, x-client-info, X-Requ
 function handleCors(request: NextRequest): NextResponse | null {
   const origin = request.headers.get("origin");
   if (!origin) return null;
+
+  // Dashboard → /api no mesmo domínio (ex. www vs env sem www): não é cross-origin.
+  if (isSameSiteAsRequest(request.url, origin)) return null;
 
   const allowed = isOriginAllowed(origin);
   const pathname = request.nextUrl.pathname;

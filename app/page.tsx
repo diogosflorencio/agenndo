@@ -4,9 +4,11 @@ import { HomeFaqJsonLd } from "@/components/home-faq-jsonld";
 import HomePage from "@/components/home-page";
 import { SITE_DESCRIPTION, SITE_TITLE_DEFAULT } from "@/lib/seo/site-metadata";
 import { getSiteUrl } from "@/lib/site-url";
+import { isMercadoPagoOAuthState } from "@/lib/mercadopago/oauth-state";
 
 type HomeSearchParams = {
   code?: string;
+  state?: string;
   error?: string;
   error_description?: string;
   next?: string;
@@ -70,6 +72,16 @@ export default async function Page({
   searchParams: Promise<HomeSearchParams>;
 }) {
   const sp = await searchParams;
+
+  if (sp.code && isMercadoPagoOAuthState(sp.state)) {
+    const q = new URLSearchParams();
+    q.set("code", sp.code);
+    if (sp.state) q.set("state", sp.state);
+    if (sp.error) q.set("error", sp.error);
+    if (sp.error_description) q.set("error_description", sp.error_description);
+    redirect(`/api/mercadopago/oauth/callback?${q.toString()}`);
+  }
+
   const forward = oauthCallbackForwardQuery(sp);
   if (forward) {
     redirect(`/auth/callback?${forward}`);

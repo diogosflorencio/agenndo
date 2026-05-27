@@ -1,6 +1,13 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
-const VERSION = "v1";
+const VERSION = "v2";
+
+type OAuthStatePayload = {
+  v: string;
+  userId: string;
+  returnTo: string;
+  codeVerifier: string;
+};
 
 function hmacKey(): string {
   const key = process.env.APP_ENCRYPTION_KEY?.trim();
@@ -20,34 +27,59 @@ export function signMercadoPagoOAuthState(payload: {
   returnTo: string;
   codeVerifier: string;
 }): string {
-  const returnTo = safeOAuthReturnPath(payload.returnTo);
-  const verifier = payload.codeVerifier.trim();
-  const body = `${VERSION}|${payload.userId}|${returnTo}|${verifier}`;
-  const sig = createHmac("sha256", hmacKey()).update(body).digest("base64url");
-  const data = Buffer.from(body, "utf8").toString("base64url");
+  const inner: OAuthStatePayload = {
+    v: VERSION,
+    userId: payload.userId,
+    returnTo: safeOAuthReturnPath(payload.returnTo),
+    codeVerifier: payload.codeVerifier.trim(),
+  };
+  const data = Buffer.from(JSON.stringify(inner), "utf8").toString("base64url");
+  const sig = createHmac("sha256", hmacKey()).update(data).digest("base64url");
   return `${data}.${sig}`;
 }
 
+/** Retorna true se `state` for do fluxo Mercado Pago (assinado com APP_ENCRYPTION_KEY). */
+export function isMercadoPagoOAuthState(state: string | null | undefined): boolean {
+  return verifyMercadoPagoOAuthState(state) !== null;
+}
+
 export function verifyMercadoPagoOAuthState(
-  state: string
+  state: string | null | undefined
 ): { userId: string; returnTo: string; codeVerifier: string } | null {
-  const [data, sig] = state.split(".");
+  if (!state?.trim()) return null;
+  const [data, sig] = state.trim().split(".");
   if (!data || !sig) return null;
-  const body = Buffer.from(data, "base64url").toString("utf8");
-  const expected = createHmac("sha256", hmacKey()).update(body).digest("base64url");
+
+  const expected = createHmac("sha256", hmacKey()).update(data).digest("base64url");
   try {
     if (!timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
   } catch {
     return null;
   }
-  const parts = body.split("|");
-  if (parts[0] !== VERSION || parts.length < 3) return null;
-  if (parts.length >= 4) {
+
+  try {
+    const parsed = JSON.parse(Buffer.from(data, "base64url").toString("utf8")) as OAuthStatePayload;
+    if (parsed.v !== VERSION || typeof parsed.userId !== "string") return null;
     return {
-      userId: parts[1]!,
-      returnTo: safeOAuthReturnPath(parts[2]),
-      codeVerifier: parts[3] ?? "",
+      userId: parsed.userId,
+      returnTo: safeOAuthReturnPath(parsed.returnTo),
+      codeVerifier: typeof parsed.codeVerifier === "string" ? parsed.codeVerifier : "",
     };
+  } catch {
+    return parseLegacyV1PipeState(Buffer.from(data, "base64url").toString("utf8"));
   }
-  return { userId: parts[1]!, returnTo: safeOAuthReturnPath(parts.slice(2).join("|")), codeVerifier: "" };
+}
+
+/** v1 usava `v1|userId|path|verifier` — paths com `/` quebravam no split. */
+function parseLegacyV1PipeState(body: string): { userId: string; returnTo: string; codeVerifier: string } | null {
+  const parts = body.split("|");
+  if (parts[0] !== "v1" || parts.length < 3) return null;
+  const userId = parts[1]!;
+  if (parts.length === 3) {
+    return { userId, returnTo: safeOAuthReturnPath(parts[2]), codeVerifier: "" };
+  }
+  const codeVerifier = parts[parts.length - 1] ?? "";
+  const pathSegments = parts.slice(2, -1);
+  const returnTo = safeOAuthReturnPath(pathSegments.join("/").replace(/^\/?/, "/"));
+  return { userId, returnTo, codeVerifier };
 }

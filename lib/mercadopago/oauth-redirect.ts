@@ -23,7 +23,7 @@ export function mercadoPagoOAuthErrorPath(code: string, returnTo?: string): stri
   return `${u.pathname}${u.search}`;
 }
 
-export function absoluteMercadoPagoRedirect(path: string): string {
-  const origin = getMercadoPagoSiteOrigin();
+export function absoluteMercadoPagoRedirect(path: string, requestOrigin?: string): string {
+  const origin = requestOrigin?.replace(/\/$/, "") || getMercadoPagoSiteOrigin();
   return `${origin}${path.startsWith("/") ? path : `/${path}`}`;
 }

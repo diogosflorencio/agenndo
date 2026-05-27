@@ -15,23 +15,21 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  const requestOrigin = url.origin;
   const code = url.searchParams.get("code");
   const stateRaw = url.searchParams.get("state");
   const oauthError = url.searchParams.get("error");
 
   const parsed = stateRaw ? verifyMercadoPagoOAuthState(stateRaw) : null;
   const returnTo = parsed?.returnTo ?? "/dashboard/pagamentos";
+  const redirect = (path: string) => NextResponse.redirect(absoluteMercadoPagoRedirect(path, requestOrigin));
 
   if (oauthError) {
-    return NextResponse.redirect(
-      absoluteMercadoPagoRedirect(mercadoPagoOAuthErrorPath(oauthError, returnTo))
-    );
+    return redirect(mercadoPagoOAuthErrorPath(oauthError, returnTo));
   }
 
   if (!code || !parsed?.userId) {
-    return NextResponse.redirect(
-      absoluteMercadoPagoRedirect(mercadoPagoOAuthErrorPath("invalid_state", returnTo))
-    );
+    return redirect(mercadoPagoOAuthErrorPath("invalid_state", returnTo));
   }
 
   try {
@@ -43,9 +41,7 @@ export async function GET(req: Request) {
     try {
       admin = createAdminClient();
     } catch {
-      return NextResponse.redirect(
-        absoluteMercadoPagoRedirect(mercadoPagoOAuthErrorPath("server_config", returnTo))
-      );
+      return redirect(mercadoPagoOAuthErrorPath("server_config", returnTo));
     }
 
     const { data: biz } = await admin
@@ -55,9 +51,7 @@ export async function GET(req: Request) {
       .maybeSingle();
 
     if (!biz?.id) {
-      return NextResponse.redirect(
-        absoluteMercadoPagoRedirect(mercadoPagoOAuthErrorPath("no_business", returnTo))
-      );
+      return redirect(mercadoPagoOAuthErrorPath("no_business", returnTo));
     }
 
     await saveBusinessMpTokens(admin, biz.id, {
@@ -67,7 +61,7 @@ export async function GET(req: Request) {
       expiresInSec: tokens.expires_in,
     });
 
-    return NextResponse.redirect(absoluteMercadoPagoRedirect(mercadoPagoOAuthReturnPath(returnTo)));
+    return redirect(mercadoPagoOAuthReturnPath(returnTo));
   } catch (e) {
     const code =
       e && typeof e === "object" && "code" in e ? String((e as { code: string }).code) : "oauth_failed";
@@ -75,6 +69,6 @@ export async function GET(req: Request) {
     const path = mercadoPagoOAuthErrorPath(code, returnTo);
     const u = new URL(path, "http://local");
     u.searchParams.set("mp_error_detail", msg.slice(0, 120));
-    return NextResponse.redirect(absoluteMercadoPagoRedirect(`${u.pathname}${u.search}`));
+    return redirect(`${u.pathname}${u.search}`);
   }
 }
