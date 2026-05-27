@@ -581,7 +581,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="bg-[#020403] border-t border-white/10 pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-10 mb-12">
             <div className="col-span-2">
               <div className="mb-4">
                 <span className="text-xl font-bold text-white">Agenndo</span>
@@ -604,8 +604,19 @@ export default function HomePage() {
                     Software de agendamento
                   </Link>
                 </li>
+                <li><Link href="/blog" className="hover:text-primary transition-colors">Blog</Link></li>
                 <li><Link href="/termos" className="hover:text-primary transition-colors">Termos</Link></li>
                 <li><Link href="/politicas" className="hover:text-primary transition-colors">Políticas</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-4 text-sm">Agenda online</h4>
+              <ul className="space-y-3 text-sm text-gray-400">
+                <li><Link href="/plataforma-de-agendamento-online" className="hover:text-primary transition-colors">Plataforma de agendamento</Link></li>
+                <li><Link href="/agenda-online" className="hover:text-primary transition-colors">Agenda online</Link></li>
+                <li><Link href="/agenda-online-para-salao" className="hover:text-primary transition-colors">Para salões</Link></li>
+                <li><Link href="/agenda-online-para-barbearia" className="hover:text-primary transition-colors">Para barbearias</Link></li>
+                <li><Link href="/agenda-online-para-clinicas" className="hover:text-primary transition-colors">Para clínicas</Link></li>
               </ul>
             </div>
             <div>

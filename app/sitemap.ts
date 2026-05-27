@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getSiteUrl } from "@/lib/site-url";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAllPosts } from "@/lib/blog/posts";
+import { LANDING_PAGE_SLUGS } from "@/lib/seo/landing-pages";
 
 /** SECURITY: sitemap usa service role no servidor — não expõe listagem via anon REST. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -13,6 +14,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "", priority: 1, changeFrequency: "weekly" as const },
     { path: "/sobre", priority: 0.85, changeFrequency: "monthly" as const },
     { path: "/agendamento-online", priority: 0.95, changeFrequency: "weekly" as const },
+    { path: "/blog", priority: 0.85, changeFrequency: "weekly" as const },
     { path: "/colaborador", priority: 0.65, changeFrequency: "monthly" as const },
     { path: "/termos", priority: 0.5, changeFrequency: "yearly" as const },
     { path: "/politicas", priority: 0.5, changeFrequency: "yearly" as const },
@@ -24,6 +26,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency,
     priority,
   }));
+
+  for (const slug of LANDING_PAGE_SLUGS) {
+    entries.push({
+      url: `${base}/${slug}`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.9,
+    });
+  }
 
   /* ── páginas dinâmicas dos negócios ── */
   try {
@@ -60,6 +71,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(post.updated_at),
       changeFrequency: "monthly",
       priority: 0.7,
+    });
+    entries.push({
+      url: `${base}/blog/${post.slug}`,
+      lastModified: new Date(post.updated_at),
+      changeFrequency: "monthly",
+      priority: 0.65,
     });
   }
 

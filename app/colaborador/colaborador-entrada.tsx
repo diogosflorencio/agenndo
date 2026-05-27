@@ -48,7 +48,7 @@ export function ColaboradorEntrada({ siteOrigin, linkedStaff, isBusinessOwner }:
             Você está logado como <strong className="text-white">dono do negócio</strong>. O painel do colaborador
             (comissões) é para profissionais da equipe. Use o{" "}
             <Link href="/dashboard" className="underline font-semibold hover:no-underline">
-              painel principal
+              painel principal para acessar seu negócio e como você também é funcionário, pode acessar as comissões no menu lateral
             </Link>
             .
           </div>

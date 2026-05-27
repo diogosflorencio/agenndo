@@ -101,6 +101,18 @@ export default function BlogLayout({
                 Agendamento Online
               </a>
               <a
+                href="https://agenndo.com.br/plataforma-de-agendamento-online"
+                className="hover:text-white transition-colors"
+              >
+                Plataforma
+              </a>
+              <a
+                href="https://agenndo.com.br/agenda-online"
+                className="hover:text-white transition-colors"
+              >
+                Agenda online
+              </a>
+              <a
                 href="https://agenndo.com.br/sobre"
                 className="hover:text-white transition-colors"
               >

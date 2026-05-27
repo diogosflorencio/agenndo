@@ -19,6 +19,7 @@ import {
 } from "@/lib/dashboard-navigation-guard";
 import { cn } from "@/lib/utils";
 import { DashboardNotificationBell } from "@/components/dashboard/dashboard-notification-bell";
+import type { DashboardMobileNavItem } from "@/lib/dashboard-nav";
 const MENU_AGENDA = [
   { href: "/dashboard/agendamentos", icon: "calendar_month", label: "Agendamentos" },
   { href: "/dashboard/disponibilidade", icon: "schedule", label: "Disponibilidade" },
@@ -40,22 +41,6 @@ const MENU_CONFIG = [
 const DIRECT_LINKS = [{ href: "/dashboard/conta", icon: "manage_accounts", label: "Conta" }];
 
 type GroupKey = "agenda" | "cadastros" | "dados" | "config";
-
-type MobileNavItem =
-  | { type: "link"; href: string; icon: string; label: string; exact?: boolean }
-  | { type: "group"; key: "agenda" | "cadastros" | "dados" | "config"; icon: string; label: string; items: { href: string; icon: string; label: string }[] };
-const MOBILE_NAV_ITEMS: MobileNavItem[] = [
-  { type: "link", href: "/dashboard", icon: "grid_view", label: "Início", exact: true },
-  { type: "group", key: "agenda", icon: "calendar_month", label: "Agenda", items: MENU_AGENDA },
-  { type: "group", key: "cadastros", icon: "folder", label: "Cadastros", items: MENU_CADASTROS },
-  { type: "group", key: "dados", icon: "bar_chart", label: "Dados", items: MENU_DADOS },
-  { type: "group", key: "config", icon: "tune", label: "Config", items: MENU_CONFIG },
-  { type: "link", href: "/dashboard/conta", icon: "manage_accounts", label: "Conta" },
-];
-
-const MOBILE_STAFF_NAV: MobileNavItem[] = [
-  { type: "link", href: "/dashboard/minhas-comissoes", icon: "savings", label: "Comissões", exact: false },
-];
 
 const MOBILE_GROUP_TITLE: Record<GroupKey, string> = {
   agenda: "Agenda",
@@ -90,7 +75,15 @@ function NavItem({
   );
 }
 
-function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
+function DashboardLayoutInner({
+  children,
+  mobileNavItems,
+  showOwnerComissoesLink,
+}: {
+  children: React.ReactNode;
+  mobileNavItems: DashboardMobileNavItem[];
+  showOwnerComissoesLink: boolean;
+}) {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
   const { showAlert } = useAppAlert();
@@ -230,9 +223,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               <p className="text-xs text-gray-500 mt-1 leading-snug" title={staffContexts.map((s) => s.businessName).join(", ")}>
                 {staffContexts.length} negócios · comissões unificadas
               </p>
-            ) : business?.name ? (
-              <p className="text-xs text-gray-500 mt-1 truncate" title={business.name}>
-                {business.name}
+            ) : staffContexts[0]?.businessName ? (
+              <p className="text-xs text-gray-500 mt-1 truncate" title={staffContexts[0].businessName}>
+                {staffContexts[0].businessName}
               </p>
             ) : null
           ) : business?.name ? (
@@ -294,6 +287,29 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               {renderSidebarGroup("dados", "Dados", "bar_chart", MENU_DADOS)}
               {renderSidebarGroup("config", "Configurações", "tune", MENU_CONFIG)}
               <div className="mt-3 pt-3 border-t border-inherit space-y-0.5">
+                {showOwnerComissoesLink ? (
+                  <GuardedDashboardLink
+                    href="/dashboard/minhas-comissoes"
+                    onClick={() => {
+                      setOpenSidebarGroup(null);
+                      setMobileExpandedGroup(null);
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      pathname.startsWith("/dashboard/minhas-comissoes")
+                        ? "bg-primary/10 text-primary"
+                        : isLight
+                          ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                          : "text-gray-400 hover:bg-white/5 hover:text-white"
+                    }`}
+                  >
+                    <span
+                      className={`material-symbols-outlined text-[20px] ${pathname.startsWith("/dashboard/minhas-comissoes") ? "filled" : ""}`}
+                    >
+                      savings
+                    </span>
+                    Minhas comissões
+                  </GuardedDashboardLink>
+                ) : null}
                 {DIRECT_LINKS.map((item) => (
                   <GuardedDashboardLink
                     key={item.href}
@@ -519,7 +535,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           mobileExpandedGroup ? "z-[55]" : "z-40"
         }`}
       >
-        {(isStaffDashboard ? MOBILE_STAFF_NAV : MOBILE_NAV_ITEMS).map((item) => {
+        {mobileNavItems.map((item) => {
           if (item.type === "link") {
             const active = isActive(item.href, item.exact);
             return (
@@ -568,6 +584,9 @@ type DashboardShellProps = {
   business: BusinessRow | null;
   children: React.ReactNode;
   isStaffDashboard?: boolean;
+  hasStaffMembership?: boolean;
+  showOwnerComissoesLink?: boolean;
+  mobileNavItems: DashboardMobileNavItem[];
   staffCollaboratorId?: string | null;
   staffContexts?: StaffLink[];
 };
@@ -578,6 +597,9 @@ export function DashboardShell({
   business,
   children,
   isStaffDashboard = false,
+  hasStaffMembership = false,
+  showOwnerComissoesLink = false,
+  mobileNavItems,
   staffCollaboratorId = null,
   staffContexts = [],
 }: DashboardShellProps) {
@@ -590,12 +612,18 @@ export function DashboardShell({
         loading={false}
         refetch={() => {}}
         isStaffDashboard={isStaffDashboard}
+        hasStaffMembership={hasStaffMembership}
         staffCollaboratorId={staffCollaboratorId}
         staffContexts={staffContexts}
       >
         <DashboardHotkeyProvider>
           <DashboardNavigationGuardProvider>
-            <DashboardLayoutInner>{children}</DashboardLayoutInner>
+            <DashboardLayoutInner
+              mobileNavItems={mobileNavItems}
+              showOwnerComissoesLink={showOwnerComissoesLink}
+            >
+              {children}
+            </DashboardLayoutInner>
           </DashboardNavigationGuardProvider>
         </DashboardHotkeyProvider>
       </DashboardProvider>

@@ -119,7 +119,7 @@ export default function EditarColaboradorPage() {
       `Seguem os dados para você acessar o Agenndo (YWP) e acompanhar suas comissões.\n` +
       `Negócio: ${empresa}.\n\n` +
       `${emailBlock}\n` +
-      `• Link para começar: ${portalUrl}\n` +
+      `• Link para começar: agenndo.com.br/colaborador` +
       `• Depois de abrir o link, use "Entrar com Google" com esse mesmo e-mail.\n\n` +
       `Qualquer dúvida, fale comigo.`
     );

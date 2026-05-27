@@ -81,6 +81,8 @@ export default function SetupPage() {
 
   const [impersonationActive, setImpersonationActive] = useState(false);
   const [impersonationOutBusy, setImpersonationOutBusy] = useState(false);
+  const [accountGate, setAccountGate] = useState<"loading" | "ready">("loading");
+  const [hasStaffMembership, setHasStaffMembership] = useState(false);
 
   const totalSteps = 5;
   const progress = ((step - 1) / (totalSteps - 1)) * 100;
@@ -122,19 +124,27 @@ export default function SetupPage() {
     }));
   }, [profileRec?.onboarding_inputs]);
 
-  /** Dono com negócio ou colaborador já vinculado: não mostrar onboarding (checagem no servidor). */
+  /** Negócio próprio já criado → dashboard. Vínculo de equipe não bloqueia o wizard de dono. */
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/me/onboarding-redirect", { credentials: "include" });
+        const res = await fetch("/api/me/onboarding-redirect", {
+          credentials: "include",
+          cache: "no-store",
+        });
         if (!res.ok || cancelled) return;
-        const j = (await res.json()) as { redirect?: string | null };
+        const j = (await res.json()) as {
+          redirect?: string | null;
+          hasStaffMembership?: boolean;
+        };
+        setHasStaffMembership(Boolean(j.hasStaffMembership));
+        setAccountGate("ready");
         if (typeof j.redirect === "string" && j.redirect.length > 0) {
           router.replace(j.redirect);
         }
       } catch {
-        /* manter /setup se a API falhar */
+        if (!cancelled) setAccountGate("ready");
       }
     })();
     return () => {
@@ -225,7 +235,11 @@ export default function SetupPage() {
     setImpersonationOutBusy(true);
     try {
       await clearImpersonationSession();
-      router.replace("/dashboard");
+      const res = await fetch("/api/me/onboarding-redirect", { credentials: "include", cache: "no-store" });
+      const j = (await res.json()) as { redirect?: string | null };
+      router.replace(
+        typeof j.redirect === "string" && j.redirect.length > 0 ? j.redirect : "/dashboard"
+      );
     } catch (e) {
       window.alert(e instanceof Error ? e.message : "Não foi possível encerrar o acesso compartilhado.");
     } finally {
@@ -348,6 +362,14 @@ export default function SetupPage() {
   const stepLabel =
     step === 1 ? "Negócio" : step === 2 ? "Equipe" : step === 3 ? "Volume" : step === 4 ? "Aparência" : "Começar";
 
+  if (accountGate === "loading") {
+    return (
+      <div className="min-h-screen bg-[#102216] text-white flex items-center justify-center">
+        <div className="size-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#102216] text-white flex flex-col lg:flex-row">
       {impersonationActive ? (
@@ -363,6 +385,17 @@ export default function SetupPage() {
           >
             {impersonationOutBusy ? "Saindo…" : "Voltar ao meu login"}
           </button>
+        </div>
+      ) : null}
+      {hasStaffMembership && !impersonationActive ? (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[190] w-[min(28rem,calc(100vw-1.5rem))] rounded-xl border border-primary/35 bg-[#0f1c15]/95 px-4 py-3 shadow-lg backdrop-blur-sm">
+          <p className="text-xs text-gray-300 leading-relaxed">
+            Você também está na equipe de um estabelecimento. Pode{" "}
+            <Link href="/dashboard/minhas-comissoes" className="text-primary font-semibold hover:underline">
+              ver suas comissões
+            </Link>{" "}
+            ou cadastrar seu próprio negócio abaixo.
+          </p>
         </div>
       ) : null}
       {/* Painel visual: desktop lateral esquerda; mobile oculto */}

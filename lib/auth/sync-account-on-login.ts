@@ -15,16 +15,10 @@ export async function syncAccountOnLogin(
   }
 ): Promise<void> {
   const channel: SignupChannel = signupChannelFromLoginContext(options.loginContext);
-  // SECURITY: platform_admin só via platform_operators (SQL manual), nunca pelo OAuth do app
-  const kind =
-    channel === "client" ? "client" : channel === "staff" ? "business_staff" : "business_owner";
-
-  const role = "provider";
 
   await supabase.from("user_accounts").upsert(
     {
       user_id: userId,
-      primary_kind: kind,
       signup_channel: channel,
       last_login_channel: channel,
       updated_at: new Date().toISOString(),
@@ -38,11 +32,11 @@ export async function syncAccountOnLogin(
       email: options.email ?? undefined,
       full_name: options.fullName ?? undefined,
       avatar_url: options.avatarUrl ?? undefined,
-      role,
-      account_kind: kind,
+      role: "provider",
     },
     { onConflict: "id" }
   );
 
+  // Dono + funcionário + cliente: memberships e negócio próprio definem account_kind.
   await supabase.rpc("recompute_user_primary_kind", { p_user_id: userId });
 }

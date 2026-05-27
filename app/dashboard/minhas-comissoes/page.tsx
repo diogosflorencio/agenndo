@@ -37,7 +37,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function MinhasComissoesPage() {
   const router = useRouter();
-  const { business, user, isStaffDashboard, staffContexts } = useDashboard();
+  const { business, user, hasStaffMembership, staffContexts } = useDashboard();
   const [lines, setLines] = useState<LineRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [noCollaboratorLink, setNoCollaboratorLink] = useState(false);
@@ -51,10 +51,10 @@ export default function MinhasComissoesPage() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
   useEffect(() => {
-    if (!isStaffDashboard) {
+    if (!hasStaffMembership) {
       router.replace("/dashboard/financeiro");
     }
-  }, [isStaffDashboard, router]);
+  }, [hasStaffMembership, router]);
 
   const businessNameById = useMemo(() => {
     const m = new Map<string, string>();
@@ -64,8 +64,13 @@ export default function MinhasComissoesPage() {
     return m;
   }, [staffContexts]);
 
+  const subtitleBusinessName = useMemo(() => {
+    if (staffContexts.length > 1) return null;
+    return staffContexts[0]?.businessName ?? business?.name ?? null;
+  }, [staffContexts, business?.name]);
+
   const load = useCallback(async () => {
-    if (!isStaffDashboard || !business?.id || !user?.realUserId) {
+    if (!hasStaffMembership || !user?.realUserId) {
       setLoading(false);
       return;
     }
@@ -115,16 +120,7 @@ export default function MinhasComissoesPage() {
     }
     setLines((data ?? []) as unknown as LineRow[]);
     setLoading(false);
-  }, [
-    business?.id,
-    user?.realUserId,
-    period,
-    from,
-    to,
-    filterStatus,
-    isStaffDashboard,
-    staffContexts,
-  ]);
+  }, [user?.realUserId, period, from, to, filterStatus, hasStaffMembership, staffContexts]);
 
   useEffect(() => {
     void load();
@@ -158,15 +154,7 @@ export default function MinhasComissoesPage() {
     return entries;
   }, [lines, businessNameById]);
 
-  if (!business) {
-    return (
-      <div className="flex justify-center py-20">
-        <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!isStaffDashboard) {
+  if (!hasStaffMembership) {
     return (
       <div className="flex justify-center py-24">
         <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -181,7 +169,9 @@ export default function MinhasComissoesPage() {
         <p className="text-gray-600 text-sm mt-1">
           {staffContexts.length > 1
             ? `Painel unificado: ${staffContexts.length} negócios em que você está na equipe.`
-            : `Valores registrados em ${business.name}.`}
+            : subtitleBusinessName
+              ? `Valores registrados em ${subtitleBusinessName}.`
+              : "Comissões dos negócios em que você está na equipe."}
         </p>
       </div>
 

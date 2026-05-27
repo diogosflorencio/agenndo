@@ -67,8 +67,10 @@ type DashboardContextValue = {
   business: BusinessRow | null;
   loading: boolean;
   refetch: () => void;
-  /** Colaborador com conta vinculada sem negócio próprio - navegação restrita. */
+  /** Sem negócio próprio, só vínculo de equipe — navegação restrita a comissões/conta. */
   isStaffDashboard: boolean;
+  /** Tem vínculo em collaborators (pode coexistir com negócio próprio). */
+  hasStaffMembership: boolean;
   /** Primeiro vínculo (retrocompat); preferir `staffContexts`. */
   staffCollaboratorId: string | null;
   /** Todos os negócios em que este login está na equipe (comissões unificadas). */
@@ -90,6 +92,7 @@ export function DashboardProvider({
   loading,
   refetch,
   isStaffDashboard,
+  hasStaffMembership,
   staffCollaboratorId,
   staffContexts,
   children,
@@ -103,6 +106,7 @@ export function DashboardProvider({
         loading,
         refetch,
         isStaffDashboard,
+        hasStaffMembership,
         staffCollaboratorId,
         staffContexts,
       }}

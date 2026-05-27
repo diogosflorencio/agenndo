@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getEffectiveUserId } from "@/lib/supabase/effective-user";
+import {
+  fetchStaffCollaboratorRows,
+  isStaffProfileComplete,
+} from "@/lib/auth/staff-dashboard-access";
 
 /** Destino após login de prestador (landing /login). */
 export async function resolveProviderLoginDestination(
@@ -14,24 +18,35 @@ export async function resolveProviderLoginDestination(
   } = await supabase.auth.getUser();
   if (!user) return fallback;
 
-  const profileId = (await getEffectiveUserId(supabase)) ?? user.id;
+  const effectiveUserId = (await getEffectiveUserId(supabase)) ?? user.id;
+  if (effectiveUserId !== user.id) {
+    return fallback;
+  }
 
   const { data: ownedBiz } = await supabase
     .from("businesses")
     .select("id")
-    .eq("profile_id", profileId)
+    .eq("profile_id", effectiveUserId)
     .limit(1)
     .maybeSingle();
 
   if (ownedBiz?.id) return "/dashboard";
 
-  const { data: staffRows } = await supabase
-    .from("collaborators")
-    .select("id")
-    .eq("auth_user_id", user.id)
-    .limit(1);
-
-  if ((staffRows?.length ?? 0) > 0) return "/dashboard/minhas-comissoes";
+  const staffRows = await fetchStaffCollaboratorRows(supabase, user.id);
+  if (staffRows.length > 0) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (!isStaffProfileComplete(profile)) {
+      return "/setup";
+    }
+    if (fallback.startsWith("/dashboard")) {
+      return fallback;
+    }
+    return "/dashboard/minhas-comissoes";
+  }
 
   return "/setup";
 }
