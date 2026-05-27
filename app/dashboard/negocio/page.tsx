@@ -9,6 +9,7 @@ import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 import { UnsavedChangesIndicator } from "@/components/dashboard-unsaved-indicator";
 import { HotkeyHint, useRegisterDashboardHotkeys } from "@/lib/dashboard-hotkeys";
 import { useRegisterDashboardUnsavedNavigation } from "@/lib/dashboard-navigation-guard";
+import { DEFAULT_PUBLIC_PIX_SUGGEST_MESSAGE } from "@/lib/public-pix";
 
 export default function NegocioPage() {
   const { theme } = useTheme();
@@ -22,6 +23,9 @@ export default function NegocioPage() {
     city: "",
     slug: "",
     segment: "",
+    publicPixKey: "",
+    publicPixSuggestEnabled: false,
+    publicPixSuggestMessage: "",
   });
 
   useEffect(() => {
@@ -32,6 +36,9 @@ export default function NegocioPage() {
         city: business.city ?? "",
         slug: business.slug ?? "",
         segment: business.segment ?? "",
+        publicPixKey: business.public_pix_key?.trim() ?? "",
+        publicPixSuggestEnabled: Boolean(business.public_pix_suggest_enabled),
+        publicPixSuggestMessage: business.public_pix_suggest_message?.trim() ?? "",
       };
       const j = JSON.stringify(next);
       setForm(next);
@@ -62,19 +69,21 @@ export default function NegocioPage() {
 
       <div className="space-y-4">
         <div className={cn(surfaces.panel, "p-5 space-y-4")}>
-          {[
-            { label: "Nome do negócio", key: "businessName", type: "text" },
-            { label: "Telefone", key: "phone", type: "tel" },
-            { label: "Cidade", key: "city", type: "text" },
-            { label: "Segmento", key: "segment", type: "text" },
-          ].map((field) => (
+          {(
+            [
+              { label: "Nome do negócio", key: "businessName", type: "text" },
+              { label: "Telefone", key: "phone", type: "tel" },
+              { label: "Cidade", key: "city", type: "text" },
+              { label: "Segmento", key: "segment", type: "text" },
+            ] as const
+          ).map((field) => (
             <div key={field.key}>
               <label className={cn("text-sm font-medium block mb-1.5", surfaces.label)}>{field.label}</label>
               <input
                 type={field.type}
                 inputMode={field.key === "phone" ? "tel" : undefined}
                 autoComplete={field.key === "phone" ? "tel" : undefined}
-                value={form[field.key as keyof typeof form]}
+                value={form[field.key] as string}
                 onChange={(e) =>
                   setForm({
                     ...form,
@@ -107,6 +116,81 @@ export default function NegocioPage() {
           </div>
         </div>
 
+        <div className={cn(surfaces.panel, "p-5 space-y-4")}>
+          <div>
+            <h2 className={cn("text-base font-bold", surfaces.title)}>Pix na página pública (opcional)</h2>
+            <p className={cn("text-xs mt-1 leading-relaxed", surfaces.subtitle)}>
+              Na confirmação do agendamento, o cliente pode ver sua chave Pix e uma mensagem sua sugerindo pagamento
+              antecipado (ex.: enviar comprovante no WhatsApp). Isto não verifica se o pagamento foi feito — só orienta.
+            </p>
+          </div>
+          <div>
+            <label className={cn("text-sm font-medium block mb-1.5", surfaces.label)}>Chave Pix</label>
+            <input
+              type="text"
+              value={form.publicPixKey}
+              onChange={(e) => {
+                const v = e.target.value;
+                setForm((prev) => ({
+                  ...prev,
+                  publicPixKey: v,
+                  publicPixSuggestEnabled: v.trim() ? prev.publicPixSuggestEnabled : false,
+                }));
+              }}
+              placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
+              autoComplete="off"
+              className={cn(
+                "w-full h-11 rounded-xl px-4 outline-none transition-colors text-sm focus:border-primary",
+                surfaces.input
+              )}
+            />
+          </div>
+          <label className={cn("flex items-start gap-3 cursor-pointer", surfaces.subtitle)}>
+            <input
+              type="checkbox"
+              checked={form.publicPixSuggestEnabled}
+              disabled={!form.publicPixKey.trim()}
+              onChange={(e) => setForm({ ...form, publicPixSuggestEnabled: e.target.checked })}
+              className="mt-1 rounded border-gray-500"
+            />
+            <span>
+              <span className={cn("font-semibold block text-sm", surfaces.title)}>
+                Mostrar orientação de pagamento Pix ao cliente
+              </span>
+              <span className="text-xs">
+                Só ativa se houver chave Pix acima. O cliente vê a chave na etapa final do agendamento.
+              </span>
+            </span>
+          </label>
+          <div>
+            <label className={cn("text-sm font-medium block mb-1.5", surfaces.label)}>Mensagem ao cliente</label>
+            <textarea
+              value={form.publicPixSuggestMessage}
+              onChange={(e) => setForm({ ...form, publicPixSuggestMessage: e.target.value })}
+              rows={3}
+              placeholder={DEFAULT_PUBLIC_PIX_SUGGEST_MESSAGE}
+              className={cn(
+                "w-full rounded-xl px-4 py-3 outline-none transition-colors text-sm resize-none min-h-[5rem] focus:border-primary",
+                surfaces.input
+              )}
+            />
+            <p className={cn("text-xs mt-1", surfaces.muted)}>
+              Se deixar em branco, usamos um texto padrão. Você pode recomendar comprovante no WhatsApp, antecipação,
+              etc.
+            </p>
+          </div>
+          <div
+            className={cn(
+              "rounded-xl border px-3 py-2.5 text-xs leading-relaxed",
+              isDark ? "border-white/10 bg-white/[0.03] text-gray-400" : "border-gray-200 bg-gray-50 text-gray-600"
+            )}
+          >
+            <strong className={isDark ? "text-gray-300" : "text-gray-800"}>Em desenvolvimento:</strong> exigir
+            pagamento antes de confirmar o agendamento só será possível com pagamento online verificado (ex.: Mercado
+            Pago + webhook). Por ora não oferecemos essa opção.
+          </div>
+        </div>
+
         <SaveNegocioButton
           ref={saveBtnRef}
           businessId={business?.id}
@@ -125,7 +209,16 @@ const SaveNegocioButton = forwardRef<
   HTMLButtonElement,
   {
     businessId: string | undefined;
-    form: { businessName: string; phone: string; city: string; slug: string; segment: string };
+    form: {
+      businessName: string;
+      phone: string;
+      city: string;
+      slug: string;
+      segment: string;
+      publicPixKey: string;
+      publicPixSuggestEnabled: boolean;
+      publicPixSuggestMessage: string;
+    };
     onSaved?: () => void;
     isDirty: boolean;
   }
@@ -136,6 +229,8 @@ const SaveNegocioButton = forwardRef<
     if (!businessId) return false;
     setSaving(true);
     const supabase = createClient();
+    const keyTrim = form.publicPixKey.trim();
+    const suggestOn = Boolean(form.publicPixSuggestEnabled && keyTrim.length > 0);
     const { error } = await supabase
       .from("businesses")
       .update({
@@ -144,6 +239,11 @@ const SaveNegocioButton = forwardRef<
         city: form.city || undefined,
         slug: form.slug || undefined,
         segment: form.segment || undefined,
+        public_pix_key: keyTrim || null,
+        public_pix_suggest_enabled: suggestOn,
+        public_pix_suggest_message: suggestOn
+          ? form.publicPixSuggestMessage.trim() || null
+          : null,
       })
       .eq("id", businessId);
     setSaving(false);

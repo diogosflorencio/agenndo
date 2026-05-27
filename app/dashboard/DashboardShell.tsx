@@ -179,22 +179,18 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     <div className={`min-h-screen flex flex-col lg:flex-row ${bgMain}`} data-theme={theme}>
       {user?.isImpersonating && (
         <div
-          className={`fixed top-0 left-0 right-0 z-[100] flex flex-wrap items-center justify-center gap-3 px-4 py-2.5 text-sm border-b ${
+          className={`fixed top-0 left-0 right-0 z-[100] flex h-10 items-center justify-between gap-2 border-b px-3 text-[11px] sm:text-xs ${
             isLight
-              ? "bg-amber-100 border-amber-200 text-amber-950"
-              : "bg-amber-950/95 border-amber-700/50 text-amber-50"
+              ? "border-amber-200/80 bg-amber-100/95 text-amber-950"
+              : "border-amber-800/60 bg-amber-950/95 text-amber-50"
           }`}
         >
-          <p className="text-center leading-snug max-w-[min(100%,52rem)]">
-            <strong>Acesso compartilhado ao dashboard:</strong> você está no painel de{" "}
-            <strong>{business?.name ?? "-"}</strong>
+          <p className="min-w-0 flex-1 truncate leading-tight">
+            <span className="font-semibold">Acesso compartilhado</span>
+            <span className="opacity-80"> · {business?.name ?? "—"}</span>
             {profile?.email ? (
-              <>
-                {" "}
-                (<span className="tabular-nums">{profile.email}</span>)
-              </>
+              <span className="hidden opacity-75 sm:inline"> · {profile.email}</span>
             ) : null}
-            .
           </p>
           <button
             type="button"
@@ -209,19 +205,19 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                   setImpersonationExitLoading(false);
                 });
             }}
-            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors disabled:opacity-60 ${
+            className={`shrink-0 rounded-md px-2 py-1 text-[11px] font-bold transition-colors disabled:opacity-60 sm:px-2.5 ${
               isLight
-                ? "bg-white border-amber-300 text-amber-950 hover:bg-amber-50"
-                : "bg-amber-800 border-amber-600 text-white hover:bg-amber-700"
+                ? "border border-amber-300/80 bg-white text-amber-950 hover:bg-amber-50"
+                : "border border-amber-600/80 bg-amber-800 text-white hover:bg-amber-700"
             }`}
           >
-            {impersonationExitLoading ? "Saindo…" : "Voltar à minha conta"}
+            {impersonationExitLoading ? "…" : "Voltar"}
           </button>
         </div>
       )}
       <aside
         className={`hidden lg:flex lg:flex-col lg:w-64 lg:shrink-0 lg:fixed lg:left-0 lg:z-40 lg:border-r ${sidebarBg} ${
-          user?.isImpersonating ? "lg:top-14 lg:h-[calc(100vh-3.5rem)]" : "lg:top-0 lg:h-screen"
+          user?.isImpersonating ? "lg:top-10 lg:h-[calc(100vh-1.5rem)]" : "lg:top-0 lg:h-screen"
         }`}
       >
         <div className="p-4 border-b border-inherit flex items-start justify-between gap-3">
@@ -341,7 +337,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div
-        className={`flex flex-col flex-1 min-w-0 min-h-screen lg:pl-64 ${user?.isImpersonating ? "pt-14" : ""}`}
+        className={`flex flex-col flex-1 min-w-0 min-h-screen lg:pl-64 ${user?.isImpersonating ? "pt-10" : ""}`}
       >
         <header className={`lg:hidden sticky top-0 z-28 border-b shadow-sm ${headerBg}`}>
           <div className="px-4 sm:px-6">

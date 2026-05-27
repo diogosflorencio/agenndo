@@ -14,6 +14,7 @@ import {
 import { formatBrazilPhoneFromDigits, phoneDigitsOnly, slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import { getEffectiveUserId } from "@/lib/supabase/effective-user";
+import { clearImpersonationSession } from "@/lib/auth/impersonation-client";
 
 /** Mesmo número usado em `WhatsAppSupportWidget`; env opcional no deploy. */
 const SUPPORT_WHATSAPP =
@@ -78,6 +79,9 @@ export default function SetupPage() {
     logo: null as File | null,
   });
 
+  const [impersonationActive, setImpersonationActive] = useState(false);
+  const [impersonationOutBusy, setImpersonationOutBusy] = useState(false);
+
   const totalSteps = 5;
   const progress = ((step - 1) / (totalSteps - 1)) * 100;
 
@@ -118,7 +122,26 @@ export default function SetupPage() {
     }));
   }, [profileRec?.onboarding_inputs]);
 
-  /** Dono com negócio, cliente ou profissional já vinculado: não mostrar onboarding de criar negócio. */
+  /** Dono com negócio ou colaborador já vinculado: não mostrar onboarding (checagem no servidor). */
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/me/onboarding-redirect", { credentials: "include" });
+        if (!res.ok || cancelled) return;
+        const j = (await res.json()) as { redirect?: string | null };
+        if (typeof j.redirect === "string" && j.redirect.length > 0) {
+          router.replace(j.redirect);
+        }
+      } catch {
+        /* manter /setup se a API falhar */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -127,34 +150,14 @@ export default function SetupPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user || cancelled) return;
-
-      const profileId = (await getEffectiveUserId(supabase)) ?? user.id;
-
-      const { data: ownedBiz } = await supabase
-        .from("businesses")
-        .select("id")
-        .eq("profile_id", profileId)
-        .maybeSingle();
+      const eff = await getEffectiveUserId(supabase);
       if (cancelled) return;
-      if (ownedBiz?.id) {
-        router.replace("/dashboard");
-        return;
-      }
-
-      const { data: staffRows } = await supabase
-        .from("collaborators")
-        .select("id")
-        .eq("auth_user_id", profileId)
-        .limit(1);
-      if (cancelled) return;
-      if (staffRows && staffRows.length > 0) {
-        router.replace("/dashboard/minhas-comissoes");
-      }
+      setImpersonationActive(Boolean(eff && eff !== user.id));
     })();
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, []);
 
   useEffect(() => {
     const raw = data.slug.trim();
@@ -217,6 +220,18 @@ export default function SetupPage() {
     const next = readPricingLock();
     if (next) setLockSnapshot(next);
   }, [step, effectivePlan.tier, effectivePlan.monthlyPrice]);
+
+  const handleLeaveImpersonation = async () => {
+    setImpersonationOutBusy(true);
+    try {
+      await clearImpersonationSession();
+      router.replace("/dashboard");
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Não foi possível encerrar o acesso compartilhado.");
+    } finally {
+      setImpersonationOutBusy(false);
+    }
+  };
 
   const handleNext = () => {
     if (step < totalSteps) setStep(step + 1);
@@ -335,6 +350,21 @@ export default function SetupPage() {
 
   return (
     <div className="min-h-screen bg-[#102216] text-white flex flex-col lg:flex-row">
+      {impersonationActive ? (
+        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[200] w-[min(18rem,calc(100vw-1.5rem))] rounded-xl border border-amber-600/45 bg-amber-950/95 px-3 py-2 shadow-lg backdrop-blur-sm">
+          <p className="text-[11px] leading-snug text-amber-100/90">
+            Você está no cadastro de <span className="font-semibold text-amber-50">outra conta</span> (suporte).
+          </p>
+          <button
+            type="button"
+            disabled={impersonationOutBusy}
+            onClick={() => void handleLeaveImpersonation()}
+            className="mt-2 w-full rounded-lg bg-amber-200/95 py-1.5 text-[11px] font-bold text-amber-950 hover:bg-amber-100 disabled:opacity-60"
+          >
+            {impersonationOutBusy ? "Saindo…" : "Voltar ao meu login"}
+          </button>
+        </div>
+      ) : null}
       {/* Painel visual: desktop lateral esquerda; mobile oculto */}
       <aside className="hidden lg:flex lg:w-[42%] xl:w-[45%] lg:min-h-screen flex-col relative overflow-hidden bg-gradient-to-br from-[#0d2818] via-[#102216] to-[#0a1f12]">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_20%,rgba(19,236,91,0.12),transparent)]" />

@@ -48,6 +48,9 @@ CREATE TABLE IF NOT EXISTS public.businesses (
   city TEXT,
   primary_color TEXT DEFAULT '#13EC5B',
   logo_url TEXT,
+  public_pix_key TEXT,
+  public_pix_suggest_enabled BOOLEAN NOT NULL DEFAULT false,
+  public_pix_suggest_message TEXT,
   plan TEXT NOT NULL DEFAULT 'free', -- 'free' | 'plano_1' | 'plano_2' | 'plano_3' | 'paid_20' | …
   stripe_customer_id TEXT,
   stripe_subscription_id TEXT,

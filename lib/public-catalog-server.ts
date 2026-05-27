@@ -10,6 +10,10 @@ export type PublicBusinessRow = {
   primary_color: string | null;
   segment: string | null;
   logo_url: string | null;
+  /** Só preenchida na API pública quando `public_pix_suggest_enabled` e houver chave. */
+  public_pix_key?: string | null;
+  public_pix_suggest_enabled?: boolean;
+  public_pix_suggest_message?: string | null;
 };
 
 export type PublicServiceRow = {
@@ -76,11 +80,27 @@ export async function fetchPublicPageCatalogBySlug(slug: string): Promise<Public
 
   const { data: biz } = await admin
     .from("businesses")
-    .select("id, name, slug, city, phone, primary_color, segment, logo_url")
+    .select(
+      "id, name, slug, city, phone, primary_color, segment, logo_url, public_pix_key, public_pix_suggest_enabled, public_pix_suggest_message"
+    )
     .eq("slug", trimmed)
     .maybeSingle();
 
   if (!biz?.id) return empty;
+
+  const suggestOn = Boolean(biz.public_pix_suggest_enabled);
+  const rawKey = typeof biz.public_pix_key === "string" ? biz.public_pix_key.trim() : "";
+  const business: PublicBusinessRow = {
+    ...(biz as PublicBusinessRow),
+    public_pix_suggest_enabled: suggestOn,
+    public_pix_key: suggestOn && rawKey ? rawKey : null,
+    public_pix_suggest_message:
+      suggestOn && rawKey
+        ? typeof biz.public_pix_suggest_message === "string" && biz.public_pix_suggest_message.trim()
+          ? biz.public_pix_suggest_message.trim()
+          : null
+        : null,
+  };
 
   const bid = biz.id;
   const [sRes, cRes, pRes] = await Promise.all([
@@ -107,7 +127,7 @@ export async function fetchPublicPageCatalogBySlug(slug: string): Promise<Public
   ]);
 
   return {
-    business: biz as PublicBusinessRow,
+    business,
     services: (sRes.data as PublicServiceRow[]) ?? [],
     collaborators: (cRes.data as PublicCollabRow[]) ?? [],
     personalization: (pRes.data as PublicPersonalizationRow) ?? null,

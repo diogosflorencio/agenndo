@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { cn, rgbaFromHex } from "@/lib/utils";
+import { DEFAULT_PUBLIC_PIX_SUGGEST_MESSAGE, PUBLIC_PIX_SERVICE_PAYMENT_NOTE } from "@/lib/public-pix";
 import { publicMaterialIconClass, type getPublicBookUi } from "@/lib/public-book-ui";
 import { PublicBookingSummaryAside } from "@/components/public/booking-summary-aside";
 import { PublicBookingSplitLayout } from "@/components/public/booking-split-layout";
@@ -37,6 +38,12 @@ type Props = {
   bookingSubmitting: boolean;
   minAdvanceHours: number | null | undefined;
   onConfirm: () => void;
+  /** Quando definido, mostra bloco Pix (chave + mensagem) na confirmação. */
+  pixPayment?: {
+    pixKey: string;
+    message: string;
+    serviceTotalLabel: string;
+  } | null;
 };
 
 export function PublicBookingConfirmStep({
@@ -60,7 +67,9 @@ export function PublicBookingConfirmStep({
   bookingSubmitting,
   minAdvanceHours,
   onConfirm,
+  pixPayment,
 }: Props) {
+  const displayPixMessage = pixPayment?.message?.trim() || DEFAULT_PUBLIC_PIX_SUGGEST_MESSAGE;
   return (
     <PublicBookingSplitLayout
       bookUi={bookUi}
@@ -145,6 +154,42 @@ export function PublicBookingConfirmStep({
               )}
             />
           </div>
+
+          {pixPayment ? (
+            <div
+              className={cn(
+                "rounded-xl border p-4 space-y-3",
+                isDark ? "border-emerald-500/25 bg-emerald-950/25" : "border-emerald-200 bg-emerald-50/90"
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <span className={cn(publicMaterialIconClass("md", false), "text-[var(--public-accent)] shrink-0")}>
+                  payments
+                </span>
+                <div className="min-w-0 space-y-1">
+                  <p className={cn("text-sm font-bold", bookUi.title)}>Pagamento Pix (opcional)</p>
+                  <p className={cn("text-xs leading-relaxed", bookUi.muted)}>{displayPixMessage}</p>
+                  <p className={cn("text-xs font-semibold tabular-nums", bookUi.title)}>
+                    Valor do serviço neste agendamento: {pixPayment.serviceTotalLabel}
+                  </p>
+                </div>
+              </div>
+              <div className={cn("rounded-lg border px-3 py-2 flex items-center justify-between gap-2", bookUi.input)}>
+                <span className={cn("text-xs font-mono break-all", bookUi.title)}>{pixPayment.pixKey}</span>
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard.writeText(pixPayment.pixKey)}
+                  className={cn(
+                    "shrink-0 text-xs font-bold px-2.5 py-1.5 rounded-lg border transition-colors",
+                    isDark ? "border-white/15 hover:bg-white/10" : "border-gray-200 hover:bg-gray-100"
+                  )}
+                >
+                  Copiar chave
+                </button>
+              </div>
+              <p className={cn("text-[11px] leading-relaxed", bookUi.muted)}>{PUBLIC_PIX_SERVICE_PAYMENT_NOTE}</p>
+            </div>
+          ) : null}
 
           {!authUserId && (
             <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">

@@ -2,14 +2,15 @@
 
 import { Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { PublicPageInner } from "../../page";
+import { PublicPageInner } from "@/components/public/public-slug-page";
+import { parsePublicBookingQuery } from "@/lib/public-booking-query";
 
 function AgendarStepContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const slug = typeof params?.slug === "string" ? params.slug : "";
   const step = typeof params?.step === "string" ? params.step : "servico";
-  const prefillServiceId = searchParams.get("service");
+  const bookingQuery = parsePublicBookingQuery(searchParams);
 
   if (!slug) {
     return (
@@ -23,7 +24,10 @@ function AgendarStepContent() {
     <PublicPageInner
       entry="booking"
       bookingStepSegment={step}
-      prefillServiceId={prefillServiceId}
+      prefillServiceId={bookingQuery.serviceId}
+      prefillCollaboratorId={bookingQuery.collaboratorId}
+      prefillDate={bookingQuery.date}
+      prefillTime={bookingQuery.time}
     />
   );
 }

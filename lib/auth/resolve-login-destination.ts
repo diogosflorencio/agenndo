@@ -28,7 +28,7 @@ export async function resolveProviderLoginDestination(
   const { data: staffRows } = await supabase
     .from("collaborators")
     .select("id")
-    .eq("auth_user_id", profileId)
+    .eq("auth_user_id", user.id)
     .limit(1);
 
   if ((staffRows?.length ?? 0) > 0) return "/dashboard/minhas-comissoes";

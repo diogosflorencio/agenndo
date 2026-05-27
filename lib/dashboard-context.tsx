@@ -23,6 +23,10 @@ export type BusinessRow = {
   city: string | null;
   primary_color: string | null;
   logo_url: string | null;
+  /** Chave Pix (painel). Na API pública só aparece quando sugestão ativa. */
+  public_pix_key?: string | null;
+  public_pix_suggest_enabled?: boolean | null;
+  public_pix_suggest_message?: string | null;
   plan: string;
   stripe_customer_id?: string | null;
   stripe_subscription_id?: string | null;
