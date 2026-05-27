@@ -16,6 +16,7 @@ import {
 import { voidCommissionsForAppointments } from "@/lib/commission-sync";
 import { AppointmentValueModal } from "@/components/appointment-value-modal";
 import { AppointmentDetailModal } from "@/components/dashboard/appointment-detail-modal";
+import { AppointmentPaymentStatusGuide } from "@/components/dashboard/appointment-payment-status-guide";
 import { useAppAlert } from "@/components/app-alert-provider";
 import { AgendaScheduleView, type AgendaViewMode } from "@/components/agenda-schedule-view";
 import { localISODate } from "@/lib/agenda-calendar-helpers";
@@ -386,6 +387,8 @@ export default function AgendamentosPage() {
           {actionMessage.text}
         </div>
       )}
+
+      <AppointmentPaymentStatusGuide businessId={business?.id} />
 
       {selected.length > 0 && (
         <div className="flex items-center gap-3 p-3 mb-4 bg-primary/10 border border-primary/30 rounded-xl">
