@@ -115,8 +115,7 @@ export function PublicPwaInstallPrompt({
               )}
             </p>
             <p className={cn("text-[10px] leading-snug", isDark ? "text-white/45" : "text-gray-500")}>
-              Se o navegador pedir permissão estranha (“outros apps”), pode tocar em Bloquear — o atalho funciona
-              pelo menu acima.
+              Você terá como um aplicativo no seu celular para acessar o agendamento de {shortName}.
             </p>
             <div className="flex flex-wrap gap-2 pt-0.5">
               <button

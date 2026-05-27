@@ -79,11 +79,12 @@ Use credenciais de **test** do app e usuários de teste MP. A Public Key de test
 - `components/public/mercadopago-payment-brick.tsx` — UI cliente
 - `supabase/migrations/20260528120000_mercadopago_appointments.sql`
 
-## Próximos passos (integração pública)
+## Integração pública (vitrine)
 
-- [ ] Expor política de pagamento em `/api/public/page-data` e `booking-meta`
-- [ ] Após `POST /api/public/book`, se política obrigatória → `pending` + tela de pagamento com Brick
-- [ ] Bloquear confirmação final até webhook (ou polling) quando obrigatório
+- Política de pagamento exposta em `/api/public/page-data` (catálogo por slug).
+- Na confirmação do agendamento: bloco Pix (manual) + bloco Mercado Pago quando `mp_connected` + `mp_checkout_enabled` + política ≠ `off`.
+- Após `POST /api/public/book`: `payment_due_cents` / `payment_status`; tela de sucesso com **Payment Brick** quando há valor devido.
+- Pagamento obrigatório: agendamento fica `agendado` + `payment_status=pending` até webhook aprovar → `confirmado`.
 
 ## Deploy
 

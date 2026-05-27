@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { type PaymentPolicy, type DepositMode } from "@/lib/business-payment-policy";
+import { toPublicPaymentSettings, type PublicBusinessPaymentFields } from "@/lib/public-payment-display";
 
-/** Colunas seguras para a página pública — não expõe billing/Stripe. */
+/** Colunas seguras para a página pública — não expõe billing/Stripe nem tokens MP. */
 export type PublicBusinessRow = {
   id: string;
   name: string;
@@ -14,7 +16,16 @@ export type PublicBusinessRow = {
   public_pix_key?: string | null;
   public_pix_suggest_enabled?: boolean;
   public_pix_suggest_message?: string | null;
+  payment_policy: PaymentPolicy;
+  deposit_mode: DepositMode;
+  deposit_percent: number | null;
+  deposit_fixed_cents: number | null;
+  payment_client_message: string | null;
+  mp_checkout_enabled: boolean;
+  mp_connected: boolean;
 };
+
+export type { PublicBusinessPaymentFields };
 
 export type PublicServiceRow = {
   id: string;
@@ -81,7 +92,7 @@ export async function fetchPublicPageCatalogBySlug(slug: string): Promise<Public
   const { data: biz } = await admin
     .from("businesses")
     .select(
-      "id, name, slug, city, phone, primary_color, segment, logo_url, public_pix_key, public_pix_suggest_enabled, public_pix_suggest_message"
+      "id, name, slug, city, phone, primary_color, segment, logo_url, public_pix_key, public_pix_suggest_enabled, public_pix_suggest_message, payment_policy, deposit_mode, deposit_percent, deposit_fixed_cents, payment_client_message, mp_checkout_enabled, mp_user_id, mp_access_token_enc"
     )
     .eq("slug", trimmed)
     .maybeSingle();
@@ -90,8 +101,16 @@ export async function fetchPublicPageCatalogBySlug(slug: string): Promise<Public
 
   const suggestOn = Boolean(biz.public_pix_suggest_enabled);
   const rawKey = typeof biz.public_pix_key === "string" ? biz.public_pix_key.trim() : "";
+  const payment = toPublicPaymentSettings(biz as Record<string, unknown>);
   const business: PublicBusinessRow = {
-    ...(biz as PublicBusinessRow),
+    id: biz.id,
+    name: biz.name,
+    slug: biz.slug,
+    city: biz.city,
+    phone: biz.phone,
+    primary_color: biz.primary_color,
+    segment: biz.segment,
+    logo_url: biz.logo_url,
     public_pix_suggest_enabled: suggestOn,
     public_pix_key: suggestOn && rawKey ? rawKey : null,
     public_pix_suggest_message:
@@ -100,6 +119,13 @@ export async function fetchPublicPageCatalogBySlug(slug: string): Promise<Public
           ? biz.public_pix_suggest_message.trim()
           : null
         : null,
+    payment_policy: payment.payment_policy,
+    deposit_mode: payment.deposit_mode,
+    deposit_percent: payment.deposit_percent,
+    deposit_fixed_cents: payment.deposit_fixed_cents,
+    payment_client_message: payment.payment_client_message,
+    mp_checkout_enabled: payment.mp_checkout_enabled,
+    mp_connected: payment.mp_connected,
   };
 
   const bid = biz.id;

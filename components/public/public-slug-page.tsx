@@ -49,6 +49,8 @@ import { SocialBrandIcon, socialBrandAccent } from "@/components/social-brand-ic
 import { buildPublicBookingQuery, parsePublicBookingQuery } from "@/lib/public-booking-query";
 import { bookingStepToSegment, segmentToBookingStep } from "@/lib/public-booking-step-routes";
 import { DEFAULT_PUBLIC_PIX_SUGGEST_MESSAGE } from "@/lib/public-pix";
+import { buildPublicPaymentHint } from "@/lib/public-payment-display";
+import { MercadoPagoPaymentBrick } from "@/components/public/mercadopago-payment-brick";
 import {
   fetchPublicCatalog,
   getCachedPublicCatalog,
@@ -99,6 +101,13 @@ type BusinessRow = {
   public_pix_key?: string | null;
   public_pix_suggest_enabled?: boolean | null;
   public_pix_suggest_message?: string | null;
+  payment_policy?: "off" | "optional" | "required_deposit" | "required_full";
+  deposit_mode?: "percent" | "fixed";
+  deposit_percent?: number | null;
+  deposit_fixed_cents?: number | null;
+  payment_client_message?: string | null;
+  mp_checkout_enabled?: boolean;
+  mp_connected?: boolean;
 };
 type PersonalizationRow = {
   banner_url: string | null;
@@ -207,6 +216,9 @@ export function PublicPageInner({
   const [bookingSubmitting, setBookingSubmitting] = useState(false);
   const [bookError, setBookError] = useState<string | null>(null);
   const [bookedCollabName, setBookedCollabName] = useState<string | null>(null);
+  const [bookedAppointmentId, setBookedAppointmentId] = useState<string | null>(null);
+  const [bookedPaymentDueCents, setBookedPaymentDueCents] = useState(0);
+  const [bookedPaymentRequired, setBookedPaymentRequired] = useState(false);
   const [servicePickPhase, setServicePickPhase] = useState<"list" | "detail">("list");
   const [selectedVariantIndex, setSelectedVariantIndex] = useState<number | null>(null);
   const today = new Date();
@@ -728,6 +740,9 @@ export function PublicPageInner({
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || "Não foi possível concluir o agendamento");
       setBookedCollabName(typeof j.collaboratorName === "string" ? j.collaboratorName : null);
+      setBookedAppointmentId(typeof j.appointmentId === "string" ? j.appointmentId : null);
+      setBookedPaymentDueCents(typeof j.paymentDueCents === "number" ? j.paymentDueCents : 0);
+      setBookedPaymentRequired(Boolean(j.paymentRequired));
       setBooked(true);
     } catch (e) {
       setBookError(e instanceof Error ? e.message : "Erro ao agendar");
@@ -762,6 +777,21 @@ export function PublicPageInner({
       message: custom || DEFAULT_PUBLIC_PIX_SUGGEST_MESSAGE,
       serviceTotalLabel: formatCurrency(selectedBookingPriceCents / 100),
     };
+  }, [business, selectedBookingPriceCents]);
+
+  const onlinePaymentHint = useMemo(() => {
+    if (!business?.mp_connected || !business.mp_checkout_enabled) return null;
+    const policy = business.payment_policy ?? "off";
+    if (policy === "off") return null;
+    return buildPublicPaymentHint(selectedBookingPriceCents, {
+      payment_policy: policy,
+      deposit_mode: business.deposit_mode === "fixed" ? "fixed" : "percent",
+      deposit_percent: business.deposit_percent ?? null,
+      deposit_fixed_cents: business.deposit_fixed_cents ?? null,
+      payment_client_message: business.payment_client_message ?? null,
+      mp_checkout_enabled: Boolean(business.mp_checkout_enabled),
+      mp_connected: Boolean(business.mp_connected),
+    });
   }, [business, selectedBookingPriceCents]);
 
   const accent = business?.primary_color?.trim() || "#13EC5B";
@@ -819,6 +849,9 @@ export function PublicPageInner({
         businessName={business.name}
         collaboratorName={bookedCollabName}
         accentColor={accent}
+        appointmentId={bookedAppointmentId}
+        paymentDueCents={bookedPaymentDueCents}
+        paymentRequired={bookedPaymentRequired}
       />
     );
   }
@@ -1865,6 +1898,7 @@ export function PublicPageInner({
             minAdvanceHours={bookingMeta?.minAdvanceHours}
             onConfirm={() => void handleBook()}
             pixPayment={pixPaymentHint}
+            onlinePayment={onlinePaymentHint}
           />
         )}
         </BookingStepPanel>
@@ -1948,6 +1982,9 @@ function SuccessScreen({
   businessName,
   collaboratorName,
   accentColor,
+  appointmentId,
+  paymentDueCents,
+  paymentRequired,
 }: {
   service: ServiceRow | null;
   bookedPriceCents: number;
@@ -1958,7 +1995,65 @@ function SuccessScreen({
   businessName: string;
   collaboratorName: string | null;
   accentColor: string;
+  appointmentId: string | null;
+  paymentDueCents: number;
+  paymentRequired: boolean;
 }) {
+  const [checkout, setCheckout] = useState<{
+    preferenceId: string;
+    publicKey: string;
+    amountCents: number;
+  } | null>(null);
+  const [checkoutErr, setCheckoutErr] = useState<string | null>(null);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  useEffect(() => {
+    if (!appointmentId || paymentDueCents <= 0) return;
+    let cancelled = false;
+    setCheckoutLoading(true);
+    setCheckoutErr(null);
+    void (async () => {
+      try {
+        const res = await fetch("/api/mercadopago/checkout/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            appointmentId,
+            successUrl: typeof window !== "undefined" ? window.location.href : undefined,
+          }),
+        });
+        const j = await res.json();
+        if (!res.ok) throw new Error(j.error || "Não foi possível iniciar o pagamento");
+        if (cancelled) return;
+        if (typeof j.preferenceId === "string" && typeof j.publicKey === "string") {
+          setCheckout({
+            preferenceId: j.preferenceId,
+            publicKey: j.publicKey,
+            amountCents: typeof j.amountCents === "number" ? j.amountCents : paymentDueCents,
+          });
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setCheckoutErr(e instanceof Error ? e.message : "Erro ao carregar pagamento");
+        }
+      } finally {
+        if (!cancelled) setCheckoutLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [appointmentId, paymentDueCents]);
+
+  const title = paymentRequired && paymentDueCents > 0 ? "Agendamento reservado" : "Agendamento confirmado!";
+  const subtitle =
+    paymentRequired && paymentDueCents > 0
+      ? "Conclua o pagamento abaixo para o estabelecimento confirmar seu horário."
+      : paymentDueCents > 0
+        ? "Você pode pagar antecipadamente abaixo (opcional) ou combinar no local."
+        : "Você receberá uma confirmação por e-mail em breve.";
+
   return (
     <div
       className="min-h-screen bg-[#020403] flex flex-col items-center justify-center px-4 py-8 sm:py-12"
@@ -1972,10 +2067,25 @@ function SuccessScreen({
               check_circle
             </span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">Agendamento confirmado!</h1>
-          <p className="text-gray-400 text-sm mb-6 sm:mb-0">Você receberá uma confirmação por e-mail em breve.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">{title}</h1>
+          <p className="text-gray-400 text-sm mb-6 sm:mb-0">{subtitle}</p>
         </div>
         <div className="flex flex-col gap-4 flex-1 max-w-sm mx-auto sm:mx-0 w-full">
+          {paymentDueCents > 0 ? (
+            <div className="w-full">
+              {checkoutLoading ? (
+                <p className="text-xs text-gray-500 text-center py-4">Preparando pagamento…</p>
+              ) : checkoutErr ? (
+                <p className="text-xs text-red-400 text-center py-2">{checkoutErr}</p>
+              ) : checkout ? (
+                <MercadoPagoPaymentBrick
+                  preferenceId={checkout.preferenceId}
+                  publicKey={checkout.publicKey}
+                  amountLabel={formatCurrency(checkout.amountCents / 100)}
+                />
+              ) : null}
+            </div>
+          ) : null}
           <div className="bg-[#14221A] border border-[#213428] rounded-2xl p-5 sm:p-6">
             <div className="space-y-3">
               {[

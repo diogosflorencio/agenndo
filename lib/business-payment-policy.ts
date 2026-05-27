@@ -72,7 +72,7 @@ export function computeAppointmentDueCents(
 
 export const PAYMENT_POLICY_LABELS: Record<PaymentPolicy, string> = {
   off: "Desativado",
-  optional: "Opcional — cliente pode pagar antecipado",
+  optional: "Opcional - cliente pode pagar antecipado",
   required_deposit: "Sinal obrigatório antes de confirmar",
   required_full: "Pagamento integral antecipado obrigatório",
 };

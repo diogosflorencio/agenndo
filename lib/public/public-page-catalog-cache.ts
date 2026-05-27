@@ -15,6 +15,13 @@ export type PublicPageCatalogClient = {
     public_pix_key?: string | null;
     public_pix_suggest_enabled?: boolean | null;
     public_pix_suggest_message?: string | null;
+    payment_policy?: "off" | "optional" | "required_deposit" | "required_full";
+    deposit_mode?: "percent" | "fixed";
+    deposit_percent?: number | null;
+    deposit_fixed_cents?: number | null;
+    payment_client_message?: string | null;
+    mp_checkout_enabled?: boolean;
+    mp_connected?: boolean;
   } | null;
   services: unknown[];
   collaborators: unknown[];

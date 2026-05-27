@@ -44,6 +44,14 @@ type Props = {
     message: string;
     serviceTotalLabel: string;
   } | null;
+  /** Cobrança online Mercado Pago (política ativa no dashboard). */
+  onlinePayment?: {
+    policyLabel: string;
+    clientMessage: string;
+    dueLabel: string;
+    paymentRequired: boolean;
+    depositNote: string | null;
+  } | null;
 };
 
 export function PublicBookingConfirmStep({
@@ -68,6 +76,7 @@ export function PublicBookingConfirmStep({
   minAdvanceHours,
   onConfirm,
   pixPayment,
+  onlinePayment,
 }: Props) {
   const displayPixMessage = pixPayment?.message?.trim() || DEFAULT_PUBLIC_PIX_SUGGEST_MESSAGE;
   return (
@@ -154,6 +163,44 @@ export function PublicBookingConfirmStep({
               )}
             />
           </div>
+
+          {onlinePayment ? (
+            <div
+              className={cn(
+                "rounded-xl border p-4 space-y-3",
+                isDark ? "border-sky-500/25 bg-sky-950/20" : "border-sky-200 bg-sky-50/90"
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <span className={cn(publicMaterialIconClass("md", false), "text-[var(--public-accent)] shrink-0")}>
+                  account_balance_wallet
+                </span>
+                <div className="min-w-0 space-y-1">
+                  <p className={cn("text-sm font-bold", bookUi.title)}>Pagamento online (Mercado Pago)</p>
+                  <p className={cn("text-[11px] font-semibold uppercase tracking-wide", bookUi.muted)}>
+                    {onlinePayment.policyLabel}
+                  </p>
+                  <p className={cn("text-xs leading-relaxed", bookUi.muted)}>{onlinePayment.clientMessage}</p>
+                  {onlinePayment.dueLabel ? (
+                    <p className={cn("text-xs font-semibold tabular-nums", bookUi.title)}>{onlinePayment.dueLabel}</p>
+                  ) : null}
+                  {onlinePayment.paymentRequired ? (
+                    <p className={cn("text-[11px] leading-relaxed text-amber-500/90")}>
+                      Após confirmar, você precisará concluir o pagamento para o agendamento ser confirmado pelo
+                      estabelecimento.
+                    </p>
+                  ) : (
+                    <p className={cn("text-[11px] leading-relaxed", bookUi.muted)}>
+                      Após confirmar, você poderá pagar antecipadamente na próxima tela (opcional).
+                    </p>
+                  )}
+                  {onlinePayment.depositNote ? (
+                    <p className={cn("text-[11px] leading-relaxed", bookUi.muted)}>{onlinePayment.depositNote}</p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {pixPayment ? (
             <div

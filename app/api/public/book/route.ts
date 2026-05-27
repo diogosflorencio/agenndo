@@ -19,6 +19,8 @@ import {
 import { hasFullServiceAccess } from "@/lib/billing-access";
 import { getServiceBlockingDurationMinutes } from "@/lib/service-duration";
 import { normalizeVariantGallery, variantEffectivePriceCents } from "@/lib/service-variants";
+import { computeAppointmentDueCents } from "@/lib/business-payment-policy";
+import { toPublicPaymentSettings } from "@/lib/public-payment-display";
 
 export const runtime = "nodejs";
 
@@ -88,7 +90,7 @@ export async function POST(req: Request) {
   const { data: biz, error: bizErr } = await admin
     .from("businesses")
     .select(
-      "id, name, plan, stripe_subscription_id, subscription_status, subscription_current_period_end, trial_ends_at, billing_issue_deadline, created_at"
+      "id, name, plan, stripe_subscription_id, subscription_status, subscription_current_period_end, trial_ends_at, billing_issue_deadline, created_at, payment_policy, deposit_mode, deposit_percent, deposit_fixed_cents, mp_checkout_enabled, mp_user_id, mp_access_token_enc"
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -335,6 +337,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Este horário não está mais disponível" }, { status: 409 });
   }
 
+  const paymentSettings = toPublicPaymentSettings(biz as Record<string, unknown>);
+  const due = computeAppointmentDueCents(priceCents, paymentSettings);
+  const paymentStatus =
+    due.dueCents <= 0 ? "none" : due.policy === "optional" ? "optional" : "pending";
+  const paymentRequired =
+    due.dueCents > 0 && (due.policy === "required_deposit" || due.policy === "required_full");
+
   const { data: aptRow, error: aptErr } = await admin
     .from("appointments")
     .insert({
@@ -351,6 +360,8 @@ export async function POST(req: Request) {
       notes: notes || null,
       service_variant_index: serviceVariantIndex,
       service_variant_label: serviceVariantLabel,
+      payment_status: paymentStatus,
+      payment_due_cents: due.dueCents > 0 ? due.dueCents : null,
     })
     .select("id")
     .single();
@@ -374,5 +385,9 @@ export async function POST(req: Request) {
     collaboratorId: resolvedCollab,
     collaboratorName: collabNameById.get(resolvedCollab) ?? "Profissional",
     businessName,
+    paymentDueCents: due.dueCents,
+    paymentRequired,
+    paymentPolicy: due.policy,
+    remainingAtVenueCents: due.remainingAtVenueCents,
   });
 }
