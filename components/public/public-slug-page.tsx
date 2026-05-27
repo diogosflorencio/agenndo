@@ -420,12 +420,11 @@ export function PublicPageInner({
     const cached = getCachedPublicCatalog(slug);
     if (cached?.business) applyCatalog(cached);
 
-    const ac = new AbortController();
     let cancelled = false;
 
     void (async () => {
       if (!cached?.business) setLoading(true);
-      const data = await fetchPublicCatalog(slug, ac.signal);
+      const data = await fetchPublicCatalog(slug);
       if (cancelled) return;
       if (!data?.business) {
         if (!cached?.business) {
@@ -441,7 +440,6 @@ export function PublicPageInner({
 
     return () => {
       cancelled = true;
-      ac.abort();
     };
   }, [slug, applyCatalog]);
 

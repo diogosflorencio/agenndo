@@ -64,8 +64,11 @@ export async function fetchPublicCatalog(
 
   const promise = (async (): Promise<PublicPageCatalogClient | null> => {
     const timeout = new AbortController();
-    const onAbort = () => timeout.abort();
-    signal?.addEventListener("abort", onAbort);
+    const onExternalAbort = () => {
+      inflight.delete(key);
+      timeout.abort();
+    };
+    signal?.addEventListener("abort", onExternalAbort);
 
     const timer = window.setTimeout(() => timeout.abort(), FETCH_TIMEOUT_MS);
 
@@ -77,11 +80,17 @@ export async function fetchPublicCatalog(
       const data = (await res.json()) as PublicPageCatalogClient;
       if (data.business) setCachedPublicCatalog(key, data);
       return data.business ? data : null;
-    } catch {
+    } catch (err) {
+      const aborted =
+        (err instanceof DOMException && err.name === "AbortError") ||
+        (err instanceof Error && err.name === "AbortError");
+      if (aborted) {
+        inflight.delete(key);
+      }
       return getCachedPublicCatalog(key);
     } finally {
       window.clearTimeout(timer);
-      signal?.removeEventListener("abort", onAbort);
+      signal?.removeEventListener("abort", onExternalAbort);
       inflight.delete(key);
     }
   })();
