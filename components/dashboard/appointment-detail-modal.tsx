@@ -19,6 +19,14 @@ export type AppointmentDetailRow = {
   payment_status?: string | null;
   payment_due_cents?: number | null;
   payment_collected_cents?: number | null;
+  appointment_payments?:
+    | {
+        provider_payment_id: string | null;
+        status: string;
+        amount_cents: number;
+        payment_kind: string;
+      }[]
+    | null;
   client_name_snapshot: string | null;
   service_variant_label: string | null;
   clients: { name: string; phone: string | null } | null;

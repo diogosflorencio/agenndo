@@ -35,6 +35,14 @@ type AptRow = {
   payment_status?: string | null;
   payment_due_cents?: number | null;
   payment_collected_cents?: number | null;
+  appointment_payments?:
+    | {
+        provider_payment_id: string | null;
+        status: string;
+        amount_cents: number;
+        payment_kind: string;
+      }[]
+    | null;
   client_name_snapshot: string | null;
   service_variant_label: string | null;
   clients: { name: string; phone: string | null } | null;
@@ -98,7 +106,7 @@ export default function AgendamentosPage() {
       supabase
         .from("appointments")
         .select(
-          "id, collaborator_id, client_id, date, time_start, time_end, price_cents, status, payment_status, payment_due_cents, payment_collected_cents, client_name_snapshot, service_variant_label, clients(name, phone), services(name), collaborators(id, name)"
+          "id, collaborator_id, client_id, date, time_start, time_end, price_cents, status, payment_status, payment_due_cents, payment_collected_cents, client_name_snapshot, service_variant_label, appointment_payments(provider_payment_id, status, amount_cents, payment_kind), clients(name, phone), services(name), collaborators(id, name)"
         )
         .eq("business_id", business.id)
         .gte("date", fetchRange.from)

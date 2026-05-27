@@ -343,6 +343,8 @@ export async function POST(req: Request) {
     due.dueCents <= 0 ? "none" : due.policy === "optional" ? "optional" : "pending";
   const paymentRequired =
     due.dueCents > 0 && (due.policy === "required_deposit" || due.policy === "required_full");
+  /** Sinal/integral: só confirma após webhook MP. Opcional sem pagar: já confirmado. */
+  const initialStatus = paymentRequired ? "agendado" : "confirmado";
 
   const { data: aptRow, error: aptErr } = await admin
     .from("appointments")
@@ -356,7 +358,7 @@ export async function POST(req: Request) {
       time_start: `${timeNorm}:00`,
       time_end: timeEnd,
       price_cents: priceCents,
-      status: "agendado",
+      status: initialStatus,
       notes: notes || null,
       service_variant_index: serviceVariantIndex,
       service_variant_label: serviceVariantLabel,
@@ -370,15 +372,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: aptErr?.message ?? "Erro ao criar agendamento" }, { status: 500 });
   }
 
-  const { data: cRow } = await admin.from("clients").select("total_appointments").eq("id", clientId).maybeSingle();
-  const prev = Number(cRow?.total_appointments) || 0;
-  await admin
-    .from("clients")
-    .update({
-      total_appointments: prev + 1,
-      last_appointment_date: dateStr,
-    })
-    .eq("id", clientId);
+  if (!paymentRequired) {
+    const { data: cRow } = await admin.from("clients").select("total_appointments").eq("id", clientId).maybeSingle();
+    const prev = Number(cRow?.total_appointments) || 0;
+    await admin
+      .from("clients")
+      .update({
+        total_appointments: prev + 1,
+        last_appointment_date: dateStr,
+      })
+      .eq("id", clientId);
+  }
 
   return NextResponse.json({
     appointmentId: aptRow.id,

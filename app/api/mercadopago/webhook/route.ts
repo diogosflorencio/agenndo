@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mpGetPayment } from "@/lib/mercadopago/api";
+import { applyMercadoPagoPaymentApproved } from "@/lib/mercadopago/apply-payment-approved";
 import { getBusinessMpAccessToken } from "@/lib/mercadopago/business-mp";
 import { verifyMercadoPagoWebhookSignature } from "@/lib/mercadopago/webhook-signature";
 
@@ -12,6 +13,59 @@ function mapMpStatus(status: string): "approved" | "pending" | "rejected" | "can
   if (status === "pending" || status === "in_process") return "pending";
   if (status === "cancelled") return "cancelled";
   return "rejected";
+}
+
+async function resolvePaymentContext(
+  admin: ReturnType<typeof createAdminClient>,
+  paymentId: string
+): Promise<{ mpPayment: Awaited<ReturnType<typeof mpGetPayment>>; businessId: string; appointmentId: string } | null> {
+  const { data: byProvider } = await admin
+    .from("appointment_payments")
+    .select("appointment_id, business_id")
+    .eq("provider", "mercadopago")
+    .eq("provider_payment_id", paymentId)
+    .maybeSingle();
+
+  if (byProvider?.appointment_id && byProvider.business_id) {
+    const creds = await getBusinessMpAccessToken(admin, byProvider.business_id);
+    if (!creds) return null;
+    try {
+      const mpPayment = await mpGetPayment(creds.accessToken, paymentId);
+      return {
+        mpPayment,
+        businessId: byProvider.business_id,
+        appointmentId: byProvider.appointment_id,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  const { data: pendingRows } = await admin
+    .from("appointment_payments")
+    .select("business_id, appointment_id")
+    .in("status", ["pending", "approved"])
+    .order("created_at", { ascending: false })
+    .limit(80);
+
+  for (const row of pendingRows ?? []) {
+    const creds = await getBusinessMpAccessToken(admin, row.business_id);
+    if (!creds) continue;
+    try {
+      const p = await mpGetPayment(creds.accessToken, paymentId);
+      if (p.external_reference === row.appointment_id) {
+        return {
+          mpPayment: p,
+          businessId: row.business_id,
+          appointmentId: row.appointment_id,
+        };
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
 }
 
 export async function POST(req: Request) {
@@ -56,7 +110,7 @@ export async function POST(req: Request) {
 
   const { data: existing } = await admin
     .from("appointment_payments")
-    .select("id, status")
+    .select("id, status, appointment_id")
     .eq("provider", "mercadopago")
     .eq("provider_payment_id", paymentId)
     .maybeSingle();
@@ -65,78 +119,57 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, duplicate: true });
   }
 
-  // Descobrir negócio via external_reference após fetch (precisamos de um token — tentamos pagamentos pendentes)
-  const { data: pendingRows } = await admin
-    .from("appointment_payments")
-    .select("business_id, appointment_id")
-    .eq("status", "pending")
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  let mpPayment = null;
-  let matchedBusinessId: string | null = null;
-
-  for (const row of pendingRows ?? []) {
-    const creds = await getBusinessMpAccessToken(admin, row.business_id);
-    if (!creds) continue;
-    try {
-      const p = await mpGetPayment(creds.accessToken, paymentId);
-      if (p.external_reference === row.appointment_id) {
-        mpPayment = p;
-        matchedBusinessId = row.business_id;
-        break;
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  if (!mpPayment || !matchedBusinessId) {
+  const ctx = await resolvePaymentContext(admin, paymentId);
+  if (!ctx) {
     return NextResponse.json({ ignored: true }, { status: 200 });
   }
 
-  const appointmentId = mpPayment.external_reference;
-  if (!appointmentId) return NextResponse.json({ ignored: true });
-
-  const { data: apt } = await admin
-    .from("appointments")
-    .select("id, price_cents, payment_due_cents, payment_collected_cents")
-    .eq("id", appointmentId)
-    .maybeSingle();
-
-  if (!apt) return NextResponse.json({ ignored: true });
-
+  const { mpPayment, businessId, appointmentId } = ctx;
   const paidCents = Math.round(Number(mpPayment.transaction_amount) * 100);
-  const expected = apt.payment_due_cents ?? apt.price_cents;
   const status = mapMpStatus(mpPayment.status);
 
-  if (status === "approved" && paidCents < expected) {
-    return NextResponse.json({ error: "amount_mismatch" }, { status: 422 });
-  }
-
-  await admin
-    .from("appointment_payments")
-    .update({
-      provider_payment_id: String(mpPayment.id),
-      status,
-      amount_cents: paidCents,
-      raw: mpPayment as unknown as Record<string, unknown>,
-    })
-    .eq("appointment_id", appointmentId)
-    .eq("business_id", matchedBusinessId);
-
-  if (status === "approved") {
-    const collected = (apt.payment_collected_cents ?? 0) + paidCents;
-    const isFull = collected >= apt.price_cents;
+  if (status === "pending") {
     await admin
-      .from("appointments")
+      .from("appointment_payments")
       .update({
-        payment_collected_cents: collected,
-        payment_status: isFull ? "paid" : "partial",
-        status: "confirmado",
+        provider_payment_id: String(mpPayment.id),
+        status: "pending",
+        amount_cents: paidCents,
+        raw: mpPayment as unknown as Record<string, unknown>,
       })
-      .eq("id", appointmentId);
+      .eq("appointment_id", appointmentId)
+      .eq("business_id", businessId);
+    return NextResponse.json({ ok: true, pending: true });
   }
 
-  return NextResponse.json({ ok: true });
+  if (status === "rejected" || status === "cancelled") {
+    await admin
+      .from("appointment_payments")
+      .update({
+        provider_payment_id: String(mpPayment.id),
+        status,
+        amount_cents: paidCents,
+        raw: mpPayment as unknown as Record<string, unknown>,
+      })
+      .eq("appointment_id", appointmentId)
+      .eq("business_id", businessId);
+    return NextResponse.json({ ok: true, rejected: true });
+  }
+
+  if (status !== "approved") {
+    return NextResponse.json({ ignored: true });
+  }
+
+  const result = await applyMercadoPagoPaymentApproved(admin, {
+    appointmentId,
+    businessId,
+    mpPayment,
+    paidCents,
+  });
+
+  if (!result.ok) {
+    return NextResponse.json({ error: result.reason ?? "apply_failed" }, { status: 422 });
+  }
+
+  return NextResponse.json({ ok: true, confirmed: true });
 }

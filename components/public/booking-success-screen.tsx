@@ -47,9 +47,13 @@ export function PublicBookingSuccessScreen({
   } | null>(null);
   const [checkoutErr, setCheckoutErr] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [mpConfirmed, setMpConfirmed] = useState(false);
+  const [paymentSubmitted, setPaymentSubmitted] = useState(false);
+  const [mpPaymentId, setMpPaymentId] = useState<string | null>(null);
 
   const showPayment = paymentDueCents > 0 && Boolean(appointmentId);
-  const waitingPayment = showPayment && paymentRequired;
+  const waitingWebhook = showPayment && (paymentRequired || paymentSubmitted) && !mpConfirmed;
+  const paidOk = mpConfirmed;
 
   useEffect(() => {
     if (!appointmentId || paymentDueCents <= 0) return;
@@ -90,6 +94,44 @@ export function PublicBookingSuccessScreen({
     };
   }, [appointmentId, paymentDueCents]);
 
+  useEffect(() => {
+    if (!appointmentId) return;
+    let cancelled = false;
+    let attempts = 0;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(
+          `/api/public/appointment-status?appointmentId=${encodeURIComponent(appointmentId)}`,
+          { credentials: "include" }
+        );
+        const j = await res.json();
+        if (cancelled || !res.ok) return;
+        if (j.mpConfirmed) {
+          setMpConfirmed(true);
+          if (typeof j.mpPaymentId === "string") setMpPaymentId(j.mpPaymentId);
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+
+    void poll();
+    const id = window.setInterval(() => {
+      attempts += 1;
+      if (mpConfirmed || attempts > 40) {
+        window.clearInterval(id);
+        return;
+      }
+      void poll();
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [appointmentId, mpConfirmed, paymentSubmitted, paymentRequired]);
+
   const profName =
     collaboratorName ??
     (collab === "any" ? "Equipe (definida no agendamento)" : (collab as CollabRow)?.name ?? "—");
@@ -114,7 +156,7 @@ export function PublicBookingSuccessScreen({
           <div
             className={cn(
               "mx-auto size-16 rounded-2xl flex items-center justify-center border",
-              waitingPayment
+              waitingWebhook
                 ? "border-amber-500/40 bg-amber-500/10"
                 : "border-[color-mix(in_srgb,var(--public-accent)_35%,transparent)] bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)]"
             )}
@@ -122,23 +164,38 @@ export function PublicBookingSuccessScreen({
             <span
               className={cn(
                 publicMaterialIconClass("xl", false),
-                waitingPayment ? "text-amber-400" : "text-[var(--public-accent)]",
+                waitingWebhook ? "text-amber-400" : "text-[var(--public-accent)]",
                 "!text-4xl"
               )}
             >
-              {waitingPayment ? "schedule" : "check_circle"}
+              {waitingWebhook ? "schedule" : "check_circle"}
             </span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight">
-            {waitingPayment ? "Horário reservado" : "Agendamento registrado"}
+            {paidOk
+              ? "Agendamento confirmado!"
+              : waitingWebhook
+                ? paymentRequired
+                  ? "Horário reservado"
+                  : "Pagamento enviado"
+                : "Agendamento registrado"}
           </h1>
           <p className="text-sm text-gray-400 leading-relaxed max-w-sm mx-auto">
-            {waitingPayment
-              ? "Conclua o pagamento abaixo para o estabelecimento confirmar. Não precisa criar conta — basta pagar com seu nome no agendamento."
-              : showPayment
-                ? "Se quiser, pague antecipado abaixo. Também pode combinar o pagamento direto no estabelecimento."
-                : "Guarde data e horário. Compareça no horário combinado com o estabelecimento."}
+            {paidOk
+              ? "Pagamento confirmado pelo Mercado Pago. O estabelecimento já vê seu horário como confirmado."
+              : waitingWebhook
+                ? paymentSubmitted
+                  ? "Estamos aguardando a confirmação do Mercado Pago (pode levar alguns segundos). Não feche esta página ainda."
+                  : paymentRequired
+                    ? "Conclua o pagamento abaixo. O horário só será confirmado após o Mercado Pago aprovar."
+                    : "Se quiser, pague antecipado abaixo. Também pode combinar no estabelecimento."
+                : showPayment
+                  ? "Se quiser, pague antecipado abaixo. Também pode combinar no estabelecimento."
+                  : "Guarde data e horário. Compareça no horário combinado com o estabelecimento."}
           </p>
+          {mpPaymentId && paidOk ? (
+            <p className="text-[11px] text-gray-500 font-mono">Transação MP #{mpPaymentId}</p>
+          ) : null}
         </header>
 
         <section className="rounded-2xl border border-white/10 bg-white/[0.03] overflow-hidden">
@@ -173,7 +230,7 @@ export function PublicBookingSuccessScreen({
           </dl>
         </section>
 
-        {showPayment ? (
+        {showPayment && !paidOk ? (
           <section className="space-y-3">
             <div className="flex items-center gap-2 px-1">
               <span className={cn(publicMaterialIconClass("sm", false), "text-[var(--public-accent)]")}>
@@ -195,11 +252,14 @@ export function PublicBookingSuccessScreen({
                   Seu horário continua reservado. Tente recarregar ou fale com o estabelecimento.
                 </p>
               </div>
-            ) : checkout ? (
+            ) : checkout && appointmentId ? (
               <MercadoPagoPaymentBrick
+                appointmentId={appointmentId}
                 preferenceId={checkout.preferenceId}
                 publicKey={checkout.publicKey}
+                amountCents={checkout.amountCents}
                 amountLabel={formatCurrency(checkout.amountCents / 100)}
+                onPaid={() => setPaymentSubmitted(true)}
               />
             ) : null}
           </section>

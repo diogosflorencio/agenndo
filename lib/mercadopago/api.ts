@@ -113,6 +113,19 @@ export async function mpGetPayment(accessToken: string, paymentId: string | numb
   return mpFetch(`/v1/payments/${paymentId}`, accessToken) as Promise<MpPaymentInfo>;
 }
 
+/** Cria pagamento a partir do formData do Payment Brick (cartão, Pix, etc.). */
+export async function mpCreatePayment(
+  accessToken: string,
+  body: Record<string, unknown>,
+  idempotencyKey: string
+): Promise<MpPaymentInfo & { status_detail?: string }> {
+  return mpFetch("/v1/payments", accessToken, {
+    method: "POST",
+    headers: { "X-Idempotency-Key": idempotencyKey },
+    body: JSON.stringify(body),
+  }) as Promise<MpPaymentInfo & { status_detail?: string }>;
+}
+
 export function mercadoPagoWebhookUrl(): string {
   const origin = getMercadoPagoConfig()?.siteOrigin ?? "http://localhost:3000";
   return `${origin}/api/mercadopago/webhook`;
