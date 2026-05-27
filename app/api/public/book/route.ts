@@ -18,9 +18,13 @@ import {
 } from "@/lib/public-booking";
 import { hasFullServiceAccess } from "@/lib/billing-access";
 import { getServiceBlockingDurationMinutes } from "@/lib/service-duration";
-import { normalizeVariantGallery, variantEffectivePriceCents } from "@/lib/service-variants";
 import { computeAppointmentDueCents } from "@/lib/business-payment-policy";
 import { toPublicPaymentSettings } from "@/lib/public-payment-display";
+import {
+  findForbiddenBookingPriceField,
+  resolveBookingPriceCents,
+  sanitizePriceCents,
+} from "@/lib/public-booking-price";
 
 export const runtime = "nodejs";
 
@@ -68,6 +72,14 @@ export async function POST(req: Request) {
   const collaboratorIdParam =
     typeof b.collaboratorId === "string" && b.collaboratorId.trim() ? b.collaboratorId.trim() : null;
 
+  const forbiddenPriceKey = findForbiddenBookingPriceField(b);
+  if (forbiddenPriceKey) {
+    return NextResponse.json(
+      { error: "Preço do serviço é definido pelo estabelecimento; não envie valores de pagamento na requisição." },
+      { status: 400 }
+    );
+  }
+
   if (!slug || !serviceId || !dateStr || !timeStartRaw || !clientName) {
     return NextResponse.json({ error: "slug, serviceId, date, timeStart e clientName são obrigatórios" }, { status: 400 });
   }
@@ -113,31 +125,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Serviço inválido ou indisponível" }, { status: 400 });
   }
   const blockingDurationMinutes = getServiceBlockingDurationMinutes(svc);
-  const priceCentsBase = Number(svc.price_cents) || 0;
 
-  const variantOptions = normalizeVariantGallery(svc.variant_gallery);
-  let serviceVariantIndex: number | null = null;
-  let serviceVariantLabel: string | null = null;
-  let priceCents = priceCentsBase;
-
-  if (variantOptions.length > 0) {
-    const idx =
-      typeof serviceVariantIndexRaw === "number" && Number.isInteger(serviceVariantIndexRaw)
-        ? serviceVariantIndexRaw
-        : null;
-    if (idx !== null && (idx < 0 || idx >= variantOptions.length)) {
-      return NextResponse.json({ error: "Variação inválida para este serviço" }, { status: 400 });
-    }
-    if (idx !== null) {
-      serviceVariantIndex = idx;
-      const picked = variantOptions[idx]!;
-      const t = picked.title?.trim();
-      serviceVariantLabel = t && t.length > 0 ? t.slice(0, 120) : `Opção ${idx + 1}`;
-      priceCents = variantEffectivePriceCents(picked, priceCentsBase);
-    }
-  } else if (serviceVariantIndexRaw !== undefined && serviceVariantIndexRaw !== null) {
-    return NextResponse.json({ error: "Variação inválida para este serviço" }, { status: 400 });
+  const priceResolved = resolveBookingPriceCents({
+    servicePriceCents: svc.price_cents,
+    variantGallery: svc.variant_gallery,
+    serviceVariantIndexRaw,
+  });
+  if (!priceResolved.ok) {
+    return NextResponse.json({ error: priceResolved.error }, { status: 400 });
   }
+  const { priceCents, serviceVariantIndex, serviceVariantLabel } = priceResolved.value;
+  const priceCentsStored = sanitizePriceCents(priceCents);
 
   const { data: links } = await admin
     .from("collaborator_services")
@@ -338,7 +336,7 @@ export async function POST(req: Request) {
   }
 
   const paymentSettings = toPublicPaymentSettings(biz as Record<string, unknown>);
-  const due = computeAppointmentDueCents(priceCents, paymentSettings);
+  const due = computeAppointmentDueCents(priceCentsStored, paymentSettings);
   const paymentStatus =
     due.dueCents <= 0 ? "none" : due.policy === "optional" ? "optional" : "pending";
   const paymentRequired =
@@ -357,7 +355,7 @@ export async function POST(req: Request) {
       date: dateStr,
       time_start: `${timeNorm}:00`,
       time_end: timeEnd,
-      price_cents: priceCents,
+      price_cents: priceCentsStored,
       status: initialStatus,
       notes: notes || null,
       service_variant_index: serviceVariantIndex,

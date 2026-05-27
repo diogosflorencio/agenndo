@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { mpCreatePayment, mercadoPagoWebhookUrl } from "@/lib/mercadopago/api";
 import { getBusinessMpAccessToken } from "@/lib/mercadopago/business-mp";
+import { loadAndVerifyAppointmentPricing } from "@/lib/public-booking-price";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,17 +38,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Servidor indisponível" }, { status: 503 });
   }
 
-  const { data: apt } = await admin
-    .from("appointments")
-    .select("id, business_id, price_cents, payment_status, payment_due_cents, status")
-    .eq("id", appointmentId)
-    .maybeSingle();
-
-  if (!apt?.id || !apt.business_id) {
-    return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
+  const verified = await loadAndVerifyAppointmentPricing(admin, appointmentId);
+  if (!verified.ok) {
+    return NextResponse.json({ error: verified.error }, { status: verified.status });
   }
 
-  const expectedCents = apt.payment_due_cents ?? 0;
+  const apt = verified.appointment;
+  const expectedCents = verified.value.paymentDueCents;
   if (expectedCents <= 0) {
     return NextResponse.json({ error: "Nenhum pagamento pendente para este agendamento." }, { status: 400 });
   }
@@ -59,7 +56,7 @@ export async function POST(req: Request) {
 
   const txAmount = Number(formData.transaction_amount);
   const expectedAmount = expectedCents / 100;
-  if (!Number.isFinite(txAmount) || Math.abs(txAmount - expectedAmount) > 0.02) {
+  if (!Number.isFinite(txAmount) || txAmount <= 0 || Math.abs(txAmount - expectedAmount) > 0.02) {
     return NextResponse.json({ error: "Valor do pagamento não confere com o agendamento." }, { status: 422 });
   }
 

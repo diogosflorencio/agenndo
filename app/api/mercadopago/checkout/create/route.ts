@@ -3,16 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getMercadoPagoConfig } from "@/lib/mercadopago/config";
 import { mpCreatePreference, mercadoPagoWebhookUrl } from "@/lib/mercadopago/api";
 import { getBusinessMpAccessToken } from "@/lib/mercadopago/business-mp";
-import {
-  computeAppointmentDueCents,
-  normalizePaymentPolicy,
-  type DepositMode,
-} from "@/lib/business-payment-policy";
-
-function firstJoinedBusiness<T>(row: T | T[] | null | undefined): T | null {
-  if (row == null) return null;
-  return Array.isArray(row) ? (row[0] ?? null) : row;
-}
+import { loadAndVerifyAppointmentPricing } from "@/lib/public-booking-price";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,43 +44,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Servidor indisponível" }, { status: 503 });
   }
 
-  const { data: apt } = await admin
-    .from("appointments")
-    .select(
-      "id, business_id, price_cents, payment_status, payment_due_cents, service_id, client_name_snapshot, businesses(name, payment_policy, deposit_mode, deposit_percent, deposit_fixed_cents, payment_client_message, mp_checkout_enabled, mp_user_id, mp_access_token_enc)"
-    )
-    .eq("id", appointmentId)
-    .maybeSingle();
-
-  if (!apt?.id || !apt.business_id) {
-    return NextResponse.json({ error: "Agendamento não encontrado" }, { status: 404 });
+  const verified = await loadAndVerifyAppointmentPricing(admin, appointmentId);
+  if (!verified.ok) {
+    return NextResponse.json({ error: verified.error }, { status: verified.status });
   }
 
-  const biz = firstJoinedBusiness(apt.businesses);
-  if (!biz) return NextResponse.json({ error: "Negócio não encontrado" }, { status: 404 });
+  const apt = verified.appointment;
+  const { paymentDueCents: dueCents, due } = verified.value;
+
+  if (dueCents <= 0) {
+    return NextResponse.json({ error: "Nenhum pagamento exigido para este agendamento." }, { status: 400 });
+  }
 
   const mp = await getBusinessMpAccessToken(admin, apt.business_id);
   if (!mp) {
     return NextResponse.json({ error: "Mercado Pago não conectado para este negócio." }, { status: 400 });
   }
 
-  const depositMode: DepositMode = biz.deposit_mode === "fixed" ? "fixed" : "percent";
-  const due = computeAppointmentDueCents(apt.price_cents, {
-    payment_policy: normalizePaymentPolicy(biz.payment_policy),
-    deposit_mode: depositMode,
-    deposit_percent: typeof biz.deposit_percent === "number" ? biz.deposit_percent : null,
-    deposit_fixed_cents: typeof biz.deposit_fixed_cents === "number" ? biz.deposit_fixed_cents : null,
-    mp_checkout_enabled: Boolean(biz.mp_checkout_enabled),
-    mp_connected: true,
-  });
-
-  const dueCents = apt.payment_due_cents ?? due.dueCents;
-  if (dueCents <= 0) {
-    return NextResponse.json({ error: "Nenhum pagamento exigido para este agendamento." }, { status: 400 });
-  }
-
   const amount = dueCents / 100;
-  const bizName = biz.name?.trim() || "Serviço";
+  const bizRow = Array.isArray(apt.businesses) ? apt.businesses[0] : apt.businesses;
+  const bizName =
+    bizRow && typeof bizRow === "object" && typeof (bizRow as { name?: string }).name === "string"
+      ? (bizRow as { name: string }).name.trim()
+      : "Serviço";
 
   const preference = await mpCreatePreference(mp.accessToken, {
     externalReference: apt.id,

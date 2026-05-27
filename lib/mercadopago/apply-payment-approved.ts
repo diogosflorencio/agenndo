@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MpPaymentInfo } from "@/lib/mercadopago/api";
+import { loadAndVerifyAppointmentPricing, sanitizePriceCents } from "@/lib/public-booking-price";
 
 /**
  * Fonte de verdade: confirma agendamento após pagamento MP aprovado (webhook).
@@ -16,6 +17,12 @@ export async function applyMercadoPagoPaymentApproved(
 ): Promise<{ ok: boolean; reason?: string }> {
   const { appointmentId, businessId, mpPayment, paidCents } = input;
 
+  const verified = await loadAndVerifyAppointmentPricing(admin, appointmentId);
+  if (!verified.ok) return { ok: false, reason: verified.error };
+  if (verified.appointment.business_id !== businessId) {
+    return { ok: false, reason: "appointment_not_found" };
+  }
+
   const { data: apt } = await admin
     .from("appointments")
     .select("id, status, price_cents, payment_due_cents, payment_collected_cents, payment_status")
@@ -25,13 +32,16 @@ export async function applyMercadoPagoPaymentApproved(
 
   if (!apt?.id) return { ok: false, reason: "appointment_not_found" };
 
-  const expected = apt.payment_due_cents ?? apt.price_cents;
-  if (paidCents < expected) {
+  const canonicalPrice = verified.value.priceCents;
+  const expectedDue = verified.value.paymentDueCents;
+  const expectedCharge = expectedDue > 0 ? expectedDue : canonicalPrice;
+
+  if (sanitizePriceCents(paidCents) < expectedCharge) {
     return { ok: false, reason: "amount_mismatch" };
   }
 
-  const collected = (apt.payment_collected_cents ?? 0) + paidCents;
-  const isFull = collected >= apt.price_cents;
+  const collected = sanitizePriceCents(apt.payment_collected_cents) + sanitizePriceCents(paidCents);
+  const isFull = collected >= canonicalPrice;
   const paymentStatus = isFull ? "paid" : "partial";
 
   await admin
@@ -39,7 +49,7 @@ export async function applyMercadoPagoPaymentApproved(
     .update({
       provider_payment_id: String(mpPayment.id),
       status: "approved",
-      amount_cents: paidCents,
+      amount_cents: sanitizePriceCents(paidCents),
       raw: mpPayment as unknown as Record<string, unknown>,
     })
     .eq("appointment_id", appointmentId)
