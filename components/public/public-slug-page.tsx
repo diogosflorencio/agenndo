@@ -49,8 +49,8 @@ import { SocialBrandIcon, socialBrandAccent } from "@/components/social-brand-ic
 import { buildPublicBookingQuery, parsePublicBookingQuery } from "@/lib/public-booking-query";
 import { bookingStepToSegment, segmentToBookingStep } from "@/lib/public-booking-step-routes";
 import { DEFAULT_PUBLIC_PIX_SUGGEST_MESSAGE } from "@/lib/public-pix";
-import { buildPublicPaymentHint } from "@/lib/public-payment-display";
-import { MercadoPagoPaymentBrick } from "@/components/public/mercadopago-payment-brick";
+import { buildPublicMercadoPagoCard, isPublicMpPolicyVisible } from "@/lib/public-payment-display";
+import { PublicBookingSuccessScreen } from "@/components/public/booking-success-screen";
 import {
   fetchPublicCatalog,
   getCachedPublicCatalog,
@@ -848,21 +848,14 @@ export function PublicPageInner({
   }, [paymentConfig, selectedBookingPriceCents]);
 
   const onlinePaymentHint = useMemo(() => {
-    if (!paymentConfig?.mp_connected || !paymentConfig.mp_checkout_enabled) return null;
-    const policy = paymentConfig.payment_policy ?? "off";
-    if (policy === "off") return null;
-    return buildPublicPaymentHint(selectedBookingPriceCents, paymentConfig);
+    if (!paymentConfig) return null;
+    return buildPublicMercadoPagoCard(selectedBookingPriceCents, paymentConfig);
   }, [paymentConfig, selectedBookingPriceCents]);
 
   const publicPaymentSummary = useMemo(() => {
     if (!paymentConfig) return null;
     const parts: string[] = [];
-    if (
-      paymentConfig.mp_connected &&
-      paymentConfig.mp_checkout_enabled &&
-      paymentConfig.payment_policy &&
-      paymentConfig.payment_policy !== "off"
-    ) {
+    if (isPublicMpPolicyVisible(paymentConfig)) {
       parts.push("Mercado Pago na confirmação");
     }
     if (paymentConfig.public_pix_suggest_enabled && paymentConfig.public_pix_key?.trim()) {
@@ -916,8 +909,8 @@ export function PublicPageInner({
 
   if (booked) {
     return (
-      <SuccessScreen
-        service={selectedService}
+      <PublicBookingSuccessScreen
+        serviceName={selectedService?.name ?? ""}
         bookedPriceCents={selectedBookingPriceCents}
         collab={selectedCollab}
         date={selectedDate}
@@ -929,6 +922,7 @@ export function PublicPageInner({
         appointmentId={bookedAppointmentId}
         paymentDueCents={bookedPaymentDueCents}
         paymentRequired={bookedPaymentRequired}
+        authUserId={authUserId}
       />
     );
   }
@@ -2056,185 +2050,6 @@ export function PublicPageInner({
       )}
 
       <PublicPwaInstallPrompt slug={slug} businessName={business.name} accentColor={accent} isDark={isDark} />
-    </div>
-  );
-}
-
-function SuccessScreen({
-  service,
-  bookedPriceCents,
-  collab,
-  date,
-  time,
-  slug,
-  businessName,
-  collaboratorName,
-  accentColor,
-  appointmentId,
-  paymentDueCents,
-  paymentRequired,
-}: {
-  service: ServiceRow | null;
-  bookedPriceCents: number;
-  collab: CollabRow | "any" | null;
-  date: string | null;
-  time: string | null;
-  slug: string;
-  businessName: string;
-  collaboratorName: string | null;
-  accentColor: string;
-  appointmentId: string | null;
-  paymentDueCents: number;
-  paymentRequired: boolean;
-}) {
-  const [checkout, setCheckout] = useState<{
-    preferenceId: string;
-    publicKey: string;
-    amountCents: number;
-  } | null>(null);
-  const [checkoutErr, setCheckoutErr] = useState<string | null>(null);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
-
-  useEffect(() => {
-    if (!appointmentId || paymentDueCents <= 0) return;
-    let cancelled = false;
-    setCheckoutLoading(true);
-    setCheckoutErr(null);
-    void (async () => {
-      try {
-        const res = await fetch("/api/mercadopago/checkout/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            appointmentId,
-            successUrl: typeof window !== "undefined" ? window.location.href : undefined,
-          }),
-        });
-        const j = await res.json();
-        if (!res.ok) throw new Error(j.error || "Não foi possível iniciar o pagamento");
-        if (cancelled) return;
-        if (typeof j.preferenceId === "string" && typeof j.publicKey === "string") {
-          setCheckout({
-            preferenceId: j.preferenceId,
-            publicKey: j.publicKey,
-            amountCents: typeof j.amountCents === "number" ? j.amountCents : paymentDueCents,
-          });
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setCheckoutErr(e instanceof Error ? e.message : "Erro ao carregar pagamento");
-        }
-      } finally {
-        if (!cancelled) setCheckoutLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [appointmentId, paymentDueCents]);
-
-  const title = paymentRequired && paymentDueCents > 0 ? "Agendamento reservado" : "Agendamento confirmado!";
-  const subtitle =
-    paymentRequired && paymentDueCents > 0
-      ? "Conclua o pagamento abaixo para o estabelecimento confirmar seu horário."
-      : paymentDueCents > 0
-        ? "Você pode pagar antecipadamente abaixo (opcional) ou combinar no local."
-        : "Você receberá uma confirmação por e-mail em breve.";
-
-  return (
-    <div
-      className="min-h-screen bg-[#020403] flex flex-col items-center justify-center px-4 py-8 sm:py-12"
-      style={{ ["--public-accent"]: accentColor } as CSSProperties}
-    >
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-[color-mix(in_srgb,var(--public-accent)_15%,transparent)] blur-[100px] rounded-full pointer-events-none" />
-      <div className="relative z-10 w-full max-w-sm sm:max-w-md lg:max-w-lg flex flex-col sm:flex-row sm:items-stretch gap-6 sm:gap-8">
-        <div className="flex flex-col items-center sm:items-start text-center sm:text-left flex-1">
-          <div className="size-20 sm:size-24 rounded-3xl bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)] border-2 border-[color-mix(in_srgb,var(--public-accent)_30%,transparent)] flex items-center justify-center mb-4 sm:mb-6">
-            <span className={cn(publicMaterialIconClass("xl", false), "text-[var(--public-accent)] !text-4xl sm:!text-5xl filled")}>
-              check_circle
-            </span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white mb-2">{title}</h1>
-          <p className="text-gray-400 text-sm mb-6 sm:mb-0">{subtitle}</p>
-        </div>
-        <div className="flex flex-col gap-4 flex-1 max-w-sm mx-auto sm:mx-0 w-full">
-          {paymentDueCents > 0 ? (
-            <div className="w-full">
-              {checkoutLoading ? (
-                <p className="text-xs text-gray-500 text-center py-4">Preparando pagamento…</p>
-              ) : checkoutErr ? (
-                <p className="text-xs text-red-400 text-center py-2">{checkoutErr}</p>
-              ) : checkout ? (
-                <MercadoPagoPaymentBrick
-                  preferenceId={checkout.preferenceId}
-                  publicKey={checkout.publicKey}
-                  amountLabel={formatCurrency(checkout.amountCents / 100)}
-                />
-              ) : null}
-            </div>
-          ) : null}
-          <div className="bg-[#14221A] border border-[#213428] rounded-2xl p-5 sm:p-6">
-            <div className="space-y-3">
-              {[
-                { label: "Serviço", value: service?.name ?? "" },
-                {
-                  label: "Profissional",
-                  value:
-                    collaboratorName ??
-                    (collab === "any" ? "Equipe (definido no agendamento)" : (collab as CollabRow)?.name ?? ""),
-                },
-                {
-                  label: "Data",
-                  value: date ? new Date(date + "T12:00:00").toLocaleDateString("pt-BR") : "",
-                },
-                { label: "Horário", value: time ?? "" },
-                { label: "Valor", value: formatCurrency(bookedPriceCents / 100), highlight: true },
-              ].map((item) => (
-                <div key={item.label} className="flex justify-between items-center">
-                  <span className="text-gray-400 text-sm">{item.label}</span>
-                  <span
-                    className={`text-sm font-bold ${item.highlight ? "text-[var(--public-accent)]" : "text-white"}`}
-                  >
-                    {item.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <button
-              type="button"
-              className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2"
-            >
-              <span className="material-symbols-outlined text-base">calendar_add_on</span>
-              Adicionar ao Google Calendar
-            </button>
-            <Link
-              href="/conta"
-              prefetch
-              className="block w-full py-3 bg-[var(--public-accent)] hover:brightness-95 text-black font-bold rounded-xl text-sm transition-all text-center"
-            >
-              Minha conta e agendamentos
-            </Link>
-            <Link
-              href={`/${slug}`}
-              className="block w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold rounded-xl text-sm transition-all text-center"
-            >
-              Voltar à página do negócio
-            </Link>
-            <p className="text-xs text-gray-500 text-center">
-              Com sua conta você gerencia e cancela em{" "}
-              <Link href="/conta" prefetch className="text-[var(--public-accent)] font-semibold hover:underline">
-                Minha conta
-              </Link>
-              .
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <PublicPwaInstallPrompt slug={slug} businessName={businessName} accentColor={accentColor} isDark={true} />
     </div>
   );
 }

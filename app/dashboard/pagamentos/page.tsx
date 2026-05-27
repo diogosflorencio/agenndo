@@ -191,6 +191,11 @@ export default function PagamentosPage() {
         ? Math.round(parseFloat(form.depositFixedReais.replace(",", ".")) * 100)
         : null;
 
+      const mpCheckoutOn =
+        mpConnected && form.paymentPolicy !== "off"
+          ? true
+          : form.mpCheckoutEnabled;
+
       const { error } = await supabase
         .from("businesses")
         .update({
@@ -202,7 +207,7 @@ export default function PagamentosPage() {
           deposit_percent: form.depositMode === "percent" ? Number(form.depositPercent) || 30 : null,
           deposit_fixed_cents: form.depositMode === "fixed" ? fixedCents : null,
           payment_client_message: form.paymentClientMessage.trim() || null,
-          mp_checkout_enabled: form.mpCheckoutEnabled,
+          mp_checkout_enabled: mpCheckoutOn,
         })
         .eq("id", business.id);
 
@@ -216,7 +221,7 @@ export default function PagamentosPage() {
     } finally {
       setSaving(false);
     }
-  }, [business?.id, form, showAlert]);
+  }, [business?.id, form, showAlert, mpConnected]);
 
   useRegisterDashboardUnsavedNavigation(isDirty, saveSettings, !!business?.id);
 

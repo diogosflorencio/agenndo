@@ -17,32 +17,66 @@ export type PublicBusinessPaymentFields = {
   mp_connected: boolean;
 };
 
+/** Política MP visível na vitrine (política ativa + checkout ou conta conectada). */
+export function isPublicMpPolicyVisible(settings: PublicBusinessPaymentFields): boolean {
+  return (
+    settings.payment_policy !== "off" &&
+    (settings.mp_checkout_enabled || settings.mp_connected)
+  );
+}
+
+export type PublicMercadoPagoCard = {
+  policyLabel: string;
+  clientMessage: string;
+  dueLabel: string | null;
+  serviceTotalLabel: string;
+  paymentRequired: boolean;
+  depositNote: string | null;
+  canPayOnline: boolean;
+  dueCents: number;
+};
+
+/** Card Mercado Pago na confirmação — não depende só de dueCents (evita sumir por mp_connected no cliente). */
+export function buildPublicMercadoPagoCard(
+  priceCents: number,
+  settings: PublicBusinessPaymentFields
+): PublicMercadoPagoCard | null {
+  if (!isPublicMpPolicyVisible(settings)) return null;
+
+  const due = computeAppointmentDueCents(priceCents, settings);
+  const paymentRequired =
+    settings.payment_policy === "required_deposit" || settings.payment_policy === "required_full";
+  const canPayOnline = settings.mp_connected && settings.mp_checkout_enabled;
+
+  let dueLabel: string | null = null;
+  if (priceCents > 0 && canPayOnline && due.dueCents > 0) {
+    dueLabel =
+      due.kind === "deposit"
+        ? `Sinal online: ${formatBrl(due.dueCents)} · no local: ${formatBrl(due.remainingAtVenueCents)}`
+        : `Pagamento online: ${formatBrl(due.dueCents)}`;
+  } else if (priceCents > 0) {
+    dueLabel = `Valor do serviço: ${formatBrl(priceCents)}`;
+  }
+
+  return {
+    policyLabel: PAYMENT_POLICY_LABELS[settings.payment_policy],
+    clientMessage: settings.payment_client_message?.trim() || DEFAULT_PAYMENT_CLIENT_MESSAGE,
+    dueLabel,
+    serviceTotalLabel: formatBrl(priceCents),
+    paymentRequired,
+    depositNote:
+      settings.payment_policy === "required_deposit" && canPayOnline ? DEPOSIT_NO_SHOW_NOTE : null,
+    canPayOnline,
+    dueCents: due.dueCents,
+  };
+}
+
+/** @deprecated use buildPublicMercadoPagoCard */
 export function buildPublicPaymentHint(
   priceCents: number,
   settings: PublicBusinessPaymentFields
-): {
-  policyLabel: string;
-  clientMessage: string;
-  dueLabel: string;
-  paymentRequired: boolean;
-  depositNote: string | null;
-} | null {
-  const due = computeAppointmentDueCents(priceCents, settings);
-  if (due.dueCents <= 0) return null;
-
-  const paymentRequired = due.policy === "required_deposit" || due.policy === "required_full";
-  const dueLabel =
-    due.kind === "deposit"
-      ? `Sinal: ${formatBrl(due.dueCents)} (resta ${formatBrl(due.remainingAtVenueCents)} no local)`
-      : `Total online: ${formatBrl(due.dueCents)}`;
-
-  return {
-    policyLabel: PAYMENT_POLICY_LABELS[due.policy],
-    clientMessage: settings.payment_client_message?.trim() || DEFAULT_PAYMENT_CLIENT_MESSAGE,
-    dueLabel,
-    paymentRequired,
-    depositNote: due.kind === "deposit" ? DEPOSIT_NO_SHOW_NOTE : null,
-  };
+) {
+  return buildPublicMercadoPagoCard(priceCents, settings);
 }
 
 function formatBrl(cents: number): string {

@@ -31,7 +31,7 @@ export type PublicPageCatalogClient = {
 type CacheEntry = { data: PublicPageCatalogClient; fetchedAt: number };
 
 /** Incrementar quando o payload do catálogo mudar (ex.: campos de pagamento). */
-const CATALOG_CACHE_VERSION = 3;
+const CATALOG_CACHE_VERSION = 4;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 20_000;
 

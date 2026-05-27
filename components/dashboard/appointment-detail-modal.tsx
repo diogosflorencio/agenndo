@@ -6,6 +6,7 @@ import { getDashboardDialogUi } from "@/lib/dashboard-dialog-ui";
 import { useTheme } from "@/lib/theme-context";
 import { cn } from "@/lib/utils";
 import { STATUS_CONFIG, formatCurrency, phoneToWhatsAppHref, type AppointmentStatus } from "@/lib/utils";
+import { getAppointmentPaymentBadge } from "@/lib/appointment-payment-display";
 
 export type AppointmentDetailRow = {
   id: string;
@@ -15,6 +16,9 @@ export type AppointmentDetailRow = {
   time_end: string;
   price_cents: number;
   status: string;
+  payment_status?: string | null;
+  payment_due_cents?: number | null;
+  payment_collected_cents?: number | null;
   client_name_snapshot: string | null;
   service_variant_label: string | null;
   clients: { name: string; phone: string | null } | null;
@@ -65,6 +69,7 @@ export function AppointmentDetailModal({
   const waHref = apt.client_id ? phoneToWhatsAppHref(apt.clients?.phone) : null;
   const canMarkAttendance = apt.status === "agendado" || apt.status === "confirmado";
   const isBusy = busyId === apt.id;
+  const payBadge = getAppointmentPaymentBadge(apt);
 
   return (
     <DashboardDialog
@@ -98,6 +103,28 @@ export function AppointmentDetailModal({
             {conf.label}
           </span>
         </div>
+
+        {payBadge ? (
+          <div
+            className={cn(
+              "rounded-xl border px-3 py-2.5 text-xs",
+              payBadge.tone === "warn"
+                ? isDark
+                  ? "border-amber-500/35 bg-amber-500/10 text-amber-100"
+                  : "border-amber-200 bg-amber-50 text-amber-950"
+                : payBadge.tone === "ok"
+                  ? isDark
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
+                    : "border-emerald-200 bg-emerald-50 text-emerald-950"
+                  : isDark
+                    ? "border-sky-500/30 bg-sky-500/10 text-sky-100"
+                    : "border-sky-200 bg-sky-50 text-sky-950"
+            )}
+          >
+            <p className="font-semibold">{payBadge.label}</p>
+            {payBadge.hint ? <p className="opacity-85 mt-0.5 tabular-nums">{payBadge.hint}</p> : null}
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className={cn("rounded-xl border p-3", ui.surface)}>
