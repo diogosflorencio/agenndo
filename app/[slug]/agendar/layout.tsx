@@ -42,13 +42,7 @@ export default function AgendarLayout({
   children: React.ReactNode;
 }) {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-[#020403] flex items-center justify-center">
-          <div className="size-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={null}>
       <AgendarBookingShell />
       {children}
     </Suspense>

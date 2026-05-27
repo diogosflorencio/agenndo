@@ -26,24 +26,36 @@ async function inMemoryLock<R>(name: string, acquireTimeout: number, fn: () => P
     () => new Promise<void>((resolve) => { release = resolve; })
   );
 
-  const timeout = acquireTimeout > 0
-    ? new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error(`lock "${name}" timeout after ${acquireTimeout}ms`)), acquireTimeout)
-      )
-    : null;
+  const maxWaitMs = acquireTimeout > 0 ? acquireTimeout : 4000;
 
   try {
-    await (timeout ? Promise.race([previous, timeout]) : previous);
+    await Promise.race([
+      previous,
+      new Promise<void>((resolve) => setTimeout(resolve, maxWaitMs)),
+    ]);
+  } catch {
+    /* timeout de acquireTimeout explícito */
+  }
+
+  try {
     return await fn();
   } finally {
     release?.();
-    if (_locks[name] === previous) delete _locks[name];
   }
 }
 
 /** SECURITY: browser usa anon key + sessão Supabase; RLS no Postgres. Sessão em cookies (persiste ao fechar o navegador). */
+function ensureAuthStore(client: SupabaseClient) {
+  if (typeof window === "undefined") return;
+  const { initBrowserAuthStore } = require("@/lib/auth/browser-auth-store") as typeof import("@/lib/auth/browser-auth-store");
+  initBrowserAuthStore(client);
+}
+
 export function createClient() {
-  if (_client) return _client;
+  if (_client) {
+    ensureAuthStore(_client);
+    return _client;
+  }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const opts: any = {
     cookieOptions: cookieOpts,
@@ -54,5 +66,6 @@ export function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     opts,
   );
-  return _client!;
+  ensureAuthStore(_client);
+  return _client;
 }

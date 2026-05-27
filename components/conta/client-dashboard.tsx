@@ -13,6 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { createClient } from "@/lib/supabase/client";
+import { useSupabaseAuth } from "@/lib/auth/browser-auth-store";
 import { formatCurrency } from "@/lib/utils";
 import { STATUS_CONFIG } from "@/lib/utils";
 import { getPublicBookUi } from "@/lib/public-book-ui";
@@ -139,6 +140,7 @@ function TabNav({ tab, onTab }: { tab: Tab; onTab: (t: Tab) => void }) {
 export default function ClientDashboard() {
   const { showAlert } = useAppAlert();
   const router = useRouter();
+  const auth = useSupabaseAuth();
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("overview");
   const [aptFilter, setAptFilter] = useState<AptFilter>("all");
@@ -166,58 +168,85 @@ export default function ClientDashboard() {
     };
   }, [refreshVisited]);
 
-  const load = useCallback(async () => {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
+  const load = useCallback(async (signal?: { cancelled: boolean }, userId?: string | null) => {
+    const cancelled = () => signal?.cancelled === true;
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      let uid = userId ?? auth.userId;
+      if (!uid) {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        uid = session?.user?.id ?? null;
+      }
+      if (cancelled()) return;
+      if (!uid) {
+        router.replace(`/entrar?next=${encodeURIComponent("/conta")}`);
+        return;
+      }
+      const email =
+        auth.userEmail ??
+        (await supabase.auth.getSession()).data.session?.user?.email ??
+        null;
+      setUserEmail(email);
+
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, avatar_url")
+        .eq("id", uid)
+        .maybeSingle();
+      if (cancelled()) return;
+      setProfile((prof as UserProfile | null) ?? null);
+
+      const { data: clientRows } = await supabase
+        .from("clients")
+        .select(
+          "id, business_id, name, phone, email, total_appointments, total_spent_cents, businesses(name, slug)"
+        )
+        .eq("auth_user_id", uid)
+        .order("created_at", { ascending: false });
+
+      const rows = (clientRows ?? []) as unknown as ClientLink[];
+      if (cancelled()) return;
+      setLinks(rows);
+
+      const ids = rows.map((r) => r.id);
+      if (ids.length === 0) {
+        setAppointments([]);
+        return;
+      }
+
+      const { data: apts } = await supabase
+        .from("appointments")
+        .select(
+          "id, date, time_start, time_end, status, price_cents, client_id, services(name), collaborators(name)"
+        )
+        .in("client_id", ids)
+        .order("date", { ascending: false })
+        .order("time_start", { ascending: false });
+
+      if (cancelled()) return;
+      setAppointments((apts ?? []) as unknown as AptRow[]);
+    } catch (e) {
+      console.error("[conta] load failed", e);
+    } finally {
+      if (!cancelled()) setLoading(false);
+    }
+  }, [router, auth.userId, auth.userEmail]);
+
+  useEffect(() => {
+    if (!auth.ready) return;
+    if (!auth.userId) {
       router.replace(`/entrar?next=${encodeURIComponent("/conta")}`);
       return;
     }
-    setUserEmail(user.email ?? null);
-
-    const { data: prof } = await supabase
-      .from("profiles")
-      .select("id, email, full_name, avatar_url")
-      .eq("id", user.id)
-      .maybeSingle();
-    setProfile((prof as UserProfile | null) ?? null);
-
-    const { data: clientRows } = await supabase
-      .from("clients")
-      .select(
-        "id, business_id, name, phone, email, total_appointments, total_spent_cents, businesses(name, slug)"
-      )
-      .eq("auth_user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    const rows = (clientRows ?? []) as unknown as ClientLink[];
-    setLinks(rows);
-
-    const ids = rows.map((r) => r.id);
-    if (ids.length === 0) {
-      setAppointments([]);
-      setLoading(false);
-      return;
-    }
-
-    const { data: apts } = await supabase
-      .from("appointments")
-      .select(
-        "id, date, time_start, time_end, status, price_cents, client_id, services(name), collaborators(name)"
-      )
-      .in("client_id", ids)
-      .order("date", { ascending: false })
-      .order("time_start", { ascending: false });
-
-    setAppointments((apts ?? []) as unknown as AptRow[]);
-    setLoading(false);
-  }, [router]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+    const signal = { cancelled: false };
+    void load(signal, auth.userId);
+    return () => {
+      signal.cancelled = true;
+    };
+  }, [auth.ready, auth.userId, load, router]);
 
   const businesses = useMemo(() => buildUniqueBusinesses(links, visitedPages), [links, visitedPages]);
   const clientLinkById = useMemo(() => new Map(links.map((l) => [l.id, l])), [links]);
@@ -275,7 +304,7 @@ export default function ClientDashboard() {
     router.refresh();
   };
 
-  if (loading) {
+  if (!auth.ready || loading) {
     return (
       <div className={cn(ui.page, "flex items-center justify-center min-h-screen")}>
         <div className="size-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />

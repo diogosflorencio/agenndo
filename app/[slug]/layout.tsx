@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PublicSlugRouteTransition } from "@/components/public/public-slug-route-transition";
 import { getSiteUrl } from "@/lib/site-url";
 import { getPublicSlugSeo } from "@/lib/seo/public-slug-seo";
 import { buildLocalBusinessJsonLd, buildBreadcrumbJsonLd } from "@/lib/seo/local-business-jsonld";
@@ -92,7 +93,7 @@ export default async function PublicBookingSlugLayout({
           }}
         />
       )}
-      {children}
+      <PublicSlugRouteTransition>{children}</PublicSlugRouteTransition>
     </>
   );
 }

@@ -14,7 +14,8 @@ import {
   type CSSProperties,
 } from "react";
 import { BookingStepPanel } from "@/components/public/booking-step-panel";
-import { createClient } from "@/lib/supabase/client";
+import { BookingSelectionPath, type BookingPathStep } from "@/components/public/booking-selection-path";
+import { useSupabaseAuth } from "@/lib/auth/browser-auth-store";
 import { cn, formatBrazilPhoneFromDigits, formatCurrency, rgbaFromHex } from "@/lib/utils";
 import { recordPublicPageVisit } from "@/lib/visited-public-pages";
 import {
@@ -48,6 +49,12 @@ import { SocialBrandIcon, socialBrandAccent } from "@/components/social-brand-ic
 import { buildPublicBookingQuery, parsePublicBookingQuery } from "@/lib/public-booking-query";
 import { bookingStepToSegment, segmentToBookingStep } from "@/lib/public-booking-step-routes";
 import { DEFAULT_PUBLIC_PIX_SUGGEST_MESSAGE } from "@/lib/public-pix";
+import {
+  fetchPublicCatalog,
+  getCachedPublicCatalog,
+  prefetchPublicCatalog,
+  type PublicPageCatalogClient,
+} from "@/lib/public/public-page-catalog-cache";
 
 function initialSliderStartMin(payload: PublicDayTimelinePayload): number {
   const now = new Date();
@@ -154,11 +161,20 @@ export function PublicPageInner({
   const effPrefillDate = entry === "booking" ? urlBookingQuery.date ?? prefillDate : null;
   const effPrefillTime = entry === "booking" ? urlBookingQuery.time ?? prefillTime : null;
 
-  const [business, setBusiness] = useState<BusinessRow | null>(null);
-  const [personalization, setPersonalization] = useState<PersonalizationRow | null>(null);
-  const [services, setServices] = useState<ServiceRow[]>([]);
-  const [collaborators, setCollaborators] = useState<CollabRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const catalogBoot = slug ? getCachedPublicCatalog(slug) : null;
+  const [business, setBusiness] = useState<BusinessRow | null>(
+    () => (catalogBoot?.business as BusinessRow | undefined) ?? null
+  );
+  const [personalization, setPersonalization] = useState<PersonalizationRow | null>(
+    () => (catalogBoot?.personalization as PersonalizationRow | undefined) ?? null
+  );
+  const [services, setServices] = useState<ServiceRow[]>(
+    () => (catalogBoot?.services as ServiceRow[] | undefined) ?? []
+  );
+  const [collaborators, setCollaborators] = useState<CollabRow[]>(
+    () => (catalogBoot?.collaborators as CollabRow[] | undefined) ?? []
+  );
+  const [loading, setLoading] = useState(() => !catalogBoot?.business);
 
   const [view, setView] = useState<PageView>(entry === "booking" ? "booking" : "home");
   const initialRouteStep =
@@ -172,8 +188,7 @@ export function PublicPageInner({
   const [booked, setBooked] = useState(false);
   const [clientName, setClientName] = useState("");
 
-  const [authUserId, setAuthUserId] = useState<string | null>(null);
-  const [authUserName, setAuthUserName] = useState<string | null>(null);
+  const { userId: authUserId, userName: authUserName } = useSupabaseAuth();
   const [bookingMeta, setBookingMeta] = useState<{
     maxFutureDays: number;
     minAdvanceHours: number;
@@ -197,7 +212,6 @@ export function PublicPageInner({
   const today = new Date();
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calYear, setCalYear] = useState(today.getFullYear());
-
   const prefillAppliedRef = useRef<string | null>(null);
   const prefillCollabAppliedRef = useRef<string | null>(null);
   const prefillDateAppliedRef = useRef<string | null>(null);
@@ -382,39 +396,54 @@ export function PublicPageInner({
     goBookingStep,
   ]);
 
+  const applyCatalog = useCallback((data: PublicPageCatalogClient) => {
+    if (!data.business) {
+      setBusiness(null);
+      setServices([]);
+      setCollaborators([]);
+      setPersonalization(null);
+      return false;
+    }
+    setBusiness(data.business as BusinessRow);
+    setServices((data.services ?? []) as ServiceRow[]);
+    setCollaborators((data.collaborators ?? []) as CollabRow[]);
+    setPersonalization((data.personalization as PersonalizationRow | null) ?? null);
+    return true;
+  }, []);
+
   useEffect(() => {
     if (!slug) {
       setLoading(false);
       return;
     }
-    (async () => {
-      try {
-        const res = await fetch(`/api/public/page-data?slug=${encodeURIComponent(slug)}`);
-        if (!res.ok) {
+
+    const cached = getCachedPublicCatalog(slug);
+    if (cached?.business) applyCatalog(cached);
+
+    const ac = new AbortController();
+    let cancelled = false;
+
+    void (async () => {
+      if (!cached?.business) setLoading(true);
+      const data = await fetchPublicCatalog(slug, ac.signal);
+      if (cancelled) return;
+      if (!data?.business) {
+        if (!cached?.business) {
+          setBusiness(null);
           setPersonalization(null);
-          setLoading(false);
-          return;
         }
-        const data = (await res.json()) as {
-          business: BusinessRow | null;
-          services: ServiceRow[];
-          collaborators: CollabRow[];
-          personalization: PersonalizationRow | null;
-        };
-        if (!data.business) {
-          setPersonalization(null);
-          setLoading(false);
-          return;
-        }
-        setBusiness(data.business);
-        setServices(data.services ?? []);
-        setCollaborators(data.collaborators ?? []);
-        setPersonalization(data.personalization ?? null);
-      } finally {
         setLoading(false);
+        return;
       }
+      applyCatalog(data);
+      setLoading(false);
     })();
-  }, [slug]);
+
+    return () => {
+      cancelled = true;
+      ac.abort();
+    };
+  }, [slug, applyCatalog]);
 
   useEffect(() => {
     const s = business?.slug;
@@ -482,43 +511,8 @@ export function PublicPageInner({
   }, [bookingMeta, selectedDate, step, goBookingStep]);
 
   useEffect(() => {
-    const supabase = createClient();
-    function metaName(meta: Record<string, unknown> | undefined): string | null {
-      if (!meta) return null;
-      const n = (meta.full_name ?? meta.name ?? "") as string;
-      return n.trim() || null;
-    }
-    async function resolveUserName(userId: string, fallback: string | null): Promise<string | null> {
-      const { data } = await supabase
-        .from("profiles")
-        .select("full_name")
-        .eq("id", userId)
-        .maybeSingle();
-      return data?.full_name?.trim() || fallback;
-    }
-    void supabase.auth.getUser().then(async ({ data: authData }) => {
-      const uid = authData.user?.id ?? null;
-      setAuthUserId(uid);
-      if (!uid) return;
-      const fallback = metaName(authData.user?.user_metadata as Record<string, unknown> | undefined);
-      const name = await resolveUserName(uid, fallback);
-      setAuthUserName(name);
-      if (name && !clientName) setClientName(name);
-    });
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const uid = session?.user?.id ?? null;
-      setAuthUserId(uid);
-      if (!uid) { setAuthUserName(null); return; }
-      const fallback = metaName(session?.user?.user_metadata as Record<string, unknown> | undefined);
-      const name = await resolveUserName(uid, fallback);
-      setAuthUserName(name);
-      if (name) setClientName(name);
-    });
-    return () => subscription.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (authUserName && !clientName) setClientName(authUserName);
+  }, [authUserName, clientName]);
 
   useEffect(() => {
     if (view !== "booking" || step !== 4 || !business || !selectedService || !selectedDate || !slug) {
@@ -622,7 +616,9 @@ export function PublicPageInner({
   const goHome = useCallback(() => {
     resetWizardState();
     if (entry === "booking" && slug) {
-      void router.push(`/${slug}`, { scroll: false });
+      startTransition(() => {
+        void router.push(`/${slug}`, { scroll: false });
+      });
       return;
     }
     setView("home");
@@ -647,17 +643,22 @@ export function PublicPageInner({
       if (prefillService) qs.set("service", prefillService.id);
       const q = qs.toString() ? `?${qs}` : "";
 
+      let dest: string;
       if (prefillService) {
         const v = normalizeVariantGallery(prefillService.variant_gallery);
         const desc = prefillService.description_public?.trim();
-        if (v.length > 0 || desc) {
-          void router.push(`/${slug}/agendar/servico${q}`);
-        } else {
-          void router.push(`/${slug}/agendar/profissional${q}`);
-        }
-        return;
+        dest =
+          v.length > 0 || desc
+            ? `/${slug}/agendar/servico${q}`
+            : `/${slug}/agendar/profissional${q}`;
+      } else {
+        dest = `/${slug}/agendar/servico`;
       }
-      void router.push(`/${slug}/agendar/servico`);
+
+      prefetchPublicCatalog(slug);
+      startTransition(() => {
+        void router.push(dest, { scroll: false });
+      });
     },
     [slug, router, bookingMeta?.publicBookingLocked]
   );
@@ -788,7 +789,7 @@ export function PublicPageInner({
 
   const bookUi = getPublicBookUi(isDark);
 
-  if (loading) {
+  if (loading && !business) {
     return (
       <div className="min-h-screen bg-[#020403] flex flex-col items-center justify-center">
         <div className="size-10 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -874,7 +875,7 @@ export function PublicPageInner({
 
                 <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-[25] flex items-center gap-2 pr-[max(0px,env(safe-area-inset-right))] pt-[max(0px,env(safe-area-inset-top))]">
                   {authUserId && (
-                    <Link href="/conta" className={floatBtn}>
+                    <Link href="/conta" prefetch className={floatBtn}>
                       Área do cliente
                     </Link>
                   )}
@@ -1242,6 +1243,7 @@ export function PublicPageInner({
           {authUserId ? (
             <Link
               href="/conta"
+              prefetch
               className={cn(
                 "text-xs font-semibold px-3 py-2 rounded-lg shrink-0 flex items-center gap-1.5",
                 isDark ? "text-gray-300 hover:text-white hover:bg-white/5" : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
@@ -1280,7 +1282,7 @@ export function PublicPageInner({
                   }`}
                 >
                   {step > s ? (
-                    <span className="material-symbols-outlined text-[16px] leading-none">check</span>
+                    <span className="material-symbols-outlined text-[32px] leading-none">check</span>
                   ) : (
                     <span className="text-xs font-bold leading-none tabular-nums">{s}</span>
                   )}
@@ -1831,8 +1833,14 @@ export function PublicPageInner({
       </main>
 
       {step > 1 && selectedService && (
-        <div className={cn("fixed bottom-0 left-0 right-0 z-30 border-t backdrop-blur-md", bookUi.bottomBar)}>
-          <div className="max-w-4xl lg:max-w-5xl mx-auto px-3 sm:px-4 py-2.5 flex items-center gap-2 sm:gap-3">
+        <div
+          className={cn(
+            "fixed bottom-0 left-0 right-0 z-30 border-t backdrop-blur-md",
+            bookUi.bottomBar,
+            "pb-[max(0.625rem,env(safe-area-inset-bottom))]"
+          )}
+        >
+          <div className="max-w-4xl lg:max-w-5xl mx-auto px-2.5 sm:px-4 py-2 flex items-center gap-2">
             <button
               type="button"
               onClick={() => {
@@ -1845,28 +1853,33 @@ export function PublicPageInner({
                 goBookingStep((step - 1) as Step);
               }}
               className={cn(
-                "shrink-0 flex items-center justify-center size-10 rounded-xl border transition-colors",
+                "shrink-0 flex items-center justify-center size-9 sm:size-10 rounded-xl border transition-colors",
                 isDark
                   ? "bg-white/5 border-white/10 hover:bg-white/10 text-white"
                   : "bg-gray-100 border-gray-200 hover:bg-gray-200 text-gray-900"
               )}
-              aria-label="Voltar"
+              aria-label="Etapa anterior"
             >
               <span className="material-symbols-outlined text-lg">arrow_back</span>
             </button>
-            <div className={cn("flex-1 min-w-0 flex items-center gap-2 rounded-xl px-3 py-2 border text-xs sm:text-sm", bookUi.chip)}>
-              <span className="material-symbols-outlined text-base shrink-0 text-[var(--public-accent)]">spa</span>
-              <div className="min-w-0 flex-1">
-                <p className={cn("font-semibold truncate", bookUi.title)}>{selectedService.name}</p>
-                <p className={cn("text-[11px] truncate", bookUi.muted)}>
-                  {selectedTime
-                    ? `${selectedTime}${selectedDate ? ` · ${new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}` : ""}`
-                    : selectedDate
-                      ? new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
-                      : formatCurrency(selectedBookingPriceCents / 100)}
-                </p>
-              </div>
-            </div>
+            <BookingSelectionPath
+              currentStep={step}
+              selectedService={selectedService}
+              selectedVariantIndex={selectedVariantIndex}
+              selectedCollab={selectedCollab}
+              selectedDate={selectedDate}
+              selectedTime={selectedTime}
+              bookUi={bookUi}
+              isDark={isDark}
+              onNavigate={(target: BookingPathStep) => {
+                if (target === 1) {
+                  const v = normalizeVariantGallery(selectedService.variant_gallery);
+                  const desc = selectedService.description_public?.trim();
+                  setServicePickPhase(v.length > 0 || desc ? "detail" : "list");
+                }
+                goBookingStep(target);
+              }}
+            />
           </div>
         </div>
       )}
@@ -1963,6 +1976,7 @@ function SuccessScreen({
             </button>
             <Link
               href="/conta"
+              prefetch
               className="block w-full py-3 bg-[var(--public-accent)] hover:brightness-95 text-black font-bold rounded-xl text-sm transition-all text-center"
             >
               Minha conta e agendamentos
@@ -1975,7 +1989,7 @@ function SuccessScreen({
             </Link>
             <p className="text-xs text-gray-500 text-center">
               Com sua conta você gerencia e cancela em{" "}
-              <Link href="/conta" className="text-[var(--public-accent)] font-semibold hover:underline">
+              <Link href="/conta" prefetch className="text-[var(--public-accent)] font-semibold hover:underline">
                 Minha conta
               </Link>
               .

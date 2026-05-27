@@ -455,7 +455,7 @@ function SuccessScreen({
 
       <div className="relative z-10 max-w-sm w-full">
         {/* Success icon */}
-        <div className="size-24 rounded-3xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center mx-auto mb-6">
+        <div className="size-1 rounded-3xl bg-primary/10 border-2 border-primary/30 flex items-center justify-center mx-auto mb-6">
           <span className="material-symbols-outlined text-primary text-5xl filled">check_circle</span>
         </div>
 

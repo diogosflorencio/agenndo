@@ -1,6 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { PUBLIC_PAGE_EASE, publicPageMotionDuration } from "@/lib/public-page-motion";
 import { useRef, type ReactNode } from "react";
 
 type Props = {
@@ -26,7 +27,7 @@ export function BookingStepPanel({ stepKey, step, children }: Props) {
 
   const dir = directionRef.current;
   const slide = reduced ? 0 : 12;
-  const duration = reduced ? 0.01 : 0.26;
+  const duration = publicPageMotionDuration(reduced, 260);
 
   return (
     <div className="relative min-h-[10rem] overflow-x-hidden">
@@ -36,7 +37,7 @@ export function BookingStepPanel({ stepKey, step, children }: Props) {
           initial={{ opacity: 0, x: dir * slide }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: dir * -slide * 0.65 }}
-          transition={{ duration, ease: [0.32, 0.72, 0, 1] }}
+          transition={{ duration, ease: PUBLIC_PAGE_EASE }}
         >
           {children}
         </motion.div>
