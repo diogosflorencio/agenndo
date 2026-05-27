@@ -6,6 +6,7 @@ export const CORE_SEO_LINKS: SeoRelatedLink[] = [
   { href: "/software-de-agendamento", label: "Software de agendamento" },
   { href: "/agenda-online", label: "Agenda online para prestadores" },
   { href: "/agendamento-online", label: "Como funciona o agendamento online" },
+  { href: "/receber-pagamentos-agendamento-online", label: "Sinal e pagamento antecipado" },
   { href: "/blog", label: "Blog com guias práticos" },
 ];
 

@@ -35,6 +35,7 @@ const MENU_DADOS = [
 ];
 const MENU_CONFIG = [
   { href: "/dashboard/negocio", icon: "store", label: "Dados do negócio" },
+  { href: "/dashboard/pagamentos", icon: "account_balance_wallet", label: "Receber pagamentos" },
   { href: "/dashboard/personalizacao", icon: "palette", label: "Personalização" },
   { href: "/dashboard/notificacoes", icon: "notifications", label: "Notificações" },
 ];

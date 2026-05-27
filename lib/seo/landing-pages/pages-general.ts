@@ -254,4 +254,68 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
       SEGMENT_SEO_LINKS
     ),
   },
+  {
+    slug: "receber-pagamentos-agendamento-online",
+    metaTitle: "Receber Pagamentos no Agendamento Online | Agenndo",
+    metaDescription:
+      "Cobre sinal ou pagamento antecipado no agendamento online: Mercado Pago do seu negócio, Pix opcional e confirmação verificada. Ideal para salões e clínicas.",
+    keywords: [
+      "sinal agendamento online",
+      "pagamento antecipado serviço",
+      "mercado pago agendamento",
+      "cobrar sinal salão",
+    ],
+    h1: "Receba sinal e pagamento antecipado no agendamento",
+    heroSubtitle:
+      "Além do Pix com orientação ao cliente, conecte sua conta Mercado Pago e exija sinal ou pagamento integral antes de confirmar — com pagamento na própria página, sem redirecionar para outro site.",
+    sections: [
+      {
+        id: "pix-e-mp",
+        title: "Pix manual + Mercado Pago verificado",
+        level: 2,
+        paragraphs: [
+          "No <strong class=\"text-white\">Agenndo</strong> você pode mostrar sua chave Pix com uma mensagem personalizada (pagamento manual, comprovante no WhatsApp). Quando quiser <strong class=\"text-white\">cobrança confirmada automaticamente</strong>, conecte o Mercado Pago do seu negócio.",
+        ],
+        bullets: [
+          "Sinal obrigatório em percentual ou valor fixo",
+          "Pagamento integral antecipado opcional ou obrigatório",
+          "Cliente vê quanto falta pagar no estabelecimento",
+          "Aviso claro sobre política de falta e sinal não reembolsável",
+        ],
+      },
+      {
+        id: "experiencia",
+        title: "Pagamento na página de agendamento",
+        level: 2,
+        paragraphs: [
+          "Usamos o formulário seguro do Mercado Pago embutido na confirmação (Payment Brick): o cliente não precisa sair para um checkout genérico em outra aba. Métodos disponíveis dependem da conta MP (Pix, cartão, etc.).",
+        ],
+      },
+      {
+        id: "quem",
+        title: "Para quem faz sentido",
+        level: 3,
+        paragraphs: [
+          "Salões, barbearias, clínicas e estúdios que sofrem com faltas ou querem fluxo de caixa antecipado. Você define as regras; o sistema calcula o valor no servidor.",
+        ],
+      },
+    ],
+    faq: [
+      ...faqBase,
+      {
+        question: "O dinheiro cai na conta de quem?",
+        answer:
+          "Na conta Mercado Pago do prestador que conectou OAuth — o Agenndo não fica no meio do recebimento.",
+      },
+      {
+        question: "Posso usar só Pix sem Mercado Pago?",
+        answer:
+          "Sim. A chave Pix e a mensagem ao cliente são opcionais e não exigem conexão MP. Para obrigar sinal com confirmação automática, é preciso Mercado Pago conectado.",
+      },
+    ],
+    relatedLinks: pickRelatedLinks(
+      CORE_SEO_LINKS.filter((l) => l.href !== "/receber-pagamentos-agendamento-online"),
+      SEGMENT_SEO_LINKS
+    ),
+  },
 ];
