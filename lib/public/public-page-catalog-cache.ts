@@ -31,7 +31,7 @@ export type PublicPageCatalogClient = {
 type CacheEntry = { data: PublicPageCatalogClient; fetchedAt: number };
 
 /** Incrementar quando o payload do catálogo mudar (ex.: campos de pagamento). */
-const CATALOG_CACHE_VERSION = 2;
+const CATALOG_CACHE_VERSION = 3;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 20_000;
 
@@ -70,7 +70,7 @@ export async function fetchPublicCatalog(
   if (!trimmed) return null;
   const key = cacheKey(trimmed);
 
-  const fresh = getCachedPublicCatalog(key);
+  const fresh = getCachedPublicCatalog(trimmed);
   if (fresh?.business) return fresh;
 
   const pending = inflight.get(key);
@@ -87,12 +87,12 @@ export async function fetchPublicCatalog(
     const timer = window.setTimeout(() => timeout.abort(), FETCH_TIMEOUT_MS);
 
     try {
-      const res = await fetch(`/api/public/page-data?slug=${encodeURIComponent(key)}`, {
+      const res = await fetch(`/api/public/page-data?slug=${encodeURIComponent(trimmed)}`, {
         signal: timeout.signal,
       });
       if (!res.ok) return null;
       const data = (await res.json()) as PublicPageCatalogClient;
-      if (data.business) setCachedPublicCatalog(key, data);
+      if (data.business) setCachedPublicCatalog(trimmed, data);
       return data.business ? data : null;
     } catch (err) {
       const aborted =
@@ -101,7 +101,7 @@ export async function fetchPublicCatalog(
       if (aborted) {
         inflight.delete(key);
       }
-      return getCachedPublicCatalog(key);
+      return getCachedPublicCatalog(trimmed);
     } finally {
       window.clearTimeout(timer);
       signal?.removeEventListener("abort", onExternalAbort);
