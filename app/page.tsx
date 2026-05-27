@@ -1,8 +1,17 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { HomeFaqJsonLd } from "@/components/home-faq-jsonld";
 import HomePage from "@/components/home-page";
 import { SITE_DESCRIPTION, SITE_TITLE_DEFAULT } from "@/lib/seo/site-metadata";
 import { getSiteUrl } from "@/lib/site-url";
+
+type HomeSearchParams = {
+  code?: string;
+  error?: string;
+  error_description?: string;
+  next?: string;
+  context?: string;
+};
 
 const siteUrl = getSiteUrl();
 
@@ -42,7 +51,30 @@ export const metadata: Metadata = {
   },
 };
 
-export default function Page() {
+/** Supabase às vezes devolve OAuth na Site URL (/) em vez de /auth/callback. */
+function oauthCallbackForwardQuery(sp: HomeSearchParams): string | null {
+  if (!sp.code && !sp.error) return null;
+  const q = new URLSearchParams();
+  if (sp.code) q.set("code", sp.code);
+  if (sp.error) q.set("error", sp.error);
+  if (sp.error_description) q.set("error_description", sp.error_description);
+  if (sp.next?.startsWith("/") && !sp.next.startsWith("//")) q.set("next", sp.next);
+  else if (sp.code) q.set("next", "/dashboard");
+  if (sp.context === "cliente" || sp.context === "staff") q.set("context", sp.context);
+  return q.toString();
+}
+
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<HomeSearchParams>;
+}) {
+  const sp = await searchParams;
+  const forward = oauthCallbackForwardQuery(sp);
+  if (forward) {
+    redirect(`/auth/callback?${forward}`);
+  }
+
   return (
     <>
       <HomeFaqJsonLd />

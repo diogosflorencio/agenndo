@@ -14,29 +14,30 @@ export async function syncAccountOnLogin(
     loginContext?: "cliente" | "staff" | "owner" | null;
   }
 ): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || user.id !== userId) {
+    return;
+  }
+
   const channel: SignupChannel = signupChannelFromLoginContext(options.loginContext);
 
-  await supabase.from("user_accounts").upsert(
-    {
-      user_id: userId,
-      signup_channel: channel,
-      last_login_channel: channel,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" }
-  );
+  const { error: touchErr } = await supabase.rpc("touch_user_account_on_login", {
+    p_channel: channel,
+  });
+  if (touchErr) {
+    console.error("[syncAccountOnLogin] touch_user_account_on_login:", touchErr.message);
+  }
 
+  // Só metadados OAuth; account_kind/primary_kind vêm de recompute (SQL, SECURITY DEFINER).
   await supabase.from("profiles").upsert(
     {
       id: userId,
       email: options.email ?? undefined,
       full_name: options.fullName ?? undefined,
       avatar_url: options.avatarUrl ?? undefined,
-      role: "provider",
     },
     { onConflict: "id" }
   );
-
-  // Dono + funcionário + cliente: memberships e negócio próprio definem account_kind.
-  await supabase.rpc("recompute_user_primary_kind", { p_user_id: userId });
 }

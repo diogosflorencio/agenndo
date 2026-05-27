@@ -21,7 +21,14 @@
 - `auth_user_is_business_owner(business_id?)`
 - `auth_user_is_business_staff(business_id?)`
 - `auth_user_is_client(business_id?)`
-- `recompute_user_primary_kind(user_id)` — recalcula após vínculos
+- `touch_user_account_on_login(channel)` — só `signup_channel` / `last_login_channel` do **próprio** `auth.uid()`; nunca aceita `admin`; `primary_kind` vem do recompute
+- `recompute_user_primary_kind(user_id)` — só `auth.uid()` ou operador de plataforma; `platform_admin` só via `platform_operators`
+
+### RLS `user_accounts`
+
+- Utilizador: **SELECT** na própria linha (`user_accounts_self`)
+- **INSERT/UPDATE** diretos no cliente: negados (403) — uso da RPC acima
+- Operador: política `user_accounts_console` (`is_platform_operator()`)
 
 ## App (TypeScript)
 
@@ -41,3 +48,5 @@ Políticas `*_console` em todas as tabelas de negócio: `USING (is_platform_oper
 
 - `supabase/migrations/20260522120000_user_account_kinds.sql`
 - `supabase/migrations/20260523120000_platform_operators_rls.sql`
+- `supabase/migrations/20260528150000_touch_user_account_on_login.sql`
+- `supabase/migrations/20260528160000_harden_account_login_security.sql`
