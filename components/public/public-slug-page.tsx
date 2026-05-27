@@ -1171,15 +1171,56 @@ export function PublicPageInner({
         </main>
 
         {showWhatsappFab && phoneDigits && (
-          <a
-            href={waHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="fixed bottom-6 right-4 z-40 size-14 rounded-full bg-[#25D366] hover:bg-[#20b558] shadow-xl flex items-center justify-center transition-transform hover:scale-105"
-          >
-            <span className={cn(publicMaterialIconClass("xl", false), "text-white")}>chat</span>
-          </a>
-        )}
+  <button
+    onClick={() => window.open(waHref, "_blank", "noopener,noreferrer")}
+    className="fixed bottom-6 right-4 z-40 size-14 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 overflow-hidden"
+    aria-label="Fale conosco pelo WhatsApp"
+    style={{
+      background: "rgba(37, 211, 102, 0.01)",
+      backdropFilter: "blur(1px)",
+      WebkitBackdropFilter: "blur(1px)",
+      border: "1px solid rgba(37, 211, 102, 0.3)",
+      boxShadow: `
+        0 8px 32px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.1),
+        inset 0 0 4px 2px rgba(37, 211, 102, 0.15)
+      `,
+    }}
+  >
+    {/* highlight topo */}
+    <span
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        top: 0, left: 0, right: 0,
+        height: "1px",
+        background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)",
+        pointerEvents: "none",
+      }}
+    />
+    {/* highlight lateral esquerda */}
+    <span
+      aria-hidden="true"
+      style={{
+        position: "absolute",
+        top: 0, left: 0,
+        width: "1px",
+        height: "100%",
+        background: "linear-gradient(180deg, rgba(255,255,255,0.8), transparent, rgba(255,255,255,0.3))",
+        pointerEvents: "none",
+      }}
+    />
+    <span
+      className={cn(publicMaterialIconClass("xl", false), "leading-none select-none relative z-10")}
+      style={{ fontSize: "28px", lineHeight: 1, display: "flex", color: "rgb(22,163,74)" }}
+      aria-hidden="true"
+    >
+      chat
+    </span>
+  </button>
+)}
+        
 
         <PublicPwaInstallPrompt slug={slug} businessName={business.name} accentColor={accent} isDark={isDark} />
       </div>
