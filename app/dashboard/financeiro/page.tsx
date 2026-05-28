@@ -497,7 +497,7 @@ export default function FinanceiroPage() {
     const lines: string[] = [];
     const h = (title: string) => { lines.push(""); lines.push(title); };
 
-    lines.push("RELATÓRIO FINANCEIRO — AGENNDO");
+    lines.push("RELATÓRIO FINANCEIRO - AGENNDO");
     lines.push(`Exportado em${sep}${new Date().toLocaleString("pt-BR")}`);
     lines.push(`Negócio${sep}${business?.name ?? ""}`);
 

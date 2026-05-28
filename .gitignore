@@ -21,7 +21,7 @@ npm-debug.log*
 .DS_Store
 *.pem
 
-# Config local do editor (regras/assistente — não versionar)
+# Config local do editor (regras/assistente - não versionar)
 .cursor/
 
 # Vercel

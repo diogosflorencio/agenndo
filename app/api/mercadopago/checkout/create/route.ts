@@ -71,7 +71,7 @@ export async function POST(req: Request) {
   const preference = await mpCreatePreference(mp.accessToken, {
     externalReference: apt.id,
     notificationUrl: mercadoPagoWebhookUrl(),
-    items: [{ title: `Agendamento — ${bizName}`, quantity: 1, unit_price: amount }],
+    items: [{ title: `Agendamento - ${bizName}`, quantity: 1, unit_price: amount }],
     backUrls: successUrl
       ? { success: successUrl, pending: successUrl, failure: successUrl }
       : undefined,

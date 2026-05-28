@@ -7,7 +7,7 @@
 -- INSERT INTO public.platform_operators (user_id, note, created_by)
 -- VALUES (
 --   '00000000-0000-0000-0000-000000000000'::uuid,
---   'Nome da pessoa — YWP',
+--   'Nome da pessoa - YWP',
 --   NULL
 -- );
 

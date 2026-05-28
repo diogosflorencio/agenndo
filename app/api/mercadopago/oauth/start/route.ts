@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         error: misconfiguredWebhook
-          ? "MERCADOPAGO_REDIRECT_URI está errado (parece URL de webhook). Use …/api/mercadopago/oauth/callback — o webhook é outra variável/URL no painel MP."
+          ? "MERCADOPAGO_REDIRECT_URI está errado (parece URL de webhook). Use …/api/mercadopago/oauth/callback - o webhook é outra variável/URL no painel MP."
           : "Mercado Pago não configurado no servidor.",
         expected_redirect_uri: "https://www.agenndo.com.br/api/mercadopago/oauth/callback",
         configured_redirect_uri: rawRedirect || null,

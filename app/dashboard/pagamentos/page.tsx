@@ -252,14 +252,14 @@ export default function PagamentosPage() {
         <div>
           <p className={cn("font-semibold mb-0.5", surfaces.title)}>Pix manual</p>
           <p className={surfaces.muted}>
-            {pixActive ? "Ativo — chave visível na página; você confere o comprovante." : "Desativado"}
+            {pixActive ? "Ativo - chave visível na página; você confere o comprovante." : "Desativado"}
           </p>
         </div>
         <div>
           <p className={cn("font-semibold mb-0.5", surfaces.title)}>Mercado Pago</p>
           <p className={surfaces.muted}>
             {mpActive
-              ? `Ativo — ${PAYMENT_POLICY_LABELS[form.paymentPolicy].toLowerCase()}`
+              ? `Ativo - ${PAYMENT_POLICY_LABELS[form.paymentPolicy].toLowerCase()}`
               : mpConnected
                 ? "Conectado, cobrança online desligada"
                 : "Não conectado"}
@@ -340,7 +340,7 @@ export default function PagamentosPage() {
             <h2 className={cn("text-base font-bold", surfaces.title)}>Mercado Pago (cobrança verificada)</h2>
             <p className={cn("text-xs mt-1 leading-relaxed", surfaces.subtitle)}>
               Conecte <strong className={surfaces.title}>sua</strong> conta. O cliente paga na própria página (Pix,
-              cartão, etc.). O sistema confirma via webhook — ideal para sinal obrigatório ou pagamento integral
+              cartão, etc.). O sistema confirma via webhook - ideal para sinal obrigatório ou pagamento integral
               antecipado.
             </p>
             <p className={cn("text-xs mt-2", mpConnected ? "text-primary font-medium" : surfaces.muted)}>
@@ -376,7 +376,7 @@ export default function PagamentosPage() {
                 <a href="https://www.agenndo.com.br/dashboard/pagamentos" className="underline font-medium">
                   www.agenndo.com.br
                 </a>{" "}
-                (recomendado) — <code className="text-[10px]">MERCADOPAGO_REDIRECT_URI</code> = URL de produção.
+                (recomendado) - <code className="text-[10px]">MERCADOPAGO_REDIRECT_URI</code> = URL de produção.
               </li>
               <li>
                 Túnel HTTPS (ngrok): cadastre{" "}

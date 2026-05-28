@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: {
     template: "%s | Blog Agenndo",
     default:
-      "Blog Agenndo — Dicas de Agendamento Online para Prestadores",
+      "Blog Agenndo - Dicas de Agendamento Online para Prestadores",
   },
   description:
     "Dicas, tutoriais e estratégias para prestadores de serviço gerenciarem melhor seus agendamentos e atraírem mais clientes.",

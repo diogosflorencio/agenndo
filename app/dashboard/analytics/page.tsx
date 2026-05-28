@@ -513,7 +513,7 @@ export default function AnalyticsPage() {
     const lines: string[] = [];
     const h = (title: string) => { lines.push(""); lines.push(title); };
 
-    lines.push("RELATÓRIO ANALYTICS — AGENNDO");
+    lines.push("RELATÓRIO ANALYTICS - AGENNDO");
     lines.push(`Exportado em${sep}${new Date().toLocaleString("pt-BR")}`);
     lines.push(`Período${sep}${period}`);
 

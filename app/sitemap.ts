@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAllPosts } from "@/lib/blog/posts";
 import { LANDING_PAGE_SLUGS } from "@/lib/seo/landing-pages";
 
-/** SECURITY: sitemap usa service role no servidor — não expõe listagem via anon REST. */
+/** SECURITY: sitemap usa service role no servidor - não expõe listagem via anon REST. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl();
   const now = new Date();

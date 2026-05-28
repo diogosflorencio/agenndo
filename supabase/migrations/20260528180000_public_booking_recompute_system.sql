@@ -1,4 +1,4 @@
--- Recompute interno (triggers, service role) — sem exigir auth.uid().
+-- Recompute interno (triggers, service role) - sem exigir auth.uid().
 -- A versão pública recompute_user_primary_kind continua restrita a JWT do próprio usuário.
 
 CREATE OR REPLACE FUNCTION public.recompute_user_primary_kind_system(p_user_id uuid)

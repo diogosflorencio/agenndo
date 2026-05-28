@@ -26,7 +26,7 @@ export type OnboardingRedirectResponse = {
  * redireciona para o painel (evita depender só do cliente Supabase / RLS).
  *
  * Em impersonação: só considera o perfil efetivo (conta visitada), nunca o colaborador
- * do operador de suporte — evita loop /setup ↔ /dashboard.
+ * do operador de suporte - evita loop /setup ↔ /dashboard.
  */
 export async function GET() {
   const supabase = await createClient();

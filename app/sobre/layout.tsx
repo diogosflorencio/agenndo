@@ -5,7 +5,7 @@ const base = getSiteUrl();
 const canonical = `${base}/sobre`;
 
 export const metadata: Metadata = {
-  title: "Sobre o Agenndo — Plataforma de Agendamento Online",
+  title: "Sobre o Agenndo - Plataforma de Agendamento Online",
   description:
     "Conheça o Agenndo, a plataforma de agendamento online feita para prestadores de serviço brasileiros. Simples, gratuita e profissional.",
   alternates: {
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     languages: { "pt-BR": canonical, "x-default": canonical },
   },
   openGraph: {
-    title: "Sobre o Agenndo — Plataforma de Agendamento Online",
+    title: "Sobre o Agenndo - Plataforma de Agendamento Online",
     description:
       "Conheça o Agenndo, a plataforma de agendamento online feita para prestadores de serviço brasileiros.",
     url: canonical,
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     site: "@agenndo",
-    title: "Sobre o Agenndo — Plataforma de Agendamento Online",
+    title: "Sobre o Agenndo - Plataforma de Agendamento Online",
     description:
       "Conheça o Agenndo, a plataforma de agendamento online feita para prestadores de serviço brasileiros.",
   },

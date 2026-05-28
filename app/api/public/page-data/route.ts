@@ -3,7 +3,7 @@ import { fetchPublicPageCatalogBySlug } from "@/lib/public-catalog-server";
 
 export const runtime = "nodejs";
 
-/** SECURITY: catálogo da página /[slug] — servidor apenas (não expõe PostgREST anon). */
+/** SECURITY: catálogo da página /[slug] - servidor apenas (não expõe PostgREST anon). */
 export async function GET(req: Request) {
   const slug = new URL(req.url).searchParams.get("slug")?.trim();
   if (!slug) {

@@ -15,8 +15,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
   if (business?.name) {
     title = business.city
-      ? `${business.name} — Agendamento Online em ${business.city} | Agenndo`
-      : `${business.name} — Agende Online | Agenndo`;
+      ? `${business.name} - Agendamento Online em ${business.city} | Agenndo`
+      : `${business.name} - Agende Online | Agenndo`;
 
     const parts: string[] = [];
     parts.push(`Agende com ${business.name}${business.city ? ` em ${business.city}` : ""}.`);

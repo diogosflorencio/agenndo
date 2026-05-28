@@ -388,7 +388,7 @@ export default function AgendamentosPage() {
         </div>
       )}
 
-      <AppointmentPaymentStatusGuide businessId={business?.id} />
+      
 
       {selected.length > 0 && (
         <div className="flex items-center gap-3 p-3 mb-4 bg-primary/10 border border-primary/30 rounded-xl">
@@ -432,7 +432,7 @@ export default function AgendamentosPage() {
         availability={availability}
         onAppointmentClick={(id) => setDetailAptId(id)}
       />
-
+      
       <section className={cn("mt-10 border-t pt-8", isDark ? "border-white/10" : "border-gray-200")}>
         <div className="mb-4">
           <h2 className={cn("text-lg font-bold", surfaces.title)}>Lista do dia</h2>
@@ -441,7 +441,7 @@ export default function AgendamentosPage() {
             Use a grade acima para ver o dia na vertical; aqui você filtra por status e aplica ações em lote.
           </p>
         </div>
-
+        <AppointmentPaymentStatusGuide businessId={business?.id} />
         <div className="grid lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1 min-w-0">
             <div className={cn(surfaces.panel, "p-4")}>

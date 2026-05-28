@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Status público do agendamento (após reserva) — para polling na tela de pagamento. */
+/** Status público do agendamento (após reserva) - para polling na tela de pagamento. */
 export async function GET(req: Request) {
   const appointmentId = new URL(req.url).searchParams.get("appointmentId")?.trim();
   if (!appointmentId) {
