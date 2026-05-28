@@ -1276,7 +1276,7 @@ export default function DisponibilidadePage() {
             />
             <div className="px-5">
               <p
-                className={`text-xs leading-relaxed mb-4 rounded-lg px-3 py-2.5 border ${
+                className={`text-xs leading-relaxed mb-4 rounded-lg mt-3 px-3 py-2.5 border ${
                   isDark ? "border-primary/25 bg-primary/5 text-gray-300" : "border-primary/20 bg-primary/5 text-gray-700"
                 }`}
               >
@@ -1338,7 +1338,7 @@ export default function DisponibilidadePage() {
               subtitle="Define como aparece o passo de horários no link do seu negócio (mesma opção no celular e no computador)."
               isDark={isDark}
             />
-            <div className="px-5 pb-5 space-y-4">
+            <div className="mt-5 px-5 pb-5 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label
                   className={cn(
