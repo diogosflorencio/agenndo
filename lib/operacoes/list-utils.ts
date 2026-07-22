@@ -1,5 +1,5 @@
 import { isPaidPlanId, PLAN_ORDER, type PlanId } from "@/lib/plans";
-import { operacoesActivityMs } from "./activity-time";
+import { operacoesLastActivityMs } from "./activity-time";
 import type { OperacoesNoteEntry, OperacoesNotesMap } from "./notes-storage";
 import { noteHasText } from "./notes-storage";
 import type { OperacoesSortKey, UnifiedRow } from "./types";
@@ -13,7 +13,7 @@ function planSortIndex(plan: PlanId): number {
 }
 
 function activityTs(row: UnifiedRow): number {
-  return operacoesActivityMs(row.lastAppointmentAt ?? row.createdAt);
+  return operacoesLastActivityMs(row);
 }
 
 export function whatsAppHref(phone: string | null): string | null {
@@ -116,7 +116,9 @@ export function rowsToCsv(rows: UnifiedRow[], notesMap: OperacoesNotesMap): stri
     "status",
     "tipo_conta",
     "criado_em",
+    "ultimo_login",
     "ultimo_agendamento",
+    "ultima_atividade",
     "observacoes_local",
     "obs_feita",
   ];
@@ -136,7 +138,9 @@ export function rowsToCsv(rows: UnifiedRow[], notesMap: OperacoesNotesMap): stri
       r.activeStatus,
       r.accountKind ?? "",
       r.createdAt,
+      r.lastLoginAt ?? "",
       r.lastAppointmentAt ?? "",
+      r.lastActivityAt,
       (note?.text ?? "").replace(/"/g, '""'),
       note?.done ? "sim" : "nao",
     ]

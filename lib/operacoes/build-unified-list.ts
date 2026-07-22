@@ -7,7 +7,7 @@ import {
   type PlanId,
 } from "@/lib/plans";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { appointmentActivityInstant, operacoesActivityMs } from "./activity-time";
+import { appointmentActivityInstant, operacoesActivityMs, operacoesLastActivityIso } from "./activity-time";
 import { classifyOperacoesRowKind } from "./classify-row";
 import type { OperacoesOverview, UnifiedRow } from "./types";
 
@@ -19,9 +19,9 @@ function daysAgoIso(days: number): string {
   return d.toISOString();
 }
 
-function resolveActive(lastApt: string | null, createdAt: string): "ativo" | "inativo" {
+function resolveActive(lastActivityIso: string, createdAt: string): "ativo" | "inativo" {
   const cutoff = new Date(daysAgoIso(INACTIVE_DAYS)).getTime();
-  const ref = lastApt ? operacoesActivityMs(lastApt) : operacoesActivityMs(createdAt);
+  const ref = operacoesActivityMs(lastActivityIso || createdAt);
   return ref >= cutoff ? "ativo" : "inativo";
 }
 
@@ -83,7 +83,7 @@ export async function fetchUnifiedRows(
 ): Promise<UnifiedRow[]> {
   const siteBase = opts?.siteBase ?? getSiteUrl();
 
-  const [bizRes, profRes, tokRes, cliRes, collabRes, aptRes] = await Promise.all([
+  const [bizRes, profRes, tokRes, cliRes, collabRes, aptRes, accountsRes] = await Promise.all([
     supabase
       .from("businesses")
       .select(
@@ -110,6 +110,7 @@ export async function fetchUnifiedRows(
       .select("business_id, client_id, date, created_at")
       .order("created_at", { ascending: false })
       .limit(15000),
+    supabase.from("user_accounts").select("user_id, last_login_at, updated_at").limit(5000),
   ]);
 
   const businesses = bizRes.data ?? [];
@@ -117,6 +118,16 @@ export async function fetchUnifiedRows(
   const tokens = new Map((tokRes.data ?? []).map((t) => [t.user_id, t.token_hash]));
   const clients = cliRes.data ?? [];
   const collaborators = collabRes.data ?? [];
+
+  const lastLoginByUser = new Map<string, string>();
+  for (const ua of accountsRes.data ?? []) {
+    if (!ua.user_id) continue;
+    const loginAt =
+      (typeof ua.last_login_at === "string" && ua.last_login_at) ||
+      (typeof ua.updated_at === "string" && ua.updated_at) ||
+      null;
+    if (loginAt) lastLoginByUser.set(ua.user_id, loginAt);
+  }
 
   const lastAptInstantByBusiness = new Map<string, number>();
   const lastAptByBusiness = new Map<string, string>();
@@ -167,13 +178,29 @@ export async function fetchUnifiedRows(
   const profileIdsWithRow = new Set<string>();
   const rows: UnifiedRow[] = [];
 
-  // Donos de negócio (linha do negócio = prestador)
+  const activityFields = (
+    authUserId: string | null,
+    lastApt: string | null,
+    createdAt: string
+  ) => {
+    const lastLoginAt = authUserId ? lastLoginByUser.get(authUserId) ?? null : null;
+    const lastActivityAt = operacoesLastActivityIso({ lastLoginAt, lastAppointmentAt: lastApt, createdAt });
+    return {
+      lastLoginAt,
+      lastAppointmentAt: lastApt,
+      lastActivityAt,
+      activeStatus: resolveActive(lastActivityAt, createdAt),
+    };
+  };
+
+  // Donos de negocio (linha do negocio = prestador)
   for (const b of businesses) {
     const p = profileById.get(b.profile_id);
     profileIdsWithRow.add(b.profile_id);
     const plan = normalizePlanId(b.plan);
     const lastApt = lastAptByBusiness.get(b.id) ?? null;
     const accountKind = p?.account_kind ?? "business_owner";
+    const activity = activityFields(b.profile_id, lastApt, b.created_at);
     rows.push({
       rowId: `prestador:${b.profile_id}`,
       kind: classifyOperacoesRowKind({
@@ -203,8 +230,7 @@ export async function fetchUnifiedRows(
       trialEndsAt: b.trial_ends_at,
       subscriptionStatus: b.subscription_status,
       createdAt: b.created_at,
-      lastAppointmentAt: lastApt,
-      activeStatus: resolveActive(lastApt, b.created_at),
+      ...activity,
       accountKind,
     });
   }
@@ -280,8 +306,7 @@ export async function fetchUnifiedRows(
       trialEndsAt,
       subscriptionStatus,
       createdAt: p.created_at,
-      lastAppointmentAt: lastApt,
-      activeStatus: resolveActive(lastApt, p.created_at),
+      ...activityFields(p.id, lastApt, p.created_at),
       accountKind,
     });
   }
@@ -316,8 +341,7 @@ export async function fetchUnifiedRows(
       trialEndsAt: null,
       subscriptionStatus: biz?.subscription_status ?? null,
       createdAt: c.created_at,
-      lastAppointmentAt: lastApt,
-      activeStatus: resolveActive(lastApt, c.created_at),
+      ...activityFields(c.auth_user_id, lastApt, c.created_at),
       accountKind,
     });
   }

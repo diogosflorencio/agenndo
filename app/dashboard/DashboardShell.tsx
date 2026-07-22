@@ -36,8 +36,8 @@ const MENU_DADOS = [
 const MENU_CONFIG = [
   { href: "/dashboard/negocio", icon: "store", label: "Dados do negócio" },
   { href: "/dashboard/pagamentos", icon: "account_balance_wallet", label: "Receber pagamentos" },
+  { href: "/dashboard/whatsapp", icon: "chat", label: "WhatsApp" },
   { href: "/dashboard/personalizacao", icon: "palette", label: "Personalização" },
-  { href: "/dashboard/notificacoes", icon: "notifications", label: "Notificações" },
 ];
 const DIRECT_LINKS = [{ href: "/dashboard/conta", icon: "manage_accounts", label: "Conta" }];
 
@@ -93,8 +93,13 @@ function DashboardLayoutInner({
   /** Apenas um grupo aberto por vez; Início e Conta fecham todos. */
   const [openSidebarGroup, setOpenSidebarGroup] = useState<GroupKey | null>(null);
   const [mobileExpandedGroup, setMobileExpandedGroup] = useState<"agenda" | "cadastros" | "dados" | "config" | null>(null);
+  const [sidebarMotionReady, setSidebarMotionReady] = useState(false);
 
   const isActive = (href: string, exact?: boolean) => (exact ? pathname === href : pathname.startsWith(href));
+
+  useEffect(() => {
+    setSidebarMotionReady(true);
+  }, []);
 
   useEffect(() => {
     if (pathname === "/dashboard" || pathname.startsWith("/dashboard/conta")) {
@@ -122,6 +127,29 @@ function DashboardLayoutInner({
   const renderSidebarGroup = (key: GroupKey, label: string, icon: string, items: { href: string; icon: string; label: string }[]) => {
     const activeInGroup = items.some((i) => isActive(i.href));
     const open = sidebarGroupOpen(key, items);
+    const submenuItems = (
+      <div className="mt-0.5 space-y-0.5 border-l border-primary/20 ml-4 pl-1 pb-0.5">
+        {items.map((item, index) =>
+          sidebarMotionReady ? (
+            <motion.div
+              key={item.href}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                delay: index * 0.045,
+                duration: 0.32,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+            >
+              <NavItem href={item.href} icon={item.icon} label={item.label} active={isActive(item.href)} indent />
+            </motion.div>
+          ) : (
+            <NavItem key={item.href} href={item.href} icon={item.icon} label={item.label} active={isActive(item.href)} indent />
+          )
+        )}
+      </div>
+    );
+
     return (
       <div className="mb-1">
         <button
@@ -134,35 +162,25 @@ function DashboardLayoutInner({
           <span className="flex-1 truncate">{label}</span>
           <span className={`material-symbols-outlined text-lg shrink-0 transition-transform ${open ? "rotate-180" : ""}`}>expand_more</span>
         </button>
-        <AnimatePresence initial={false}>
-          {open && (
-            <motion.div
-              key={`sidebar-submenu-${key}`}
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="overflow-hidden"
-            >
-              <div className="mt-0.5 space-y-0.5 border-l border-primary/20 ml-4 pl-1 pb-0.5">
-                {items.map((item, index) => (
-                  <motion.div
-                    key={item.href}
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      delay: index * 0.045,
-                      duration: 0.32,
-                      ease: [0.22, 1, 0.36, 1],
-                    }}
-                  >
-                    <NavItem href={item.href} icon={item.icon} label={item.label} active={isActive(item.href)} indent />
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {open && !sidebarMotionReady ? (
+          <div className="overflow-hidden">{submenuItems}</div>
+        ) : null}
+        {sidebarMotionReady ? (
+          <AnimatePresence initial={false}>
+            {open ? (
+              <motion.div
+                key={`sidebar-submenu-${key}`}
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+                className="overflow-hidden"
+              >
+                {submenuItems}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        ) : null}
       </div>
     );
   };

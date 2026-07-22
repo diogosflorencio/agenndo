@@ -41,6 +41,7 @@ const nextConfig = {
     return [
       { source: "/operacao-interna", destination: "/operacoes", permanent: true },
       { source: "/operacao-interna/:path*", destination: "/operacoes/:path*", permanent: true },
+      { source: "/dashboard/notificacoes", destination: "/dashboard/whatsapp", permanent: false },
     ];
   },
 };

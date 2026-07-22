@@ -21,7 +21,7 @@
 - `auth_user_is_business_owner(business_id?)`
 - `auth_user_is_business_staff(business_id?)`
 - `auth_user_is_client(business_id?)`
-- `touch_user_account_on_login(channel)` — só `signup_channel` / `last_login_channel` do **próprio** `auth.uid()`; nunca aceita `admin`; `primary_kind` vem do recompute
+- `touch_user_account_on_login(channel)` — atualiza `last_login_channel` e `last_login_at`; `primary_kind` vem do recompute
 - `recompute_user_primary_kind(user_id)` — só `auth.uid()` ou operador de plataforma; `platform_admin` só via `platform_operators`
 
 ### RLS `user_accounts`

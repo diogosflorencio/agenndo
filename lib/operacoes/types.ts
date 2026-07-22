@@ -24,7 +24,9 @@ export type UnifiedRow = {
   trialEndsAt: string | null;
   subscriptionStatus: string | null;
   createdAt: string;
+  lastLoginAt: string | null;
   lastAppointmentAt: string | null;
+  lastActivityAt: string;
   activeStatus: "ativo" | "inativo";
   accountKind: string | null;
 };

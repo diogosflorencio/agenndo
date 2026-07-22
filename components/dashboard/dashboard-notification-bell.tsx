@@ -129,7 +129,7 @@ export function DashboardNotificationBell({
       <motion.div
         id="dashboard-notif-popover-panel"
         role="dialog"
-        aria-label="Notificações"
+        aria-label="Avisos"
         initial={{ opacity: 0, y: -6 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
@@ -146,13 +146,13 @@ export function DashboardNotificationBell({
             isLight ? "border-gray-200 bg-gray-50/90" : "border-white/[0.06] bg-black/20"
           )}
         >
-          <p className={cn("text-sm font-bold", isLight ? "text-gray-900" : "text-white")}>Notificações</p>
+          <p className={cn("text-sm font-bold", isLight ? "text-gray-900" : "text-white")}>Avisos</p>
           <GuardedDashboardLink
-            href="/dashboard/notificacoes"
+            href="/dashboard/agendamentos"
             className="text-xs font-semibold text-primary hover:underline"
             onClick={() => setOpen(false)}
           >
-            Ajustes
+            Ver agenda
           </GuardedDashboardLink>
         </div>
 
@@ -163,7 +163,7 @@ export function DashboardNotificationBell({
             </div>
           ) : items.length === 0 ? (
             <p className={cn("px-4 py-8 text-center text-sm", isLight ? "text-gray-500" : "text-gray-400")}>
-              Nenhuma notificação ainda.
+              Nenhum aviso ainda.
             </p>
           ) : (
             <ul
@@ -216,7 +216,7 @@ export function DashboardNotificationBell({
           "relative inline-flex items-center justify-center rounded-lg transition-colors shrink-0",
           className
         )}
-        aria-label={unreadCount > 0 ? `Notificações, ${unreadCount} não lidas` : "Notificações"}
+        aria-label={unreadCount > 0 ? `Avisos, ${unreadCount} não lidos` : "Avisos"}
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}

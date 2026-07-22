@@ -1,6 +1,6 @@
 /**
- * Timestamps na UI Operações: strings `YYYY-MM-DD` (coluna `date` do Postgres)
- * não podem ir direto para `new Date()` (vira meia-noite UTC → 21h no BR).
+ * Timestamps na UI Operacoes: strings `YYYY-MM-DD` (coluna `date` do Postgres)
+ * nao podem ir direto para `new Date()` (vira meia-noite UTC).
  */
 export function operacoesActivityMs(iso: string): number {
   const t = iso.trim();
@@ -12,8 +12,28 @@ export function operacoesActivityMs(iso: string): number {
   return new Date(t).getTime();
 }
 
-/** “Instante” de atividade do agendamento: maior entre dia do atendimento e criação do registo. */
-export function appointmentActivityInstant(date: string | null | undefined, createdAt: string | null | undefined): number {
+/** Referencia de atividade exibida na UI (login online, senao agendamento, senao cadastro). */
+export function operacoesLastActivityIso(row: {
+  lastLoginAt?: string | null;
+  lastAppointmentAt?: string | null;
+  createdAt: string;
+}): string {
+  return row.lastLoginAt ?? row.lastAppointmentAt ?? row.createdAt;
+}
+
+export function operacoesLastActivityMs(row: {
+  lastLoginAt?: string | null;
+  lastAppointmentAt?: string | null;
+  createdAt: string;
+}): number {
+  return operacoesActivityMs(operacoesLastActivityIso(row));
+}
+
+/** Instante de atividade do agendamento: maior entre dia do atendimento e criacao do registo. */
+export function appointmentActivityInstant(
+  date: string | null | undefined,
+  createdAt: string | null | undefined
+): number {
   const c = createdAt && createdAt.trim() ? operacoesActivityMs(createdAt) : 0;
   if (!date?.trim()) return c;
   const t = date.trim();

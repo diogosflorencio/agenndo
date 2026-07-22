@@ -161,7 +161,12 @@ function InfoCell({
   onCopy: (t: string) => void;
 }) {
   const wa = whatsAppHref(row.phone);
-  const activity = row.lastAppointmentAt ?? row.createdAt;
+  const activity = row.lastActivityAt;
+  const activitySource = row.lastLoginAt
+    ? "online"
+    : row.lastAppointmentAt
+      ? "agendamento"
+      : "cadastro";
   const kindLabel =
     row.kind === "cliente" && row.authUserId
       ? "Cliente com conta"
@@ -247,9 +252,22 @@ function InfoCell({
               </td>
             </tr>
             <tr>
+              <td className={s.labelCell}>Ultimo login</td>
+              <td className={`py-1 ${s.muted}`}>{fmtDate(row.lastLoginAt)}</td>
+            </tr>
+            <tr>
+              <td className={s.labelCell}>Ultimo agendamento</td>
+              <td className={`py-1 ${s.muted}`}>{fmtDate(row.lastAppointmentAt)}</td>
+            </tr>
+            <tr>
               <td className={s.labelCell}>Atividade</td>
               <td className={`py-1 ${s.muted}`}>
                 {fmtDate(activity)}
+                {activitySource === "online" ? (
+                  <span className="ml-1 text-[10px] opacity-70">(online)</span>
+                ) : activitySource === "agendamento" ? (
+                  <span className="ml-1 text-[10px] opacity-70">(agenda)</span>
+                ) : null}
               </td>
             </tr>
           </>
@@ -258,6 +276,11 @@ function InfoCell({
             <td className={s.labelCell}>Atividade</td>
             <td className={`py-1 ${s.muted}`}>
               {fmtDate(activity)}
+              {activitySource === "online" ? (
+                <span className="ml-1 text-[10px] opacity-70">(online)</span>
+              ) : activitySource === "agendamento" ? (
+                <span className="ml-1 text-[10px] opacity-70">(agenda)</span>
+              ) : null}
             </td>
           </tr>
         )}

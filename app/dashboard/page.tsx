@@ -469,7 +469,7 @@ export default function DashboardHome() {
             value: String(inboxUnread),
             trend: inboxTrend,
             trendColor: inboxColor,
-            href: "/dashboard/notificacoes",
+            href: "/dashboard/agendamentos",
           },
         ],
       },
@@ -593,7 +593,7 @@ export default function DashboardHome() {
 
       {latestUnread ? (
         <Link
-          href="/dashboard/notificacoes"
+          href="/dashboard/agendamentos"
           className={cn(
             "flex items-start gap-3 p-4 mb-6 transition-colors hover:border-primary/18",
             surfaces.panel
@@ -617,7 +617,7 @@ export default function DashboardHome() {
         </Link>
       ) : inboxUnread > 0 ? (
         <Link
-          href="/dashboard/notificacoes"
+          href="/dashboard/agendamentos"
           className={cn(
             "flex items-center justify-between gap-3 p-4 mb-6 text-sm font-semibold hover:border-primary/18",
             surfaces.panel,
@@ -626,7 +626,7 @@ export default function DashboardHome() {
         >
           <span className="flex items-center gap-2 min-w-0">
             <span className="material-symbols-outlined text-primary shrink-0">notifications</span>
-            <span className="truncate">{inboxUnread} notificações não lidas</span>
+            <span className="truncate">{inboxUnread} avisos não lidos</span>
           </span>
           <span className="material-symbols-outlined text-gray-400 text-lg shrink-0">chevron_right</span>
         </Link>
