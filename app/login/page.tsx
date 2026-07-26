@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { GoogleOneTap } from "@/components/auth/google-one-tap";
+import { HomeHeroNetworkBackground } from "@/components/home-hero-network-bg";
+import { useI18n } from "@/components/i18n-provider";
 import {
   buildOAuthStartUrl,
   buildSupabaseOAuthRedirectUrl,
@@ -14,7 +16,7 @@ import {
 } from "@/lib/auth/oauth-popup";
 import { resolveProviderLoginDestination } from "@/lib/auth/resolve-login-destination";
 import { createClient } from "@/lib/supabase/client";
-import { trialDaysShortLabel } from "@/lib/trial-config";
+import { APP_TRIAL_DAYS } from "@/lib/trial-config";
 
 function safeLoginNext(raw: string | null): string {
   const n = raw?.trim();
@@ -25,6 +27,7 @@ function safeLoginNext(raw: string | null): string {
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useI18n();
   const nextPath = safeLoginNext(searchParams.get("next"));
   const loginContext: OAuthLoginContext | null =
     searchParams.get("context") === "staff"
@@ -75,7 +78,7 @@ function LoginContent() {
         router.push(payload.next);
         router.refresh();
       } else {
-        setError(payload.error ?? "Não foi possível entrar.");
+        setError(payload.error ?? t("login.errorLogin"));
       }
     }
 
@@ -87,7 +90,7 @@ function LoginContent() {
         popupPollRef.current = null;
       }
     };
-  }, [router]);
+  }, [router, t]);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -102,7 +105,7 @@ function LoginContent() {
       });
       const popup = window.open(startUrl, "agenndo-oauth", "width=520,height=720,scrollbars=yes");
       if (!popup) {
-        setError("Permita popups para este site ou use outro navegador.");
+        setError(t("login.errorPopup"));
         setLoading(false);
         return;
       }
@@ -144,101 +147,106 @@ function LoginContent() {
     }
   };
 
+  const googleLabel =
+    loading && isLocalhostOAuthPopup()
+      ? t("login.waitPopup")
+      : loading
+        ? t("login.redirecting")
+        : t("login.continueGoogle");
+
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col lg:flex-row">
+    <div className="min-h-screen text-gray-900 flex flex-col lg:flex-row relative bg-[#ecfdf5]">
       <GoogleOneTap nextPath={nextPath} onError={setError} disabled={loading || isLocalhostOAuthPopup()} />
 
-      <aside className="hidden lg:flex lg:w-[42%] xl:w-[44%] lg:min-h-screen flex-col border-r border-gray-200 bg-white">
-        <div className="flex flex-col flex-1 justify-center px-12 xl:px-16 py-16">
+      <div className="absolute inset-0 bg-gradient-to-br from-[#ecfdf5] via-[#d1fae5] to-[#ccfbf1]" aria-hidden />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+        <HomeHeroNetworkBackground variant="login" />
+      </div>
+
+      <aside className="hidden lg:flex lg:w-[42%] xl:w-[44%] lg:min-h-screen flex-col relative z-10">
+        <div className="relative z-10 flex flex-col flex-1 justify-center px-12 xl:px-16 py-16">
           <Link href="/" className="text-lg font-semibold tracking-tight text-gray-900 mb-10">
             Agenndo
           </Link>
           <h2 className="text-2xl xl:text-3xl font-semibold leading-tight tracking-tight text-gray-900 max-w-sm mb-4">
-            Acesso para prestadores
+            {t("login.asideTitle")}
           </h2>
-          <p className="text-gray-600 text-base leading-relaxed max-w-sm mb-8">
-            Entre com Google para gerenciar agenda, serviços, equipe e clientes.
-          </p>
+          <p className="text-gray-600 text-base leading-relaxed max-w-sm mb-8">{t("login.asideDesc")}</p>
           <ul className="space-y-3 text-sm text-gray-600 max-w-sm">
             <li className="flex gap-2">
               <span className="text-emerald-600 shrink-0">·</span>
-              Painel web e celular (PWA)
+              {t("login.bulletPwa")}
             </li>
             <li className="flex gap-2">
               <span className="text-emerald-600 shrink-0">·</span>
-              Página pública de agendamento
+              {t("login.bulletPublicPage")}
             </li>
             <li className="flex gap-2">
               <span className="text-emerald-600 shrink-0">·</span>
-              Teste grátis ({trialDaysShortLabel()})
+              {t("login.bulletTrial", { days: APP_TRIAL_DAYS })}
             </li>
           </ul>
           <p className="text-xs text-gray-500 mt-10 max-w-sm leading-relaxed">
-            Se você é <strong className="font-medium text-gray-700">cliente</strong> de um estabelecimento, use o link
-            &quot;Entrar&quot; na página de agendamento desse negócio - não este login.
+            {t("login.clientHintBefore")}
+            <strong className="font-medium text-gray-700">{t("login.clientHintBold")}</strong>
+            {t("login.clientHintAfter")}
           </p>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 lg:flex lg:items-center lg:justify-center lg:py-10">
-        <header className="py-4 px-6 border-b border-gray-200 lg:border-0 lg:absolute lg:top-0 lg:left-[42%] lg:right-0">
-          <div className="max-w-sm mx-auto flex items-center justify-between lg:max-w-md">
+      <div className="relative z-10 flex-1 flex flex-col min-h-screen lg:min-h-0 lg:flex lg:items-center lg:justify-center lg:py-10">
+        <header className="py-4 px-6 lg:absolute lg:top-0 lg:inset-x-0">
+          <div className="max-w-sm mx-auto flex items-center justify-between lg:max-w-6xl lg:px-6">
             <Link href="/" className="text-base font-semibold text-gray-900 lg:hidden">
               Agenndo
             </Link>
             <Link href="/" className="text-sm text-gray-600 hover:text-gray-900 ml-auto">
-              Voltar ao site
+              {t("login.backToSite")}
             </Link>
           </div>
         </header>
 
         <main className="w-full max-w-sm mx-auto px-6 flex-1 flex flex-col justify-center py-10 lg:py-8">
-          <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
-            <div className="mb-8">
-              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Entrar</h1>
-              <p className="text-gray-600 text-sm">Use sua conta Google para acessar o painel.</p>
-            </div>
-
-            {error ? (
-              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">{error}</div>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-3.5 px-6 bg-white hover:bg-gray-50 disabled:opacity-60 text-gray-900 font-semibold rounded-lg transition-colors border border-gray-300"
-            >
-              {loading ? (
-                <div className="size-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
-              ) : (
-                <GoogleIcon />
-              )}
-              <span>
-                {loading && isLocalhostOAuthPopup()
-                  ? "Aguarde o popup…"
-                  : loading
-                    ? "Redirecionando..."
-                    : "Continuar com Google"}
-              </span>
-            </button>
-
-            <p className="text-xs text-gray-500 text-center mt-6 leading-relaxed">
-              Ao entrar, você concorda com os{" "}
-              <Link href="/termos" className="text-gray-700 underline hover:text-gray-900">
-                Termos
-              </Link>{" "}
-              e a{" "}
-              <Link href="/politicas" className="text-gray-700 underline hover:text-gray-900">
-                Política de Privacidade
-              </Link>
-              .
-            </p>
+          <div className="mb-8">
+            <h1 className="text-2xl font-semibold text-gray-900 mb-2">{t("login.title")}</h1>
+            <p className="text-gray-600 text-sm">{t("login.subtitle")}</p>
           </div>
 
-          <p className="mt-6 text-center text-xs text-gray-500 leading-relaxed px-2">
-            Novo por aqui? O cadastro começa após o login -{" "}
-            <span className="text-gray-700 font-medium">{trialDaysShortLabel()} de teste</span> sem cartão.
+          {error ? (
+            <div className="mb-4 p-3 rounded-lg bg-red-50/95 border border-red-200 text-red-800 text-sm">{error}</div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="w-full flex items-center justify-center gap-3 py-3.5 px-6 bg-white hover:bg-white/90 disabled:opacity-60 text-gray-900 font-semibold rounded-lg transition-colors border border-gray-300/90 shadow-sm"
+          >
+            {loading ? (
+              <div className="size-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
+            ) : (
+              <GoogleIcon />
+            )}
+            <span>{googleLabel}</span>
+          </button>
+
+          <p className="text-xs text-gray-600 text-center mt-6 leading-relaxed">
+            {t("login.termsPrefix")}{" "}
+            <Link href="/termos" className="text-gray-800 underline hover:text-gray-900">
+              {t("login.terms")}
+            </Link>{" "}
+            {t("login.termsAnd")}{" "}
+            <Link href="/politicas" className="text-gray-800 underline hover:text-gray-900">
+              {t("login.privacy")}
+            </Link>
+            .
+          </p>
+
+          <p className="mt-6 text-center text-xs text-gray-600 leading-relaxed px-2">
+            {t("login.newHere")}{" "}
+            <span className="text-gray-800 font-medium">
+              {t("login.trialHighlight", { days: APP_TRIAL_DAYS })} {t("login.trialNoCard")}
+            </span>
           </p>
         </main>
       </div>
@@ -271,7 +279,7 @@ function GoogleIcon() {
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
+    <Suspense fallback={<div className="min-h-screen bg-[#ecfdf5]" />}>
       <LoginContent />
     </Suspense>
   );

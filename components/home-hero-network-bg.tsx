@@ -12,6 +12,7 @@ import {
 
 const VB_W = 1560;
 const VB_H = 920;
+const LOGIN_GRAPH_OFFSET_X = -VB_W * 0.34 + 90;
 
 function NetworkNode({
   node,
@@ -44,7 +45,7 @@ function NetworkNode({
 }
 
 /** Grafo denso no fundo do hero: bolinhas verdes + rotulos pequenos embaixo. */
-export function HomeHeroNetworkBackground() {
+export function HomeHeroNetworkBackground({ variant = "hero" }: { variant?: "hero" | "panel" | "login" }) {
   const { t } = useI18n();
 
   const nodeMap = useMemo(() => {
@@ -73,9 +74,18 @@ export function HomeHeroNetworkBackground() {
     [nodeMap]
   );
 
+  const isLogin = variant === "login";
+  const isPanel = variant === "panel";
+  const maskId = isLogin ? "hero-network-mask-login" : isPanel ? "hero-network-mask-panel" : "hero-network-mask";
+  const fadeId = isLogin ? "hero-network-fade-x-login" : isPanel ? "hero-network-fade-x-panel" : "hero-network-fade-x";
+
   return (
     <div
-      className="pointer-events-none absolute -top-6 sm:-top-10 left-0 right-0 bottom-0 min-h-[620px] md:min-h-[760px] lg:min-h-[820px] overflow-hidden"
+      className={
+        isLogin || isPanel
+          ? "pointer-events-none absolute inset-0 overflow-hidden hero-network-panel"
+          : "pointer-events-none absolute -top-6 sm:-top-10 left-0 right-0 bottom-0 min-h-[620px] md:min-h-[760px] lg:min-h-[820px] overflow-hidden"
+      }
       aria-hidden
     >
       <svg
@@ -88,20 +98,41 @@ export function HomeHeroNetworkBackground() {
           <pattern id="hero-network-grid" width="28" height="28" patternUnits="userSpaceOnUse">
             <circle cx="1.5" cy="1.5" r="1" className="hero-network-grid-dot" />
           </pattern>
-          <linearGradient id="hero-network-fade-x" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="black" />
-            <stop offset="28%" stopColor="black" />
-            <stop offset="48%" stopColor="white" stopOpacity="0.45" />
-            <stop offset="100%" stopColor="white" />
+          <linearGradient id={fadeId} x1="0%" y1="0%" x2="100%" y2="0%">
+            {isLogin ? (
+              <>
+                <stop offset="0%" stopColor="white" />
+                <stop offset="28%" stopColor="white" />
+                <stop offset="48%" stopColor="white" stopOpacity="0.72" />
+                <stop offset="62%" stopColor="white" stopOpacity="0.28" />
+                <stop offset="78%" stopColor="white" stopOpacity="0.06" />
+                <stop offset="92%" stopColor="black" />
+                <stop offset="100%" stopColor="black" />
+              </>
+            ) : (
+              <>
+                <stop offset="0%" stopColor="black" />
+                <stop offset="22%" stopColor="black" />
+                <stop offset="42%" stopColor="white" stopOpacity={isPanel ? "0.25" : "0.45"} />
+                <stop offset="100%" stopColor="white" />
+              </>
+            )}
           </linearGradient>
-          <mask id="hero-network-mask">
-            <rect width={VB_W} height={VB_H} fill="url(#hero-network-fade-x)" />
+          <mask id={maskId}>
+            <rect width={VB_W} height={VB_H} fill={`url(#${fadeId})`} />
           </mask>
         </defs>
 
-        <rect width={VB_W} height={VB_H} fill="url(#hero-network-grid)" opacity="0.55" mask="url(#hero-network-mask)" />
+        <rect
+          width={VB_W}
+          height={VB_H}
+          fill="url(#hero-network-grid)"
+          opacity={isLogin || isPanel ? 0.75 : 0.55}
+          mask={`url(#${maskId})`}
+          transform={isLogin ? `translate(${LOGIN_GRAPH_OFFSET_X}, 0)` : undefined}
+        />
 
-        <g mask="url(#hero-network-mask)">
+        <g mask={`url(#${maskId})`} transform={isLogin ? `translate(${LOGIN_GRAPH_OFFSET_X}, 0)` : undefined}>
           {edges.map((edge) => (
             <g key={edge.id}>
               <path d={edge.path} className="hero-network-edge-base" />
@@ -145,8 +176,24 @@ export function HomeHeroNetworkBackground() {
         </g>
       </svg>
 
-      <div className="absolute inset-0 bg-gradient-to-r from-white via-white/78 to-white/10" />
-      <div className="absolute inset-0 bg-gradient-to-b from-white/55 via-transparent to-white/75" />
+      {!isLogin ? (
+        <>
+          <div
+            className={
+              isPanel
+                ? "absolute inset-0 bg-gradient-to-r from-emerald-100/90 via-emerald-50/45 to-transparent"
+                : "absolute inset-0 bg-gradient-to-r from-white via-white/78 to-white/10"
+            }
+          />
+          <div
+            className={
+              isPanel
+                ? "absolute inset-0 bg-gradient-to-b from-emerald-50/40 via-transparent to-teal-100/50"
+                : "absolute inset-0 bg-gradient-to-b from-white/55 via-transparent to-white/75"
+            }
+          />
+        </>
+      ) : null}
     </div>
   );
 }

@@ -571,6 +571,35 @@ input[type="range"]::-moz-range-thumb {
   letter-spacing: 0.01em;
 }
 
+.hero-network-panel .hero-network-edge-base {
+  stroke: #94a3b8;
+  opacity: 0.8;
+}
+
+.hero-network-panel .hero-network-edge-flow,
+.hero-network-panel .hero-network-edge-flow-reverse {
+  stroke: #10b981;
+  opacity: 0.88;
+}
+
+.hero-network-panel .hero-network-edge-flow-secondary {
+  stroke: #34d399;
+  opacity: 0.65;
+}
+
+.hero-network-panel .hero-network-grid-dot {
+  fill: #86efac;
+  opacity: 0.45;
+}
+
+.hero-network-panel .hero-network-node-halo {
+  opacity: 0.22;
+}
+
+.hero-network-panel .hero-network-node-caption {
+  fill: #475569;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-network-edge-flow,
   .hero-network-edge-flow-reverse,
