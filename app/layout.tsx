@@ -10,7 +10,10 @@ import {
 import { AppAlertProvider } from "@/components/app-alert-provider";
 import { I18nProvider } from "@/components/i18n-provider";
 import { MaterialSymbolsFontReady } from "@/components/material-symbols-font-ready";
-import { MATERIAL_SYMBOLS_STYLESHEET_HREF } from "@/lib/material-symbols-font";
+import {
+  MATERIAL_SYMBOLS_EARLY_LOAD_SCRIPT,
+  MATERIAL_SYMBOLS_STYLESHEET_HREF,
+} from "@/lib/material-symbols-font";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -220,6 +223,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preload" href={MATERIAL_SYMBOLS_STYLESHEET_HREF} as="style" />
         <link rel="stylesheet" href={MATERIAL_SYMBOLS_STYLESHEET_HREF} />
+        <script
+          dangerouslySetInnerHTML={{ __html: MATERIAL_SYMBOLS_EARLY_LOAD_SCRIPT }}
+        />
         {supabaseOrigin ? <link rel="dns-prefetch" href={supabaseOrigin} /> : null}
       </head>
       <body
