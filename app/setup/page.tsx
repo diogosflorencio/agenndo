@@ -13,6 +13,7 @@ import {
 } from "@/lib/pricing-lock";
 import { formatBrazilPhoneFromDigits, phoneDigitsOnly, slugify } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
+import { APP_TRIAL_DAYS } from "@/lib/trial-config";
 import { getEffectiveUserId } from "@/lib/supabase/effective-user";
 import { clearImpersonationSession } from "@/lib/auth/impersonation-client";
 
@@ -829,9 +830,9 @@ function Step5({
         <div className="flex items-start gap-3">
           <span className="material-symbols-outlined text-primary text-2xl shrink-0">rocket_launch</span>
           <div>
-            <p className="text-sm font-bold text-white">Teste de 7 dias (pode ser estendido)</p>
+            <p className="text-sm font-bold text-white">Teste de {APP_TRIAL_DAYS} dias (pode ser estendido)</p>
             <p className="text-xs text-gray-400 mt-1 leading-snug">
-              Você começa com <span className="text-gray-300">7 dias de teste</span> com tudo liberado. Precisa de mais tempo
+              Você começa com <span className="text-gray-300">{APP_TRIAL_DAYS} dias de teste</span> com tudo liberado. Precisa de mais tempo
               para avaliar? Fale com o suporte - em muitos casos estendemos o período (até cerca de 1 mês, conforme combinação).
             </p>
             <a

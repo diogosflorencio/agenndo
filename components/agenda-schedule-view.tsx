@@ -455,7 +455,7 @@ export function AgendaScheduleView({
             {dayApts.length === 0 ? "Sem atendimentos" : `${dayApts.length} agendamento(s)`}
           </span>
           <span className={cn("rounded-full px-2 py-1 font-medium", chipIdle)}>
-            {String(gridStartHour).padStart(2, "0")}:00 – {String(gridEndHour).padStart(2, "0")}:00
+            {String(gridStartHour).padStart(2, "0")}:00 - {String(gridEndHour).padStart(2, "0")}:00
           </span>
         </div>
       </div>
@@ -597,7 +597,7 @@ export function AgendaScheduleView({
                               {ev.apt.services?.name ?? "-"}
                             </span>
                             <span className="block text-[9px] opacity-80">
-                              {formatTimeShort(ev.apt.time_start)} – {formatTimeShort(ev.apt.time_end)}
+                              {formatTimeShort(ev.apt.time_start)} - {formatTimeShort(ev.apt.time_end)}
                             </span>
                           </button>
                         );

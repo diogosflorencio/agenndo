@@ -313,8 +313,8 @@ export function OperacoesConsole() {
               <option value="activity_asc">Última atividade ↑</option>
               <option value="created_desc">Cadastro mais recente</option>
               <option value="created_asc">Cadastro mais antigo</option>
-              <option value="name_asc">Nome A–Z</option>
-              <option value="name_desc">Nome Z–A</option>
+              <option value="name_asc">Nome A-Z</option>
+              <option value="name_desc">Nome Z-A</option>
               <option value="plan_asc">Plano ↑</option>
               <option value="plan_desc">Plano ↓</option>
             </select>

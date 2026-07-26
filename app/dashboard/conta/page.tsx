@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
+import { APP_TRIAL_DAYS } from "@/lib/trial-config";
 import {
   getPlan,
   formatPrice,
@@ -232,7 +233,7 @@ export default function ContaPage() {
       return "Houve falha na cobrança. Você tem até 5 dias para corrigir o cartão no portal. Depois disso, agendamentos pela página pública e novas ações críticas ficam bloqueados.";
     }
     if (!business?.stripe_subscription_id || !st) {
-      return "Teste grátis (geralmente 7 dias) desde a criação do negócio; você pode pedir ao suporte extensão por até 1 mês em casos combinados. Depois, é preciso assinar para manter agendamentos online e o painel liberados.";
+      return `Teste grátis (${APP_TRIAL_DAYS} dias) desde a criação do negócio; você pode pedir ao suporte extensão por até 1 mês em casos combinados. Depois, é preciso assinar para manter agendamentos online e o painel liberados.`;
     }
     return subUi.detail;
   })();
@@ -467,7 +468,7 @@ export default function ContaPage() {
               </div>
               <p className="text-xs text-gray-500 leading-relaxed">
                 Cobrança via Stripe. O valor no checkout é o mesmo mensal (BRL) do plano indicado acima. O período de teste é
-                gerido pelo app (costuma ser 7 dias; extensão pode ser combinada com o suporte). Na assinatura Stripe não há
+                gerido pelo app ({APP_TRIAL_DAYS} dias; extensão pode ser combinada com o suporte). Na assinatura Stripe não há
                 segundo trial automático.
               </p>
             </div>

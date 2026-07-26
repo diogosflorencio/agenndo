@@ -1,4 +1,4 @@
-/** Rótulos para UI a partir de subscription_status (Stripe) ou ausência de assinatura */
+import { APP_TRIAL_DAYS } from "@/lib/trial-config";
 
 export function describeSubscriptionStatus(
   plan: string,
@@ -9,7 +9,7 @@ export function describeSubscriptionStatus(
       return {
         badge: "Grátis",
         detail:
-          "Período de teste de 7 dias a partir da criação do negócio. Em Conta → Meu plano você vê a contagem exata e pode assinar.",
+          `Período de teste de ${APP_TRIAL_DAYS} dias a partir da criação do negócio. Em Conta → Meu plano você vê a contagem exata e pode assinar.`,
         isPaidActive: false,
       };
     }

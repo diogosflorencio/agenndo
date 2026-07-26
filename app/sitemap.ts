@@ -9,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl();
   const now = new Date();
 
-  /* ── páginas estáticas ── */
+  /* -- páginas estáticas -- */
   const staticPaths = [
     { path: "", priority: 1, changeFrequency: "weekly" as const },
     { path: "/sobre", priority: 0.85, changeFrequency: "monthly" as const },
@@ -36,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     });
   }
 
-  /* ── páginas dinâmicas dos negócios ── */
+  /* -- páginas dinâmicas dos negócios -- */
   try {
     const admin = createAdminClient();
     const { data: rows } = await admin.from("businesses").select("slug, updated_at").order("slug");
@@ -55,7 +55,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     /* build sem DB; mantém URLs estáticas */
   }
 
-  /* ── blog (todas as páginas) ── */
+  /* -- blog (todas as páginas) -- */
   const blogBase = "https://blog.agenndo.com.br";
 
   entries.push({

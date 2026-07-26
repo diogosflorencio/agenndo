@@ -3,8 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { syncAccountOnLogin } from "@/lib/auth/sync-account-on-login";
-import { resolveProviderLoginDestination } from "@/lib/auth/resolve-login-destination";
+import { finishOAuthSession } from "@/lib/auth/finish-oauth-session";
 import {
   consumeOAuthBridgeRedirectState,
   OAUTH_POPUP_MESSAGE,
@@ -85,53 +84,25 @@ function OAuthBridgeInner() {
       }
 
       const supabase = createClient();
-
-      const { error: ex1 } = await supabase.auth.exchangeCodeForSession(code);
-      if (ex1) {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (!session) {
-          setStatus("Falha na sessão");
-          if (hasOpener) notifyOpener(false, ex1.message);
-          else router.replace(`/login?error=${encodeURIComponent(ex1.message)}`);
-          return;
-        }
-      }
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        setStatus("Usuário não encontrado");
-        if (hasOpener) notifyOpener(false, "no_user_after_exchange");
-        else router.replace("/login?error=no_user_after_exchange");
-        return;
-      }
-
-      const resolvedContext: OAuthLoginContext | null =
-        context ??
-        (nextPath.startsWith("/conta") ? "cliente" : nextPath.includes("minhas-comissoes") ? "staff" : null);
-
-      await syncAccountOnLogin(supabase, user.id, {
-        email: user.email,
-        fullName: user.user_metadata?.full_name ?? user.user_metadata?.name ?? undefined,
-        avatarUrl: user.user_metadata?.avatar_url ?? user.user_metadata?.picture ?? undefined,
-        loginContext: resolvedContext,
+      const result = await finishOAuthSession({
+        supabase,
+        code,
+        nextPath,
+        loginContext: context,
       });
 
-      let path = nextPath;
-      if (resolvedContext === "cliente") {
-        path = nextPath.startsWith("/conta") ? nextPath : "/conta";
-      } else {
-        path = await resolveProviderLoginDestination(supabase, nextPath);
+      if (!result.ok) {
+        setStatus("Falha na sessão");
+        if (hasOpener) notifyOpener(false, result.error);
+        else router.replace(`/login?error=${encodeURIComponent(result.error)}`);
+        return;
       }
 
       setStatus("Pronto");
       if (hasOpener) {
-        notifyOpener(true, path);
+        notifyOpener(true, result.path);
       } else {
-        router.replace(path);
+        router.replace(result.path);
         router.refresh();
       }
     }

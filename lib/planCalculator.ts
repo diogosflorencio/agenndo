@@ -1,4 +1,5 @@
 import { type PlanId, type PaidPlanId, PAID_PLAN_IDS, getPaidTierPrice } from "./plans";
+import { APP_TRIAL_DAYS } from "@/lib/trial-config";
 
 type TeamSize = "1" | "2-5" | "6-15" | "16+";
 
@@ -102,7 +103,7 @@ function planOfferCopy(): Pick<DynamicPlanResult, "infrastructure" | "highlight"
       },
       {
         title: "Teste sem pressa",
-        sub: "Use tudo por pelo menos 7 dias grátis. Precisa de mais tempo para avaliar? Fale com o suporte e peça extensão do trial por até 1 mês em casos combinados.",
+        sub: `Use tudo por ${APP_TRIAL_DAYS} dias grátis. Precisa de mais tempo para avaliar? Fale com o suporte e peça extensão do trial por até 1 mês em casos combinados.`,
       },
       {
         title: "Infraestrutura dedicada",

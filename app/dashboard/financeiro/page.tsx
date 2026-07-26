@@ -307,7 +307,7 @@ export default function FinanceiroPage() {
         const to = localYmd(end);
         out.push({
           key: `${from}_${to}`,
-          label: `${startD.getDate()}/${startD.getMonth() + 1}–${end.getDate()}/${end.getMonth() + 1}`,
+          label: `${startD.getDate()}/${startD.getMonth() + 1}-${end.getDate()}/${end.getMonth() + 1}`,
           receita: sumBetween(from, to),
         });
       }

@@ -1,4 +1,6 @@
 /** FAQ da landing: fonte única para UI e JSON-LD (FAQPage). */
+import { APP_TRIAL_DAYS } from "@/lib/trial-config";
+
 export const HOME_FAQS = [
   {
     q: "Preciso saber programar?",
@@ -6,7 +8,7 @@ export const HOME_FAQS = [
   },
   {
     q: "Como funciona o período de teste?",
-    a: "Você tem 7 dias para testar com acesso ao painel. Depois, a assinatura do software é em cartão via Stripe (valor conforme seu uso no onboarding). Outras formas de pagamento podem entrar no produto com o tempo.",
+    a: `Você tem ${APP_TRIAL_DAYS} dias para usar o painel completo, sem cartão no cadastro. Depois, a assinatura é em cartão via Stripe, com valor definido no onboarding conforme seu uso.`,
   },
   {
     q: "O que já consigo fazer no painel?",
@@ -41,7 +43,7 @@ export const HOME_FAQS = [
     a: "Sim. São produtos da mesma categoria de mercado; o Agenndo é independente dessas marcas. Compare funcionalidades, preço e suporte e use o teste gratuito.",
   },
   {
-    q: "O Agenndo é uma alternativa de software de agendamento para o Brasil?",
-    a: "Sim: página pública em português, agenda, equipe e visão financeira para quem vive de agenda cheia.",
+    q: "O Agenndo funciona fora do Brasil?",
+    a: "Sim: interface em português, inglês e espanhol (conforme o idioma do navegador), com agenda, equipe e visão financeira para negócios em qualquer país.",
   },
 ] as const;

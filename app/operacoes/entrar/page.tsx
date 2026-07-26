@@ -11,6 +11,7 @@ import {
   getOAuthRedirectOrigin,
   isLocalhostOAuthPopup,
   OAUTH_POPUP_MESSAGE,
+  writeOAuthBridgeRedirectState,
 } from "@/lib/auth/oauth-popup";
 
 const UNLOCK_CLICKS = 5;
@@ -124,8 +125,10 @@ function EntrarInner() {
       return;
     }
 
+    writeOAuthBridgeRedirectState({ next: NEXT_PATH });
+
     const supabase = createClient();
-    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/callback", { next: NEXT_PATH });
+    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/callback", {});
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {

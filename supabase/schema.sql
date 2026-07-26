@@ -93,7 +93,7 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   IF NEW.trial_ends_at IS NULL THEN
-    NEW.trial_ends_at := NOW() + INTERVAL '7 days';
+    NEW.trial_ends_at := NOW() + INTERVAL '30 days';
   END IF;
   RETURN NEW;
 END;

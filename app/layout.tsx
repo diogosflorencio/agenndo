@@ -8,6 +8,7 @@ import {
   SITE_TITLE_DEFAULT,
 } from "@/lib/seo/site-metadata";
 import { AppAlertProvider } from "@/components/app-alert-provider";
+import { I18nProvider } from "@/components/i18n-provider";
 import { MaterialSymbolsFontReady } from "@/components/material-symbols-font-ready";
 import { MATERIAL_SYMBOLS_STYLESHEET_HREF } from "@/lib/material-symbols-font";
 
@@ -229,7 +230,9 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <MaterialSymbolsFontReady />
-        <AppAlertProvider>{children}</AppAlertProvider>
+        <I18nProvider>
+          <AppAlertProvider>{children}</AppAlertProvider>
+        </I18nProvider>
       </body>
     </html>
   );

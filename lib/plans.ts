@@ -1,3 +1,6 @@
+/** Período de teste gratuito do app (novos negócios). Fonte única: lib/trial-config.ts */
+import { APP_TRIAL_DAYS } from "@/lib/trial-config";
+
 /** 20 degraus de preço (paid_01 … paid_20): mesmo produto; valor mensal conforme escada Stripe. */
 export const PAID_PLAN_IDS = [
   "paid_01",
@@ -101,10 +104,10 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "free",
     label: "Grátis",
     price: 0,
-    trialDays: 7,
+    trialDays: APP_TRIAL_DAYS,
     limits: { appointments: 30, collaborators: 1, services: 5 },
     features: [...UNIVERSAL_PLAN_INCLUSION],
-    badge: "7 dias grátis",
+    badge: `${APP_TRIAL_DAYS} dias grátis`,
   },
   plan_enterprise: {
     id: "plan_enterprise",

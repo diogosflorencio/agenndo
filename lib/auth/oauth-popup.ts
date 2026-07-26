@@ -55,14 +55,13 @@ export function isLocalhostOAuthPopup(): boolean {
 /**
  * Origem usada no `redirectTo` do `signInWithOAuth` (deve bater com Redirect URLs no Supabase).
  *
- * No browser em `localhost` / `127.0.0.1`: sempre `window.location.origin`, para o retorno do OAuth
- * e o `postMessage` do oauth-bridge ficarem na mesma origem da página que abriu o popup, mesmo que
- * `NEXT_PUBLIC_SUPABASE_OAUTH_ORIGIN` aponte para produção (cenário comum ao copiar `.env`).
+ * No browser: **sempre** `window.location.origin`, para o PKCE ficar nos cookies do mesmo host
+ * (ex.: www vs apex). Usar env forçado aqui quebra o exchange no `/auth/callback`.
  *
- * Fora disso: `NEXT_PUBLIC_SUPABASE_OAUTH_ORIGIN`, depois `window.location.origin`, ou no SSR `NEXT_PUBLIC_AUTH_REDIRECT_ORIGIN` / `NEXT_PUBLIC_SUPABASE_OAUTH_ORIGIN`.
+ * Fora do browser (SSR/build): `NEXT_PUBLIC_SUPABASE_OAUTH_ORIGIN`, legado ou `NEXT_PUBLIC_SITE_URL`.
  */
 export function getOAuthRedirectOrigin(): string {
-  if (typeof window !== "undefined" && isLocalhost()) {
+  if (typeof window !== "undefined") {
     return window.location.origin;
   }
 
@@ -70,8 +69,10 @@ export function getOAuthRedirectOrigin(): string {
   if (forced?.startsWith("http")) return forced;
 
   const legacy = process.env.NEXT_PUBLIC_AUTH_REDIRECT_ORIGIN?.trim().replace(/\/$/, "");
-  if (typeof window !== "undefined") return window.location.origin;
-  return legacy?.startsWith("http") ? legacy : forced || "";
+  if (legacy?.startsWith("http")) return legacy;
+
+  const site = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  return site?.startsWith("http") ? site : "";
 }
 
 /**

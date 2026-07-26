@@ -2,11 +2,13 @@
  * Metadados canônicos do marketing site - única fonte para layout, home e OG/Twitter.
  * Prioriza keywords de descoberta (quem ainda não conhece o Agenndo) sobre branded search.
  */
+import { APP_TRIAL_DAYS } from "@/lib/trial-config";
+
 export const SITE_TITLE_DEFAULT =
   "Agenda Online Grátis - Sistema de Agendamento para Prestadores | Agenndo";
 
 export const SITE_DESCRIPTION =
-  "Plataforma de agendamento online para salões, clínicas, barbearias e prestadores de serviço. Link e QR Code para clientes agendarem 24h, lembretes, equipe e financeiro. Teste grátis 7 dias, sem cartão.";
+  `Plataforma de agendamento online para salões, clínicas, barbearias e prestadores de serviço no mundo todo. Link e QR Code para clientes agendarem 24h, lembretes, equipe e financeiro. Teste grátis ${APP_TRIAL_DAYS} dias, sem cartão.`;
 
 export const SITE_KEYWORDS = [
   "sistema de agendamento online",

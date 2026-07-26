@@ -396,3 +396,198 @@ input[type="range"]::-moz-range-thumb {
 .blog-prose blockquote p:last-child {
   margin-bottom: 0;
 }
+
+/* Landing phone mockup - animações leves (sem Framer Motion) */
+@keyframes mock-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mock-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes mock-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes mock-bell {
+  0%,
+  88%,
+  100% {
+    transform: rotate(0);
+  }
+  90% {
+    transform: rotate(-12deg);
+  }
+  94% {
+    transform: rotate(8deg);
+  }
+  97% {
+    transform: rotate(-4deg);
+  }
+}
+
+@keyframes mock-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.mock-fade-in {
+  animation: mock-fade-in 0.38s ease-out both;
+}
+
+.mock-slide-in {
+  animation: mock-slide-in 0.38s ease-out both;
+}
+
+.mock-pop {
+  animation: mock-pop 0.28s ease-out both;
+}
+
+.mock-bell {
+  display: inline-flex;
+  animation: mock-bell 4.5s ease-in-out infinite;
+}
+
+.mock-float-slow {
+  animation: mock-float 3s ease-in-out infinite;
+}
+
+.mock-float-fast {
+  animation: mock-float 4s ease-in-out infinite;
+  animation-delay: 0.5s;
+}
+
+/* Hero network background (grafo com linhas de dados) */
+@keyframes hero-network-flow {
+  to {
+    stroke-dashoffset: -220;
+  }
+}
+
+@keyframes hero-network-flow-reverse {
+  to {
+    stroke-dashoffset: 220;
+  }
+}
+
+@keyframes hero-network-node-glow {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.06);
+  }
+}
+
+.hero-network-grid-dot {
+  fill: #cbd5e1;
+  opacity: 0.55;
+}
+
+.hero-network-edge-base {
+  fill: none;
+  stroke: #cbd5e1;
+  stroke-width: 1.1;
+  opacity: 0.65;
+}
+
+.hero-network-edge-flow,
+.hero-network-edge-flow-reverse {
+  fill: none;
+  stroke: #34d399;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 14 76;
+}
+
+.hero-network-edge-flow {
+  animation: hero-network-flow linear infinite;
+}
+
+.hero-network-edge-flow-reverse {
+  animation: hero-network-flow-reverse linear infinite;
+}
+
+.hero-network-edge-flow-secondary {
+  stroke: #6ee7b7;
+  stroke-width: 1.15;
+  stroke-dasharray: 8 96;
+  opacity: 0.5;
+}
+
+.hero-network-edge-flow-tertiary {
+  stroke: #059669;
+  stroke-width: 1;
+  stroke-dasharray: 5 110;
+  opacity: 0.35;
+}
+
+.hero-network-node-dot {
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.hero-network-node-halo {
+  opacity: 0.14;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hero-network-node-glow 4s ease-in-out infinite;
+}
+
+.hero-network-node-caption {
+  fill: #64748b;
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-network-edge-flow,
+  .hero-network-edge-flow-reverse,
+  .hero-network-node-halo {
+    animation: none;
+  }
+
+  .hero-network-edge-flow,
+  .hero-network-edge-flow-reverse {
+    opacity: 0.35;
+  }
+}
+
+.landing-hero-grid {
+  background-image:
+    linear-gradient(to right, rgba(16, 185, 129, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(16, 185, 129, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+

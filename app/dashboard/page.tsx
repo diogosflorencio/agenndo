@@ -46,7 +46,7 @@ function formatTime(t: string) {
   return `${h}:${m ?? "00"}`;
 }
 
-/** Saudação conforme o horário local (0–23). */
+/** Saudação conforme o horário local (0-23). */
 function greetingForHour(hour: number) {
   if (hour >= 0 && hour < 6) return "Boa madrugada";
   if (hour < 12) return "Bom dia";

@@ -93,7 +93,7 @@ export async function POST(req: Request) {
       },
       /** Nome e endereço de cobrança coletados pelo Stripe no checkout. */
       billing_address_collection: "required",
-      /** Sem trial no Stripe: o app já aplica 7 dias grátis via `trial_ends_at` / criação do negócio. */
+      /** Sem trial no Stripe: o app já aplica 30 dias grátis via `trial_ends_at` / criação do negócio. */
       subscription_data: {
         metadata: {
           business_id: businessId,

@@ -74,7 +74,7 @@ function allDatesInYearForWeekday(year: number, key: WeekKey): Date[] {
   return eachDayOfInterval({ start, end }).filter((d) => dateToWeekdayKey(d) === key);
 }
 
-// ─── Interactive Timeline Component ──────────────────────────────────────────
+// --- Interactive Timeline Component ------------------------------------------
 const SNAP = 15; // snap to 15min
 
 function snapMin(m: number) {
@@ -308,7 +308,7 @@ function InteractiveTimeline({
           </span>
           {schedule.breaks.map((br, i) => (
             <span key={i} className={`text-[10px] font-mono ml-2 ${isDark ? "text-amber-400/70" : "text-amber-600"}`}>
-              pausa {br.start}–{br.end}
+              pausa {br.start}-{br.end}
               <button
                 type="button"
                 className="ml-1 opacity-50 hover:opacity-100"
@@ -339,7 +339,7 @@ function InteractiveTimeline({
   );
 }
 
-// ─── Mini Calendar for date/week/month/year selection ─────────────────────────
+// --- Mini Calendar for date/week/month/year selection -------------------------
 
 function MiniCalendar({
   scope,
@@ -853,7 +853,7 @@ export default function DisponibilidadePage() {
     if (scope === "dia") return format(parseISO(selDay), "d 'de' MMMM yyyy", { locale: ptBR });
     if (scope === "semana") {
       const mon = parseISO(selWeekMonday);
-      return `${format(mon, "d MMM", { locale: ptBR })} – ${format(addDays(mon, 6), "d MMM yyyy", { locale: ptBR })}`;
+      return `${format(mon, "d MMM", { locale: ptBR })} - ${format(addDays(mon, 6), "d MMM yyyy", { locale: ptBR })}`;
     }
     if (scope === "mes") {
       const [y, m] = selMonth.split("-").map(Number);
@@ -903,7 +903,7 @@ export default function DisponibilidadePage() {
         </div>
 
         <div className="w-full space-y-6">
-          {/* ── Card 1: Período a configurar ── */}
+          {/* -- Card 1: Período a configurar -- */}
           <Card isDark={isDark}>
             <CardHeader
               title="Período a configurar"
@@ -989,7 +989,7 @@ export default function DisponibilidadePage() {
             </div>
           </Card>
 
-          {/* ── Card 2: Horários por dia da semana ── */}
+          {/* -- Card 2: Horários por dia da semana -- */}
           <Card isDark={isDark}>
             <CardHeader title="Horários por dia da semana" subtitle={horariosSubtitle} isDark={isDark} />
             <div className={`divide-y ${isDark ? "divide-white/10" : "divide-gray-100"}`}>
@@ -1010,7 +1010,7 @@ export default function DisponibilidadePage() {
                     >
                       <span className={`text-sm font-semibold min-w-0 flex-1 truncate ${isDark ? "text-white" : "text-gray-900"}`}>{row.label}</span>
                       <span className={`text-[10px] font-mono shrink-0 ${isDark ? "text-white/45" : "text-gray-500"}`}>
-                        {day.start}–{day.end}
+                        {day.start}-{day.end}
                       </span>
                       <span className={`text-[10px] shrink-0 ${isDark ? "text-white/35" : "text-gray-400"}`} aria-hidden>
                         {expanded ? "▲" : "▼"}
@@ -1063,7 +1063,7 @@ export default function DisponibilidadePage() {
                                     }}
                                     className={`h-8 w-[84px] rounded-lg px-2 text-xs font-mono outline-none border ${isDark ? "bg-white/5 border-white/10 text-white" : "bg-gray-50 border-gray-200 text-gray-900"}`}
                                   />
-                                  <span className={`text-xs ${isDark ? "text-white/40" : "text-gray-500"}`}>–</span>
+                                  <span className={`text-xs ${isDark ? "text-white/40" : "text-gray-500"}`}>-</span>
                                   <input type="time" value={br.end}
                                     onChange={(e) => {
                                       const n = [...day.breaks]; n[i] = { ...n[i], end: e.target.value };
@@ -1091,7 +1091,7 @@ export default function DisponibilidadePage() {
             </div>
           </Card>
 
-          {/* ── Card 3: Regras de agendamento (LAST, as requested) ── */}
+          {/* -- Card 3: Regras de agendamento (LAST, as requested) -- */}
           <Card isDark={isDark}>
             <CardHeader title="Regras de agendamento" subtitle="Buffer, antecedência e janela futura (notification_settings)" isDark={isDark} />
             <div className="px-5">

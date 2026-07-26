@@ -50,7 +50,7 @@ const FACTORY_BOOKING_DEFAULTS = {
   publicBookingTimeUi: "slider" as const,
 };
 
-// ─── Interactive Timeline (0–24h, 1-min snap) ────────────────────────────────
+// --- Interactive Timeline (0-24h, 1-min snap) --------------------------------
 
 const TL_LO = 0;    // 00:00
 const TL_HI = 1440; // 24:00
@@ -271,7 +271,7 @@ function InteractiveTimeline({
   );
 }
 
-// ─── Mini Calendar for date/week/month selection ───────────────────────────────
+// --- Mini Calendar for date/week/month selection -------------------------------
 
 function MiniCalendar({
   scope,
@@ -696,7 +696,7 @@ export default function DisponibilidadePage() {
   const setForDate = (d: Date, s: DaySchedule) =>
     setOverrides((p) => ({ ...p, [dk(d)]: sanitizeDaySchedule(s) }));
 
-  // Apply a schedule to every date in a week (Mon–Sun)
+  // Apply a schedule to every date in a week (Mon-Sun)
   const updateWeekDates = (mondayStr: string, s: DaySchedule) => {
     const clean = sanitizeDaySchedule(s);
     const mon = parseISO(mondayStr);
@@ -735,7 +735,7 @@ export default function DisponibilidadePage() {
     if (scope === "semana") {
       const mon = parseISO(selWeekMonday);
       const sun = addDays(mon, 6);
-      const label = `${format(mon, "d 'de' MMM", { locale: ptBR })} – ${format(sun, "d 'de' MMM yyyy", { locale: ptBR })}`;
+      const label = `${format(mon, "d 'de' MMM", { locale: ptBR })} - ${format(sun, "d 'de' MMM yyyy", { locale: ptBR })}`;
       return [{ id: selWeekMonday, label, kind: "week" as const, mondayStr: selWeekMonday }];
     }
     if (scope === "mes") {
@@ -878,7 +878,7 @@ export default function DisponibilidadePage() {
     const ok = await showConfirm({
       title: "Restaurar horários de fábrica?",
       message:
-        "Seu modelo semanal volta para os horários padrão (segunda a sábado 07h–16h com intervalo ao meio-dia; domingo fechado). Todas as personalizações por calendário serão removidas para hoje e para dias futuros - cada uma dessas datas passará a seguir só o modelo semanal.\n\nTambém voltam aos valores iniciais: Regras de agendamento (0 min de folga entre serviços, 0 h de antecedência mínima, até 30 dias à frente) e Página pública: escolha do horário (linha do tempo / slider).\n\nIsso não altera o servidor até você salvar. Alterações locais não salvas nesta tela serão substituídas por esta pré-visualização.",
+        "Seu modelo semanal volta para os horários padrão (segunda a sábado 07h-16h com intervalo ao meio-dia; domingo fechado). Todas as personalizações por calendário serão removidas para hoje e para dias futuros - cada uma dessas datas passará a seguir só o modelo semanal.\n\nTambém voltam aos valores iniciais: Regras de agendamento (0 min de folga entre serviços, 0 h de antecedência mínima, até 30 dias à frente) e Página pública: escolha do horário (linha do tempo / slider).\n\nIsso não altera o servidor até você salvar. Alterações locais não salvas nesta tela serão substituídas por esta pré-visualização.",
       confirmLabel: "Sim, aplicar aqui",
       cancelLabel: "Cancelar",
       variant: "danger",
@@ -965,7 +965,7 @@ export default function DisponibilidadePage() {
     if (scope === "dia") return format(parseISO(selDay), "d 'de' MMMM yyyy", { locale: ptBR });
     if (scope === "semana") {
       const mon = parseISO(selWeekMonday);
-      return `${format(mon, "d MMM", { locale: ptBR })} – ${format(addDays(mon, 6), "d MMM yyyy", { locale: ptBR })}`;
+      return `${format(mon, "d MMM", { locale: ptBR })} - ${format(addDays(mon, 6), "d MMM yyyy", { locale: ptBR })}`;
     }
     if (scope === "mes") {
       const [y, m] = selMonth.split("-").map(Number);
@@ -1020,7 +1020,7 @@ export default function DisponibilidadePage() {
         </div>
 
         <div className="w-full space-y-6">
-          {/* ── Card 1: Período a configurar ── */}
+          {/* -- Card 1: Período a configurar -- */}
           <Card isDark={isDark}>
             <CardHeader
               title="Período a configurar"
@@ -1103,7 +1103,7 @@ export default function DisponibilidadePage() {
             </div>
           </Card>
 
-          {/* ── Card 2: Horários (título conforme o período) ── */}
+          {/* -- Card 2: Horários (título conforme o período) -- */}
           <Card isDark={isDark}>
             <CardHeader
               title={horariosCardTitle}
@@ -1147,7 +1147,7 @@ export default function DisponibilidadePage() {
                           day.active ? (isDark ? "text-white/45" : "text-gray-500") : isDark ? "text-white/35 italic" : "text-gray-400 italic"
                         }`}
                       >
-                        {day.active ? `${day.start}–${day.end}` : "Não trabalho"}
+                        {day.active ? `${day.start}-${day.end}` : "Não trabalho"}
                       </span>
                       <span className={`text-[10px] shrink-0 ${isDark ? "text-white/35" : "text-gray-400"}`} aria-hidden>
                         {expanded ? "▲" : "▼"}
@@ -1218,7 +1218,7 @@ export default function DisponibilidadePage() {
                                         }}
                                         className={`h-8 w-[84px] rounded-lg px-2 text-xs font-mono outline-none border ${isDark ? "bg-white/5 border-white/10 text-white focus:border-primary" : "bg-gray-50 border-gray-200 text-gray-900 focus:border-primary"}`}
                                       />
-                                      <span className={`text-xs ${isDark ? "text-white/40" : "text-gray-500"}`}>–</span>
+                                      <span className={`text-xs ${isDark ? "text-white/40" : "text-gray-500"}`}>-</span>
                                       <input
                                         type="time"
                                         step={60}
@@ -1267,7 +1267,7 @@ export default function DisponibilidadePage() {
             </div>
           </Card>
 
-          {/* ── Card 3: Regras de agendamento (LAST, as requested) ── */}
+          {/* -- Card 3: Regras de agendamento (LAST, as requested) -- */}
           <Card isDark={isDark}>
             <CardHeader
               title="Regras de agendamento"

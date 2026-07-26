@@ -19,6 +19,8 @@ import {
 } from "@/lib/dashboard-navigation-guard";
 import { cn } from "@/lib/utils";
 import { DashboardNotificationBell } from "@/components/dashboard/dashboard-notification-bell";
+import { useI18n } from "@/components/i18n-provider";
+import { dashboardGroupLabel, dashboardNavLabel } from "@/lib/i18n/dashboard-nav-labels";
 import type { DashboardMobileNavItem } from "@/lib/dashboard-nav";
 const MENU_AGENDA = [
   { href: "/dashboard/agendamentos", icon: "calendar_month", label: "Agendamentos" },
@@ -86,6 +88,9 @@ function DashboardLayoutInner({
   showOwnerComissoesLink: boolean;
 }) {
   const pathname = usePathname();
+  const { locale } = useI18n();
+  const navLabel = (href: string, fallback: string) => dashboardNavLabel(locale, href, fallback);
+  const groupLabel = (key: GroupKey, fallback: string) => dashboardGroupLabel(locale, key, fallback);
   const { theme, toggleTheme } = useTheme();
   const { showAlert } = useAppAlert();
   const { business, user, profile, isStaffDashboard, staffContexts } = useDashboard();
@@ -141,10 +146,10 @@ function DashboardLayoutInner({
                 ease: [0.22, 1, 0.36, 1],
               }}
             >
-              <NavItem href={item.href} icon={item.icon} label={item.label} active={isActive(item.href)} indent />
+              <NavItem href={item.href} icon={item.icon} label={navLabel(item.href, item.label)} active={isActive(item.href)} indent />
             </motion.div>
           ) : (
-            <NavItem key={item.href} href={item.href} icon={item.icon} label={item.label} active={isActive(item.href)} indent />
+            <NavItem key={item.href} href={item.href} icon={item.icon} label={navLabel(item.href, item.label)} active={isActive(item.href)} indent />
           )
         )}
       </div>
@@ -301,10 +306,10 @@ function DashboardLayoutInner({
                 Início
               </GuardedDashboardLink>
               <p className={`px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider ${isLight ? "text-gray-400" : "text-gray-500"}`}>Menu</p>
-              {renderSidebarGroup("agenda", "Agenda", "calendar_month", MENU_AGENDA)}
-              {renderSidebarGroup("cadastros", "Cadastros", "folder", MENU_CADASTROS)}
-              {renderSidebarGroup("dados", "Dados", "bar_chart", MENU_DADOS)}
-              {renderSidebarGroup("config", "Configurações", "tune", MENU_CONFIG)}
+              {renderSidebarGroup("agenda", groupLabel("agenda", "Agenda"), "calendar_month", MENU_AGENDA)}
+              {renderSidebarGroup("cadastros", groupLabel("cadastros", "Cadastros"), "folder", MENU_CADASTROS)}
+              {renderSidebarGroup("dados", groupLabel("dados", "Dados"), "bar_chart", MENU_DADOS)}
+              {renderSidebarGroup("config", groupLabel("config", "Configurações"), "tune", MENU_CONFIG)}
               <div className="mt-3 pt-3 border-t border-inherit space-y-0.5">
                 {showOwnerComissoesLink ? (
                   <GuardedDashboardLink
@@ -340,7 +345,7 @@ function DashboardLayoutInner({
                     className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive(item.href) ? "bg-primary/10 text-primary" : isLight ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
                   >
                     <span className={`material-symbols-outlined text-[20px] ${isActive(item.href) ? "filled" : ""}`}>{item.icon}</span>
-                    {item.label}
+                    {navLabel(item.href, item.label)}
                   </GuardedDashboardLink>
                 ))}
               </div>
@@ -530,7 +535,7 @@ function DashboardLayoutInner({
                       </span>
                     </span>
                     <span className="flex min-w-0 flex-1 items-center text-left text-[15px] font-semibold leading-snug">
-                      {item.label}
+                      {navLabel(item.href, item.label)}
                     </span>
                     <span
                       className={`flex size-9 shrink-0 items-center justify-center ${
@@ -566,7 +571,7 @@ function DashboardLayoutInner({
                     {item.icon}
                   </span>
                 </span>
-                <span className={`text-[9px] font-medium leading-none truncate w-full text-center ${active ? "text-primary" : ""}`}>{item.label}</span>
+                <span className={`text-[9px] font-medium leading-none truncate w-full text-center ${active ? "text-primary" : ""}`}>{navLabel(item.href, item.label)}</span>
               </GuardedDashboardLink>
             );
           }
@@ -586,7 +591,7 @@ function DashboardLayoutInner({
                   {item.icon}
                 </span>
               </span>
-              <span className={`text-[9px] font-medium leading-none truncate w-full text-center ${active || open ? "text-primary" : ""}`}>{item.label}</span>
+              <span className={`text-[9px] font-medium leading-none truncate w-full text-center ${active || open ? "text-primary" : ""}`}>{groupLabel(item.key, item.label)}</span>
             </button>
           );
         })}

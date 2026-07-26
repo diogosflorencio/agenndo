@@ -83,7 +83,7 @@ export function AppointmentDetailModal({
     <DashboardDialog
       open
       title="Detalhes do agendamento"
-      subtitle={`${dateLabel} · ${formatTime(apt.time_start)} – ${formatTime(apt.time_end)}`}
+      subtitle={`${dateLabel} · ${formatTime(apt.time_start)} - ${formatTime(apt.time_end)}`}
       onClose={onClose}
       maxWidthClass="max-w-md"
     >
@@ -138,7 +138,7 @@ export function AppointmentDetailModal({
           <div className={cn("rounded-xl border p-3", ui.surface)}>
             <p className={cn("text-[11px] font-semibold uppercase tracking-wide", ui.subtitle)}>Horário</p>
             <p className={cn("font-bold mt-1", ui.title)}>
-              {formatTime(apt.time_start)} – {formatTime(apt.time_end)}
+              {formatTime(apt.time_start)} - {formatTime(apt.time_end)}
             </p>
           </div>
           <div className={cn("rounded-xl border p-3", ui.surface)}>

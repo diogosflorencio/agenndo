@@ -1,16 +1,10 @@
 "use client";
 
-import { createBrowserClient, type CookieOptionsWithName } from "@supabase/ssr";
+import { createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getSupabaseCookieOptions } from "@/lib/supabase/cookie-options";
 
 let _client: SupabaseClient | null = null;
-
-const cookieOpts: CookieOptionsWithName = {
-  path: "/",
-  sameSite: "lax" as const,
-  secure: typeof window !== "undefined" ? window.location.protocol === "https:" : true,
-  maxAge: 60 * 60 * 24 * 400,
-};
 
 /**
  * In-memory lock por nome com timeout de segurança.
@@ -58,7 +52,9 @@ export function createClient() {
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const opts: any = {
-    cookieOptions: cookieOpts,
+    cookieOptions: getSupabaseCookieOptions(
+      typeof window !== "undefined" ? window.location.protocol === "https:" : true
+    ),
     auth: { lock: inMemoryLock },
   };
   _client = createBrowserClient(

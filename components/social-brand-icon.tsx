@@ -13,7 +13,7 @@ export function SocialBrandIcon({ platform, size = 20, className, style }: Props
   const cn = className ?? "";
   switch (platform) {
  
-    // ─── Instagram ────────────────────────────────────────────────────────────
+    // --- Instagram ------------------------------------------------------------
     // Fonte: Meta Brand Resources (glyph oficial 24×24)
     // Três sub-paths com fill-rule evenodd para gerar os "buracos" corretos:
     //   1. Contorno arredondado externo
@@ -38,7 +38,7 @@ export function SocialBrandIcon({ platform, size = 20, className, style }: Props
         </svg>
       );
  
-    // ─── Facebook ─────────────────────────────────────────────────────────────
+    // --- Facebook -------------------------------------------------------------
     // Fonte: Meta Brand Resources - ícone "f" sobre fundo redondo
     // Path único com fill-rule evenodd para o "f" branco recortado no círculo
     case "facebook":
@@ -58,7 +58,7 @@ export function SocialBrandIcon({ platform, size = 20, className, style }: Props
         </svg>
       );
  
-    // ─── TikTok ───────────────────────────────────────────────────────────────
+    // --- TikTok ---------------------------------------------------------------
     // Fonte: TikTok Brand Book - nota musical estilizada
     // Path oficial em viewBox 24×24 (adaptado do simple-icons)
     case "tiktok":
@@ -76,7 +76,7 @@ export function SocialBrandIcon({ platform, size = 20, className, style }: Props
         </svg>
       );
  
-    // ─── YouTube ──────────────────────────────────────────────────────────────
+    // --- YouTube --------------------------------------------------------------
     // Fonte: YouTube Brand Resources - play button arredondado
     // Dois sub-paths: retângulo externo e triângulo de play (fill-rule evenodd)
     case "youtube":
@@ -97,7 +97,7 @@ export function SocialBrandIcon({ platform, size = 20, className, style }: Props
         </svg>
       );
  
-    // ─── LinkedIn ─────────────────────────────────────────────────────────────
+    // --- LinkedIn -------------------------------------------------------------
     // Fonte: LinkedIn Brand Guidelines - "in" mark
     case "linkedin":
       return (
@@ -114,7 +114,7 @@ export function SocialBrandIcon({ platform, size = 20, className, style }: Props
         </svg>
       );
  
-    // ─── X (Twitter) ──────────────────────────────────────────────────────────
+    // --- X (Twitter) ----------------------------------------------------------
     // Fonte: Bootstrap Icons bi-twitter-x - path oficial com dois sub-paths
     // viewBox 0 0 16 16 reescalado para 0 0 24 24 com transformação
     case "x":

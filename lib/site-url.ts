@@ -48,3 +48,31 @@ export function buildPublicSlugUrl(siteBase: string, slug: string | null | undef
   if (!s) return null;
   return `${siteBase.replace(/\/$/, "")}/${encodeURIComponent(s)}`;
 }
+
+function stripWww(host: string): string {
+  return host.replace(/^www\./i, "");
+}
+
+/**
+ * Redireciona apex ↔ www para `NEXT_PUBLIC_SITE_URL`, evitando perder cookies PKCE
+ * quando o login começa num host e o callback cai noutro.
+ */
+export function canonicalHostRedirectUrl(requestUrl: string, hostHeader: string | null): string | null {
+  const canonical = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (!canonical?.startsWith("http")) return null;
+
+  const canonicalUrl = new URL(canonical);
+  const requestHost = hostHeader?.split(",")[0]?.trim().split(":")[0];
+  if (!requestHost || requestHost === "localhost" || requestHost.startsWith("127.0.0.1")) {
+    return null;
+  }
+
+  const canonicalHost = canonicalUrl.hostname;
+  if (requestHost === canonicalHost) return null;
+  if (stripWww(requestHost) !== stripWww(canonicalHost)) return null;
+
+  const url = new URL(requestUrl);
+  url.protocol = canonicalUrl.protocol;
+  url.host = canonicalUrl.host;
+  return url.toString();
+}

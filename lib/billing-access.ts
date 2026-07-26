@@ -2,7 +2,7 @@
  * Regras: acesso completo a agendamentos (painel + página pública) quando:
  * - Assinatura Stripe active ou trialing; ou
  * - past_due/unpaid dentro de billing_issue_deadline (5 dias após primeira falha); ou
- * - Sem assinatura ativa e ainda antes de trial_ends_at (7 dias desde criação do negócio).
+ * - Sem assinatura ativa e ainda antes de trial_ends_at (30 dias desde criação do negócio).
  */
 
 export type BusinessBillingFields = {

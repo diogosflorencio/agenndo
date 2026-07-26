@@ -30,6 +30,7 @@ import {
 } from "@/lib/public-booking";
 import { PublicBookingDayTimeline, type PublicDayTimelinePayload } from "@/components/public-booking-day-timeline";
 import { PublicPwaInstallPrompt } from "@/components/public-pwa-install-prompt";
+import { useI18n } from "@/components/i18n-provider";
 import { PublicDatePicker } from "@/components/public/public-date-picker";
 import { PublicBookingSummaryAside } from "@/components/public/booking-summary-aside";
 import { PublicBookingConfirmStep } from "@/components/public/booking-confirm-step";
@@ -157,6 +158,7 @@ export function PublicPageInner({
   prefillDate = null,
   prefillTime = null,
 }: PublicPageInnerProps = {}) {
+  const { t } = useI18n();
   const params = useParams();
   const router = useRouter();
   const slug = typeof params?.slug === "string" ? params.slug : "";
@@ -1143,10 +1145,10 @@ export function PublicPageInner({
                   )}
                   style={{ backgroundColor: accent, boxShadow: `0 0 28px ${accent}55` }}
                 >
-                  Novo agendamento
+                  {t("public.bookNow")}
                 </button>
                 <p className={cn("text-xs leading-relaxed lg:text-right", mutedCls)}>
-                  {bookingBlocked ? "Agendamento pelo site indisponível no momento" : "Escolha serviço, profissional, data e horário"}
+                  {bookingBlocked ? t("public.bookingUnavailable") : t("public.bookingHint")}
                 </p>
                 {publicPaymentSummary ? (
                   <p
@@ -1449,7 +1451,7 @@ export function PublicPageInner({
             ))}
           </div>
           <div className="flex justify-between mt-1.5">
-            {["Serviço", "Profissional", "Data", "Horário", "Confirmar"].map((label, i) => (
+            {[t("public.stepService"), t("public.stepProfessional"), t("public.stepDate"), t("public.stepTime"), t("public.stepConfirm")].map((label, i) => (
               <span
                 key={label}
                 className={`text-xs flex-1 text-center transition-colors duration-300 ease-out ${
@@ -1467,7 +1469,7 @@ export function PublicPageInner({
         <BookingStepPanel step={step} stepKey={`${step}-${servicePickPhase}`}>
         {step === 1 && servicePickPhase === "list" && (
           <div>
-            <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Escolha o serviço</h2>
+            <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>{t("public.chooseService")}</h2>
             <p className={cn("text-sm mb-5", bookUi.subtitle)}>Selecione o serviço que deseja agendar</p>
             <div className="relative mb-6 max-w-md">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-gray-500 text-base">
@@ -1668,7 +1670,7 @@ export function PublicPageInner({
 
         {step === 2 && (
           <div>
-            <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Escolha o profissional</h2>
+            <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>{t("public.chooseProfessional")}</h2>
             <p className={cn("text-sm mb-5", bookUi.subtitle)}>
               {(selectedService?.collaborator_services?.length ?? 0) > 0
                 ? "Só aparecem quem realiza este serviço."
@@ -1696,7 +1698,7 @@ export function PublicPageInner({
                   <span className={cn(publicMaterialIconClass("lg", false), "text-[var(--public-accent)]")}>groups</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={cn("font-semibold", bookUi.title)}>Primeiro disponível</p>
+                  <p className={cn("font-semibold", bookUi.title)}>{t("public.firstAvailable")}</p>
                   <p className={cn("text-xs mt-0.5", bookUi.subtitle)}>Quem atender mais cedo neste dia</p>
                 </div>
                 <span className={cn(publicMaterialIconClass("sm"), "self-center")}>chevron_right</span>
@@ -1749,7 +1751,7 @@ export function PublicPageInner({
             bookUi={bookUi}
             isDark={isDark}
             accent={accent}
-            title="Escolha a data"
+            title={t("public.chooseDate")}
             subtitle="Selecione o dia do seu atendimento"
             left={
               <PublicDatePicker
@@ -1805,7 +1807,7 @@ export function PublicPageInner({
 
         {step === 4 && (
           <div className="w-full max-w-2xl lg:max-w-4xl mx-auto">
-            <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>Escolha o horário</h2>
+            <h2 className={cn("text-xl sm:text-2xl font-bold mb-1", bookUi.title)}>{t("public.chooseTime")}</h2>
             <p className={cn("text-sm mb-6", bookUi.subtitle)}>
               {selectedDate &&
                 new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR", {

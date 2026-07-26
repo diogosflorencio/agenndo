@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useI18n } from "@/components/i18n-provider";
 import { type CSSProperties } from "react";
 import { cn, formatCurrency, rgbaFromHex } from "@/lib/utils";
 import { normalizeVariantGallery } from "@/lib/service-variants";
@@ -51,6 +52,7 @@ export function PublicBookingSummaryAside({
   className,
   embedded = false,
 }: Props) {
+  const { t } = useI18n();
   const variantTitle =
     selectedVariantIndex != null
       ? normalizeVariantGallery(selectedService.variant_gallery)[selectedVariantIndex]?.title?.trim() ||
@@ -92,7 +94,7 @@ export function PublicBookingSummaryAside({
         )}
         <div className={embedded ? "min-w-0" : "p-6 xl:p-7"}>
           <p className={cn("text-[11px] font-bold uppercase tracking-widest mb-5", bookUi.muted)}>
-            Seu agendamento
+            {t("public.summaryTitle")}
           </p>
           <div className="flex gap-4 mb-6">
             <div

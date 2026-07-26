@@ -10,6 +10,7 @@ import {
   getOAuthRedirectOrigin,
   isLocalhostOAuthPopup,
   OAUTH_POPUP_MESSAGE,
+  writeOAuthBridgeRedirectState,
 } from "@/lib/auth/oauth-popup";
 
 function EntrarClienteContent() {
@@ -84,11 +85,10 @@ function EntrarClienteContent() {
       return;
     }
 
+    writeOAuthBridgeRedirectState({ next: postAuthPath, context: "cliente" });
+
     const supabase = createClient();
-    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/callback", {
-      context: "cliente",
-      next: postAuthPath,
-    });
+    const redirectTo = buildSupabaseOAuthRedirectUrl("/auth/callback", {});
 
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: "google",

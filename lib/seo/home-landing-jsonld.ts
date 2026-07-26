@@ -1,3 +1,4 @@
+import { APP_TRIAL_DAYS } from "@/lib/trial-config";
 import { getSiteUrl } from "@/lib/site-url";
 import { SITE_DESCRIPTION, SITE_TITLE_DEFAULT } from "@/lib/seo/site-metadata";
 import { HOME_FAQS } from "@/lib/seo/home-faq-data";
@@ -52,7 +53,7 @@ export function buildHomeLandingJsonLd() {
           "@type": "Offer",
           price: "0",
           priceCurrency: "BRL",
-          description: "Teste gratuito de 7 dias. Planos pagos conforme uso após o trial.",
+          description: `Teste gratuito de ${APP_TRIAL_DAYS} dias. Planos pagos conforme uso após o trial.`,
           availability: "https://schema.org/InStock",
         },
         featureList: [

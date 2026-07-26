@@ -1,9 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { corsHeadersForAllowedOrigin, isOriginAllowed, isSameSiteAsRequest } from "@/lib/cors";
+import { getSupabaseCookieOptions } from "@/lib/supabase/cookie-options";
+import { canonicalHostRedirectUrl } from "@/lib/site-url";
 
 const CORS_METHODS = "GET, POST, PUT, PATCH, DELETE, OPTIONS";
 const CORS_HEADERS = "Content-Type, Authorization, apikey, x-client-info, X-Requested-With";
+
+const OAUTH_AUTH_PATHS = ["/auth/callback", "/auth/oauth-bridge", "/auth/oauth-start"];
+
+function isOAuthAuthPath(pathname: string): boolean {
+  return OAUTH_AUTH_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 /** SECURITY: bloqueia requisições cross-origin de domínios não autorizados. */
 function handleCors(request: NextRequest): NextResponse | null {
@@ -53,6 +61,16 @@ function withCorsHeaders(request: NextRequest, response: NextResponse): NextResp
 }
 
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  const canonicalUrl = canonicalHostRedirectUrl(
+    request.url,
+    request.headers.get("x-forwarded-host") ?? request.headers.get("host")
+  );
+  if (canonicalUrl && !pathname.startsWith("/api/")) {
+    return NextResponse.redirect(canonicalUrl, 308);
+  }
+
   const hostname = request.headers.get("host") || "";
   if (hostname.startsWith("blog.")) {
     const url = request.nextUrl.clone();
@@ -71,6 +89,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: getSupabaseCookieOptions(),
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -88,8 +107,10 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Renova cookies de sessão a cada request (evita logout ao sair/voltar à página).
-  await supabase.auth.getUser();
+  // Não renovar sessão durante o callback OAuth (PKCE ainda não foi trocado por tokens).
+  if (!isOAuthAuthPath(pathname)) {
+    await supabase.auth.getUser();
+  }
 
   return withCorsHeaders(request, supabaseResponse);
 }

@@ -3,7 +3,7 @@
  *
  * Metas aproximadas do arquivo final:
  * - ~3 MB → ~500 KB
- * - ~5–12 MB → ~1 MB
+ * - ~5-12 MB → ~1 MB
  * - GIFs grandes (> ~900 KB) viram JPEG (primeiro quadro) para caber no bucket.
  */
 

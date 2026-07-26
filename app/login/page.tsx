@@ -2,18 +2,19 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, Suspense, useEffect, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { Suspense, useEffect, useRef, useState } from "react";
+import { GoogleOneTap } from "@/components/auth/google-one-tap";
 import {
   buildOAuthStartUrl,
   buildSupabaseOAuthRedirectUrl,
   getOAuthRedirectOrigin,
   isLocalhostOAuthPopup,
   OAUTH_POPUP_MESSAGE,
+  type OAuthLoginContext,
 } from "@/lib/auth/oauth-popup";
 import { resolveProviderLoginDestination } from "@/lib/auth/resolve-login-destination";
-import { GoogleOneTap } from "@/components/auth/google-one-tap";
-import type { OAuthLoginContext } from "@/lib/auth/oauth-popup";
+import { createClient } from "@/lib/supabase/client";
+import { trialDaysShortLabel } from "@/lib/trial-config";
 
 function safeLoginNext(raw: string | null): string {
   const n = raw?.trim();
@@ -144,100 +145,101 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#102216] text-white flex flex-col lg:flex-row">
-      <GoogleOneTap
-        nextPath={nextPath}
-        onError={setError}
-        disabled={loading || isLocalhostOAuthPopup()}
-      />
-      <aside className="hidden lg:flex lg:w-[42%] xl:w-[45%] lg:min-h-screen flex-col relative overflow-hidden bg-gradient-to-br from-[#0d2818] via-[#102216] to-[#0a1f12]">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_20%,rgba(19,236,91,0.12),transparent)]" />
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-[#13ec5b]/10 blur-[80px]" />
-        <div className="absolute bottom-1/3 right-1/4 w-48 h-48 rounded-full bg-emerald-500/10 blur-[60px]" />
-        <div className="absolute top-[15%] right-[20%] w-20 h-20 border border-white/10 rounded-2xl rotate-12" />
-        <div className="absolute top-[45%] left-[15%] w-3 h-3 rounded-full bg-white/20" />
-        <div className="absolute bottom-[25%] left-[20%] w-24 h-24 border border-white/5 rounded-3xl -rotate-6" />
-        <div className="relative z-10 flex flex-col flex-1 justify-center px-12 xl:px-16 py-16">
-          <div className="flex items-center gap-2.5 mb-12">
-            <span className="text-xl font-bold tracking-tight text-white">Agenndo</span>
-          </div>
-          <h2 className="text-2xl xl:text-3xl font-extrabold leading-tight tracking-tight text-white max-w-sm mb-4">
+    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col lg:flex-row">
+      <GoogleOneTap nextPath={nextPath} onError={setError} disabled={loading || isLocalhostOAuthPopup()} />
+
+      <aside className="hidden lg:flex lg:w-[42%] xl:w-[44%] lg:min-h-screen flex-col border-r border-gray-200 bg-white">
+        <div className="flex flex-col flex-1 justify-center px-12 xl:px-16 py-16">
+          <Link href="/" className="text-lg font-semibold tracking-tight text-gray-900 mb-10">
+            Agenndo
+          </Link>
+          <h2 className="text-2xl xl:text-3xl font-semibold leading-tight tracking-tight text-gray-900 max-w-sm mb-4">
             Acesso para prestadores
           </h2>
-          <p className="text-white/60 text-base leading-relaxed max-w-sm">
-            Entre com sua conta para gerenciar sua agenda, serviços, equipe e clientes. Se você é <strong className="text-white/80">cliente</strong> de um negócio e quer ver seus agendamentos, use o link &quot;Entrar&quot; na página de agendamento do estabelecimento.
+          <p className="text-gray-600 text-base leading-relaxed max-w-sm mb-8">
+            Entre com Google para gerenciar agenda, serviços, equipe e clientes.
+          </p>
+          <ul className="space-y-3 text-sm text-gray-600 max-w-sm">
+            <li className="flex gap-2">
+              <span className="text-emerald-600 shrink-0">·</span>
+              Painel web e celular (PWA)
+            </li>
+            <li className="flex gap-2">
+              <span className="text-emerald-600 shrink-0">·</span>
+              Página pública de agendamento
+            </li>
+            <li className="flex gap-2">
+              <span className="text-emerald-600 shrink-0">·</span>
+              Teste grátis ({trialDaysShortLabel()})
+            </li>
+          </ul>
+          <p className="text-xs text-gray-500 mt-10 max-w-sm leading-relaxed">
+            Se você é <strong className="font-medium text-gray-700">cliente</strong> de um estabelecimento, use o link
+            &quot;Entrar&quot; na página de agendamento desse negócio - não este login.
           </p>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 lg:flex lg:items-center lg:justify-center lg:py-8 bg-[#020403]">
-        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-primary/8 blur-[140px] rounded-full pointer-events-none lg:left-[58%]" />
-
-        <header className="relative z-10 py-5 px-6 border-b border-white/5 lg:border-0 lg:absolute lg:top-0 lg:left-0 lg:right-0">
-          <div className="max-w-md mx-auto flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
-              <span className="text-lg font-bold text-white">Agenndo</span>
+      <div className="flex-1 flex flex-col min-h-screen lg:min-h-0 lg:flex lg:items-center lg:justify-center lg:py-10">
+        <header className="py-4 px-6 border-b border-gray-200 lg:border-0 lg:absolute lg:top-0 lg:left-[42%] lg:right-0">
+          <div className="max-w-sm mx-auto flex items-center justify-between lg:max-w-md">
+            <Link href="/" className="text-base font-semibold text-gray-900 lg:hidden">
+              Agenndo
             </Link>
-            <Link href="/" className="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-1">
-              <span className="material-symbols-outlined text-base">arrow_back</span>
-              Voltar
+            <Link href="/" className="text-sm text-gray-600 hover:text-gray-900 ml-auto">
+              Voltar ao site
             </Link>
           </div>
         </header>
 
-        <main className="relative z-10 w-full max-w-sm mx-auto px-6 flex-1 flex flex-col justify-center py-12">
-          <div className="bg-[#0f1c15] rounded-2xl border border-white/5 p-8 shadow-2xl">
-            <div className="text-center mb-8">
-              <div className="size-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-4">
-                <span className="material-symbols-outlined text-primary text-3xl">calendar_month</span>
-              </div>
-              <h1 className="text-2xl font-bold text-white mb-2">Bem-vindo de volta</h1>
-              <p className="text-gray-400 text-sm">
-                Entre para gerenciar seus agendamentos
-              </p>
+        <main className="w-full max-w-sm mx-auto px-6 flex-1 flex flex-col justify-center py-10 lg:py-8">
+          <div className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm">
+            <div className="mb-8">
+              <h1 className="text-2xl font-semibold text-gray-900 mb-2">Entrar</h1>
+              <p className="text-gray-600 text-sm">Use sua conta Google para acessar o painel.</p>
             </div>
 
-            {error && (
-              <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                {error}
-              </div>
-            )}
+            {error ? (
+              <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-sm">{error}</div>
+            ) : null}
 
             <button
+              type="button"
               onClick={handleGoogleLogin}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-4 px-6 bg-white hover:bg-gray-100 disabled:bg-gray-200 text-gray-900 font-bold rounded-xl transition-all duration-200 mb-4 shadow-lg"
+              className="w-full flex items-center justify-center gap-3 py-3.5 px-6 bg-white hover:bg-gray-50 disabled:opacity-60 text-gray-900 font-semibold rounded-lg transition-colors border border-gray-300"
             >
               {loading ? (
-                <div className="size-5 border-2 border-gray-400 border-t-gray-900 rounded-full animate-spin" />
+                <div className="size-5 border-2 border-gray-300 border-t-gray-900 rounded-full animate-spin" />
               ) : (
                 <GoogleIcon />
               )}
               <span>
-                {loading && isLocalhostOAuthPopup() ? "Aguarde o popup…" : loading ? "Redirecionando..." : "Continuar com Google"}
+                {loading && isLocalhostOAuthPopup()
+                  ? "Aguarde o popup…"
+                  : loading
+                    ? "Redirecionando..."
+                    : "Continuar com Google"}
               </span>
             </button>
 
-            <div className="text-center">
-              <p className="text-xs text-gray-500">
-                Ao entrar, você concorda com nossos{" "}
-                <Link href="/termos" className="text-primary hover:underline">Termos de Uso</Link> e{" "}
-                <Link href="/politicas" className="text-primary hover:underline">Política de Privacidade</Link>.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 p-4 bg-primary/5 border border-primary/20 rounded-xl text-center">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              <span className="material-symbols-outlined text-primary text-base">rocket_launch</span>
-              <span className="text-sm font-bold text-primary">Teste grátis (7 dias ou mais)</span>
-            </div>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              No cadastro você já vê quanto vai pagar por mês após o teste. Use tudo sem cobrança enquanto o trial estiver
-              ativo; se precisar de mais tempo, <span className="text-gray-300">peça ao suporte</span> extensão por até{" "}
-              <span className="text-gray-300">1 mês</span> em casos combinados.
+            <p className="text-xs text-gray-500 text-center mt-6 leading-relaxed">
+              Ao entrar, você concorda com os{" "}
+              <Link href="/termos" className="text-gray-700 underline hover:text-gray-900">
+                Termos
+              </Link>{" "}
+              e a{" "}
+              <Link href="/politicas" className="text-gray-700 underline hover:text-gray-900">
+                Política de Privacidade
+              </Link>
+              .
             </p>
           </div>
+
+          <p className="mt-6 text-center text-xs text-gray-500 leading-relaxed px-2">
+            Novo por aqui? O cadastro começa após o login -{" "}
+            <span className="text-gray-700 font-medium">{trialDaysShortLabel()} de teste</span> sem cartão.
+          </p>
         </main>
       </div>
     </div>
@@ -246,22 +248,30 @@ function LoginContent() {
 
 function GoogleIcon() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24">
-      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+      />
     </svg>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#020403] flex items-center justify-center">
-        <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
       <LoginContent />
     </Suspense>
   );

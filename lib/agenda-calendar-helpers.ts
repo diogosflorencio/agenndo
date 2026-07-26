@@ -47,7 +47,7 @@ export function labelWeekdayShort(d: Date): string {
   return WEEKDAYS_SHORT[d.getDay()] ?? "";
 }
 
-/** Faixa de 30 em 30 min entre startHour e endHour (ex.: 7–22). */
+/** Faixa de 30 em 30 min entre startHour e endHour (ex.: 7-22). */
 export function generateHalfHourSlots(startHour: number, endHour: number): { label: string; minutes: number }[] {
   const out: { label: string; minutes: number }[] = [];
   const startM = startHour * 60;

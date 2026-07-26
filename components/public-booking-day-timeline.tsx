@@ -92,7 +92,7 @@ function minuteToWorkPct(m: number, workStart: number, span: number): number {
   return ((clamp(m, workStart, workStart + span) - workStart) / span) * 100;
 }
 
-/** Fração do expediente já “passada” (0–1): dia passado = 1, futuro = 0, hoje = entre início do expediente e agora. */
+/** Fração do expediente já “passada” (0-1): dia passado = 1, futuro = 0, hoje = entre início do expediente e agora. */
 function elapsedWorkSpanFraction(dateStr: string, workStart: number, workEnd: number, now: Date): number {
   const today = formatInTimeZone(now, BOOKING_TZ, "yyyy-MM-dd");
   if (dateStr < today) return 1;
@@ -150,7 +150,7 @@ function CalloutLine({
   label: string;
   detail?: string;
   isDark: boolean;
-  /** 0 = início/fim; 1 = limite já passou; 2–4 = pausas; 5–6 = Você / intervalo (mais à direita para não colidir). */
+  /** 0 = início/fim; 1 = limite já passou; 2-4 = pausas; 5-6 = Você / intervalo (mais à direita para não colidir). */
   labelTier?: number;
   /**
    * `above` = texto acima da linha (ex.: Você perto do fim do expediente).
@@ -532,12 +532,12 @@ export function PublicBookingDayTimeline({
       </div>
 
       <p className={cn("text-[11px] md:hidden", isDark ? "text-white/50" : "text-gray-500")}>
-        Expediente {minutesToTime(workStart)}–{minutesToTime(workEnd)} · cada marca ao lado = início possível de
+        Expediente {minutesToTime(workStart)}-{minutesToTime(workEnd)} · cada marca ao lado = início possível de
         encaixe ({dur + buf} min
         {buf > 0 ? ", duração + intervalo" : ", duração do serviço"}).
       </p>
       <p className={cn("text-[11px] hidden md:block", isDark ? "text-white/50" : "text-gray-500")}>
-        Faixa = expediente ({minutesToTime(workStart)} – {minutesToTime(workEnd)}). Encaixes a cada{" "}
+        Faixa = expediente ({minutesToTime(workStart)} - {minutesToTime(workEnd)}). Encaixes a cada{" "}
         <span className="font-semibold text-[var(--public-accent)]">{dur + buf}</span> min
         {buf > 0 ? " (duração + intervalo entre atendimentos)" : " (duração do serviço)"}: o bloco só para em horários
         válidos.
@@ -814,7 +814,7 @@ export function PublicBookingDayTimeline({
                 labelTier={2 + Math.min(i, 2)}
                 isDark={isDark}
                 label="Pausa"
-                detail={`${minutesToTime(b0)} – ${minutesToTime(b1)}`}
+                detail={`${minutesToTime(b0)} - ${minutesToTime(b1)}`}
               />
             );
           })}
@@ -826,7 +826,7 @@ export function PublicBookingDayTimeline({
                 labelTier={5}
                 isDark={isDark}
                 label="Você + intervalo"
-                detail={`${minutesToTime(startMin)} – ${minutesToTime(startMin + dur + buf)}`}
+                detail={`${minutesToTime(startMin)} - ${minutesToTime(startMin + dur + buf)}`}
               />
             ) : (
               <CalloutLine
@@ -835,7 +835,7 @@ export function PublicBookingDayTimeline({
                 labelTier={5}
                 isDark={isDark}
                 label="Você"
-                detail={`${minutesToTime(startMin)} – ${minutesToTime(startMin + dur)}`}
+                detail={`${minutesToTime(startMin)} - ${minutesToTime(startMin + dur)}`}
               />
             )
           ) : (
@@ -846,7 +846,7 @@ export function PublicBookingDayTimeline({
                 labelTier={5}
                 isDark={isDark}
                 label="Você"
-                detail={`${minutesToTime(startMin)} – ${minutesToTime(startMin + dur)}`}
+                detail={`${minutesToTime(startMin)} - ${minutesToTime(startMin + dur)}`}
               />
               {buf > 0 ? (
                 <CalloutLine
@@ -855,7 +855,7 @@ export function PublicBookingDayTimeline({
                   labelTier={6}
                   isDark={isDark}
                   label="Intervalo"
-                  detail={`${minutesToTime(startMin + dur)} – ${minutesToTime(startMin + dur + buf)}`}
+                  detail={`${minutesToTime(startMin + dur)} - ${minutesToTime(startMin + dur + buf)}`}
                 />
               ) : null}
             </>
