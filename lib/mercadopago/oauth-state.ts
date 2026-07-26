@@ -70,7 +70,7 @@ export function verifyMercadoPagoOAuthState(
   }
 }
 
-/** v1 usava `v1|userId|path|verifier` — paths com `/` quebravam no split. */
+/** v1 usava `v1|userId|path|verifier` - paths com `/` quebravam no split. */
 function parseLegacyV1PipeState(body: string): { userId: string; returnTo: string; codeVerifier: string } | null {
   const parts = body.split("|");
   if (parts[0] !== "v1" || parts.length < 3) return null;

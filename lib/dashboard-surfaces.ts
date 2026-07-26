@@ -1,5 +1,5 @@
 /**
- * Superfícies do painel — alinhar com DashboardShell (#020403 fundo, #080c0a cards, primary verde).
+ * Superfícies do painel - alinhar com DashboardShell (#020403 fundo, #080c0a cards, primary verde).
  * Use com useTheme() em componentes com cores fixas (não confiar só em overrides globais de .bg-white).
  */
 export function getDashboardSurfaces(isDark: boolean) {
@@ -31,7 +31,7 @@ export function getDashboardSurfaces(isDark: boolean) {
     closeBtn: isDark
       ? "border-white/10 bg-white/[0.06] text-gray-300 hover:bg-white/10 hover:text-white"
       : "border-gray-200 bg-white text-gray-600 hover:bg-gray-100",
-    /** Card informativo (estilo “Resumo rápido”) — mesmo fundo escuro, borda verde suave. */
+    /** Card informativo (estilo “Resumo rápido”) - mesmo fundo escuro, borda verde suave. */
     accentCard: isDark ? panelDark : "rounded-xl border border-primary/20 bg-primary/[0.04]",
     accentCardTitle: isDark ? "font-semibold text-white" : "font-semibold text-gray-900",
     accentCardBody: isDark ? "text-gray-300" : "text-gray-700",
@@ -44,7 +44,7 @@ export function getDashboardSurfaces(isDark: boolean) {
     accentSelected: isDark
       ? "border-primary/20 bg-[#080c0a] ring-1 ring-primary/15"
       : "border-primary/35 bg-primary/10 ring-2 ring-primary/35",
-    /** Card de serviço/listagem — mesmo padrão do painel. */
+    /** Card de serviço/listagem - mesmo padrão do painel. */
     serviceCard: isDark
       ? `${panelDark} overflow-hidden hover:border-primary/18 transition-all`
       : "rounded-xl border border-gray-200 bg-white overflow-hidden hover:border-gray-300 transition-all shadow-sm",

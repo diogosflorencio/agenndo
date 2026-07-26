@@ -19,7 +19,7 @@ import { OperacoesNoteButton } from "./operacoes-note-popup";
 import { operacoesSurface, useOperacoesShell } from "./operacoes-shell";
 
 function fmtDate(iso: string | null) {
-  if (!iso) return "—";
+  if (!iso) return "-";
   try {
     const ms = operacoesActivityMs(iso);
     if (Number.isNaN(ms)) return iso;
@@ -219,7 +219,7 @@ function InfoCell({
                     {row.email}
                   </a>
                 ) : (
-                  <span className={s.muted}>—</span>
+                  <span className={s.muted}>-</span>
                 )}
               </td>
             </tr>
@@ -233,7 +233,7 @@ function InfoCell({
                 ) : row.phone ? (
                   row.phone
                 ) : (
-                  <span className={s.muted}>—</span>
+                  <span className={s.muted}>-</span>
                 )}
               </td>
             </tr>

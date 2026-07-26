@@ -1,6 +1,6 @@
 import type { BlogPost } from "./types";
 
-/** Artigos SEO solicitados (2026) — complementam os posts seed existentes. */
+/** Artigos SEO solicitados (2026) - complementam os posts seed existentes. */
 export const seoPostsBatch: BlogPost[] = [
   {
     slug: "como-organizar-agendamentos",
@@ -15,7 +15,7 @@ export const seoPostsBatch: BlogPost[] = [
     reading_time_min: 8,
     content: `
 <h2>Por que organizar agendamentos muda o caixa</h2>
-<p>Desorganização não é só “estar ocupado”: é cadeira vazia, cliente irritado e equipe respondendo a mesma pergunta dez vezes por dia. <strong>Organizar agendamentos</strong> significa definir regras claras — duração, antecedência, quem atende — e um canal único para o cliente reservar.</p>
+<p>Desorganização não é só “estar ocupado”: é cadeira vazia, cliente irritado e equipe respondendo a mesma pergunta dez vezes por dia. <strong>Organizar agendamentos</strong> significa definir regras claras - duração, antecedência, quem atende - e um canal único para o cliente reservar.</p>
 
 <h2>1. Liste serviços com tempo real</h2>
 <p>Cada serviço precisa de duração e preço visíveis. Progressiva de 2h não pode ocupar slot de 45 minutos. No <a href="https://agenndo.com.br/agenda-online">Agenndo</a>, isso alimenta automaticamente a disponibilidade.</p>
@@ -55,7 +55,7 @@ export const seoPostsBatch: BlogPost[] = [
 <p>Informe na página o que acontece com cancelamento em cima da hora. Cliente informado falta menos por esquecimento malicioso.</p>
 
 <h2>Lista de espera</h2>
-<p>Quando alguém cancela, tenha processo para oferecer a vaga rapidamente — manualmente ou com lista de interessados.</p>
+<p>Quando alguém cancela, tenha processo para oferecer a vaga rapidamente - manualmente ou com lista de interessados.</p>
 
 <h2>Agenda que o paciente respeita</h2>
 <p>Reserva formal (link ou sistema) tem mais peso que “combinamos no zap”. Use uma <a href="https://agenndo.com.br/agenda-online-para-clinicas">agenda online para clínicas</a>.</p>
@@ -84,7 +84,7 @@ export const seoPostsBatch: BlogPost[] = [
 </ul>
 
 <h2>Integração com WhatsApp</h2>
-<p>Muitos negócios brasileiros vivem no WhatsApp. Combine página de agendamento + mensagem automática — leia <a href="https://agenndo.com.br/blog/como-automatizar-agendamentos-pelo-whatsapp">automatizar pelo WhatsApp</a>.</p>
+<p>Muitos negócios brasileiros vivem no WhatsApp. Combine página de agendamento + mensagem automática - leia <a href="https://agenndo.com.br/blog/como-automatizar-agendamentos-pelo-whatsapp">automatizar pelo WhatsApp</a>.</p>
 
 <h2>Ferramenta certa</h2>
 <p>Calendários genéricos não foram feitos para serviços. Prefira uma <a href="https://agenndo.com.br/plataforma-de-agendamento-online">plataforma de agendamento online</a> com fluxo de reserva completo.</p>
@@ -112,7 +112,7 @@ export const seoPostsBatch: BlogPost[] = [
 <p>Cliente na fila escaneia e marca sozinho. Funciona para <a href="https://agenndo.com.br/agenda-online-para-barbearia">barbearias</a> e salões.</p>
 
 <h2>Quando ainda usar mensagem</h2>
-<p>Dúvidas sobre procedimento, preço especial ou encaixe urgente — aí sim, atendimento humano.</p>
+<p>Dúvidas sobre procedimento, preço especial ou encaixe urgente - aí sim, atendimento humano.</p>
 
 <h2>Próximo passo</h2>
 <p>Crie sua página no <a href="https://agenndo.com.br/login">Agenndo</a> e teste o fluxo completo em menos de 15 minutos.</p>

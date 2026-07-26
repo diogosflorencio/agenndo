@@ -1268,7 +1268,7 @@ export function PublicPageInner({
                     {/* eslint-disable-next-line @next/next/no-img-element -- dimensões intrínsecas no mosaico */}
                     <img
                       src={src}
-                      alt={`${business.name} — foto ${gi + 1}`}
+                      alt={`${business.name} - foto ${gi + 1}`}
                       className={cn(
                         "w-full h-auto rounded-xl border block",
                         isDark ? "border-white/10" : "border-gray-200/80"

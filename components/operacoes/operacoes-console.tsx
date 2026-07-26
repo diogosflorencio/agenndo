@@ -150,7 +150,7 @@ export function OperacoesConsole() {
       row.kind === "cliente"
         ? `Apagar cliente «${row.name}»?`
         : row.kind === "funcionario"
-          ? `Este registo é de funcionário — use o painel do negócio para remover o colaborador.`
+          ? `Este registo é de funcionário - use o painel do negócio para remover o colaborador.`
           : `Apagar negócio «${row.name}» e dados em cascata?`;
     if (row.kind === "funcionario") {
       alert(msg);

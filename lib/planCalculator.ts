@@ -98,7 +98,7 @@ function planOfferCopy(): Pick<DynamicPlanResult, "infrastructure" | "highlight"
     features: [
       {
         title: "Plano sob medida",
-        sub: "A mensalidade é calculada em background a partir da equipe, ticket médio e volume — você confere o valor só na área Conta.",
+        sub: "A mensalidade é calculada em background a partir da equipe, ticket médio e volume - você confere o valor só na área Conta.",
       },
       {
         title: "Teste sem pressa",

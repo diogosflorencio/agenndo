@@ -19,13 +19,13 @@ export const seedPosts: BlogPost[] = [
     reading_time_min: 9,
     content: `
 <h2>Por que seu salão de beleza precisa de uma agenda online?</h2>
-<p>Se você é dono de um salão de beleza, sabe como é caótico gerenciar agendamentos por WhatsApp, caderninho ou planilha. Clientes mandando mensagem fora do horário, conflitos de horário, faltas sem aviso — tudo isso custa tempo e dinheiro. Uma <strong>agenda online para salão de beleza</strong> resolve esses problemas de uma vez.</p>
+<p>Se você é dono de um salão de beleza, sabe como é caótico gerenciar agendamentos por WhatsApp, caderninho ou planilha. Clientes mandando mensagem fora do horário, conflitos de horário, faltas sem aviso - tudo isso custa tempo e dinheiro. Uma <strong>agenda online para salão de beleza</strong> resolve esses problemas de uma vez.</p>
 <p>Com um sistema de agendamento digital, seus clientes podem marcar horários 24 horas por dia, 7 dias por semana, sem precisar ligar ou enviar mensagem. Isso não só melhora a experiência do cliente como também libera você e sua equipe para focar no que realmente importa: atender bem.</p>
 
 <h2>Benefícios de uma agenda online para salões</h2>
 <ul>
   <li><strong>Redução de faltas:</strong> Lembretes automáticos por e-mail ou notificação diminuem drasticamente os no-shows. Estudos mostram que salões que usam agendamento online reduzem faltas em até 40%.</li>
-  <li><strong>Mais clientes:</strong> Quando o cliente pode agendar a qualquer hora — inclusive de madrugada, no domingo ou durante o almoço — você captura demandas que antes perderia.</li>
+  <li><strong>Mais clientes:</strong> Quando o cliente pode agendar a qualquer hora - inclusive de madrugada, no domingo ou durante o almoço - você captura demandas que antes perderia.</li>
   <li><strong>Organização total:</strong> Chega de conflitos de horário. O sistema mostra apenas os horários realmente disponíveis, evitando overbooking.</li>
   <li><strong>Profissionalismo:</strong> Uma página de agendamento profissional passa credibilidade e posiciona seu salão como moderno e organizado.</li>
   <li><strong>Economia de tempo:</strong> Menos tempo respondendo mensagens de agendamento significa mais tempo para atender clientes ou cuidar da gestão.</li>
@@ -40,11 +40,11 @@ export const seedPosts: BlogPost[] = [
 <h3>2. Configure seus serviços</h3>
 <p>Liste todos os serviços que seu salão oferece, com duração e preço. Seja específico:</p>
 <ul>
-  <li>Corte feminino — 45 min — R$ 80</li>
-  <li>Escova progressiva — 2h — R$ 200</li>
-  <li>Coloração — 1h30 — R$ 150</li>
-  <li>Manicure + pedicure — 1h — R$ 60</li>
-  <li>Design de sobrancelha — 30 min — R$ 40</li>
+  <li>Corte feminino - 45 min - R$ 80</li>
+  <li>Escova progressiva - 2h - R$ 200</li>
+  <li>Coloração - 1h30 - R$ 150</li>
+  <li>Manicure + pedicure - 1h - R$ 60</li>
+  <li>Design de sobrancelha - 30 min - R$ 40</li>
 </ul>
 <p>Quanto mais detalhados forem os serviços, melhor será a experiência do cliente na hora de agendar.</p>
 
@@ -52,7 +52,7 @@ export const seedPosts: BlogPost[] = [
 <p>Configure os dias e horários em que o salão está aberto para atendimento. Se você tem mais de um profissional, configure a agenda de cada um individualmente. Assim, o cliente pode escolher não só o serviço, mas também o profissional de sua preferência.</p>
 
 <h3>4. Personalize sua página de agendamento</h3>
-<p>Adicione o nome do salão, logo, fotos do espaço e uma descrição atrativa. Uma <a href="https://agenndo.com.br/agendamento-online">página pública de agendamento</a> bem feita funciona como um cartão de visitas digital — é muitas vezes o primeiro contato que o cliente terá com seu negócio.</p>
+<p>Adicione o nome do salão, logo, fotos do espaço e uma descrição atrativa. Uma <a href="https://agenndo.com.br/agendamento-online">página pública de agendamento</a> bem feita funciona como um cartão de visitas digital - é muitas vezes o primeiro contato que o cliente terá com seu negócio.</p>
 
 <h3>5. Compartilhe com seus clientes</h3>
 <p>Coloque o link da sua agenda online em todos os pontos de contato:</p>
@@ -98,8 +98,8 @@ export const seedPosts: BlogPost[] = [
 <p>De nada adianta ter uma agenda online se ninguém sabe que ela existe. Divulgue ativamente em todos os seus canais de comunicação.</p>
 
 <h2>Quanto custa ter uma agenda online?</h2>
-<p>Muitos sistemas oferecem planos gratuitos com funcionalidades básicas — o suficiente para salões que estão começando. O <a href="https://agenndo.com.br">Agenndo</a>, por exemplo, permite criar sua página de agendamento e receber marcações sem custo algum.</p>
-<p>Conforme seu salão cresce e você precisa de funcionalidades mais avançadas (como relatórios, múltiplos profissionais e personalização avançada), pode fazer upgrade para um plano pago — geralmente a partir de R$ 29 a R$ 99 por mês, dependendo da plataforma.</p>
+<p>Muitos sistemas oferecem planos gratuitos com funcionalidades básicas - o suficiente para salões que estão começando. O <a href="https://agenndo.com.br">Agenndo</a>, por exemplo, permite criar sua página de agendamento e receber marcações sem custo algum.</p>
+<p>Conforme seu salão cresce e você precisa de funcionalidades mais avançadas (como relatórios, múltiplos profissionais e personalização avançada), pode fazer upgrade para um plano pago - geralmente a partir de R$ 29 a R$ 99 por mês, dependendo da plataforma.</p>
 
 <h2>Conclusão</h2>
 <p>Criar uma <strong>agenda online gratuita para seu salão de beleza</strong> é mais simples do que parece e traz benefícios imediatos: menos faltas, mais organização, clientes mais satisfeitos e mais tempo para você focar no que faz de melhor.</p>
@@ -125,9 +125,9 @@ export const seedPosts: BlogPost[] = [
     reading_time_min: 10,
     content: `
 <h2>O prejuízo silencioso das faltas de clientes</h2>
-<p>Faltas de clientes — ou "no-shows" — são um dos maiores vilões do faturamento de prestadores de serviço no Brasil. Estima-se que profissionais como cabeleireiros, dentistas, personal trainers e esteticistas percam entre 15% e 30% da receita mensal por conta de clientes que simplesmente não aparecem.</p>
+<p>Faltas de clientes - ou "no-shows" - são um dos maiores vilões do faturamento de prestadores de serviço no Brasil. Estima-se que profissionais como cabeleireiros, dentistas, personal trainers e esteticistas percam entre 15% e 30% da receita mensal por conta de clientes que simplesmente não aparecem.</p>
 <p>Faça as contas: se você atende 8 clientes por dia a R$ 100 cada, e 20% não aparecem, são R$ 160 por dia perdidos. Em um mês com 22 dias úteis, isso dá <strong>R$ 3.520 de prejuízo</strong>. Em um ano, mais de R$ 42 mil.</p>
-<p>A boa notícia é que um <strong>sistema de agendamento online</strong> bem implementado pode <strong>reduzir as faltas de clientes em até 50%</strong> — ou mais. Veja como.</p>
+<p>A boa notícia é que um <strong>sistema de agendamento online</strong> bem implementado pode <strong>reduzir as faltas de clientes em até 50%</strong> - ou mais. Veja como.</p>
 
 <h2>Por que os clientes faltam?</h2>
 <p>Antes de combater o problema, é importante entender as causas. Pesquisas mostram que os principais motivos para no-shows são:</p>
@@ -158,7 +158,7 @@ export const seedPosts: BlogPost[] = [
 </ul>
 
 <h3>3. Facilite o cancelamento e reagendamento</h3>
-<p>Pode parecer contraditório, mas facilitar o cancelamento <strong>reduz</strong> as faltas. Quando cancelar é difícil (precisa ligar, explicar, convencer), o cliente simplesmente não aparece. Quando é fácil (um clique), ele cancela ou reagenda — e o horário fica livre para outro cliente.</p>
+<p>Pode parecer contraditório, mas facilitar o cancelamento <strong>reduz</strong> as faltas. Quando cancelar é difícil (precisa ligar, explicar, convencer), o cliente simplesmente não aparece. Quando é fácil (um clique), ele cancela ou reagenda - e o horário fica livre para outro cliente.</p>
 <blockquote>
   <p>"Clientes que cancelam são melhores do que clientes que faltam. O cancelamento libera o horário; a falta desperdiça ele."</p>
 </blockquote>
@@ -177,7 +177,7 @@ export const seedPosts: BlogPost[] = [
 
 <h3>6. Agendamento com sinal ou pagamento antecipado</h3>
 <p>Para serviços de maior valor ou maior duração, considere pedir um sinal no momento do agendamento. Isso cria um comprometimento financeiro que reduz drasticamente as faltas.</p>
-<p>Não precisa ser o valor total — um sinal de 20% a 30% já é suficiente para diminuir no-shows em até 70% nesses casos.</p>
+<p>Não precisa ser o valor total - um sinal de 20% a 30% já é suficiente para diminuir no-shows em até 70% nesses casos.</p>
 
 <h3>7. Horários inteligentes e intervalos adequados</h3>
 <p>Às vezes, as faltas acontecem porque o cliente percebe que não conseguirá chegar a tempo. Ofereça horários com intervalos realistas entre os atendimentos. Se seu cliente médio leva 15 minutos para chegar até você, não encaixe agendamentos de 5 em 5 minutos.</p>
@@ -194,7 +194,7 @@ export const seedPosts: BlogPost[] = [
   <li>Link de cancelamento fácil em todos os lembretes.</li>
   <li>Política de cancelamento com 4h de antecedência mínima.</li>
 </ol>
-<p>Em 60 dias, a taxa de faltas caiu para <strong>12%</strong> — uma redução de 57%. O faturamento mensal aumentou em R$ 4.800 sem nenhum investimento adicional em marketing.</p>
+<p>Em 60 dias, a taxa de faltas caiu para <strong>12%</strong> - uma redução de 57%. O faturamento mensal aumentou em R$ 4.800 sem nenhum investimento adicional em marketing.</p>
 
 <h2>O custo de não ter agendamento online</h2>
 <p>Muitos prestadores hesitam em adotar uma ferramenta digital por acharem que "dá trabalho" ou "meu público não usa". Mas o custo de não ter é muito maior:</p>
@@ -206,7 +206,7 @@ export const seedPosts: BlogPost[] = [
 </ul>
 
 <h2>Conclusão: agendamento online é investimento, não custo</h2>
-<p>Reduzir faltas de clientes não exige soluções complexas ou investimentos altos. Com um <strong>sistema de agendamento online</strong> que oferece lembretes automáticos, facilidade de cancelamento e confirmação ativa, você pode cortar suas faltas pela metade — e transformar horários vazios em faturamento.</p>
+<p>Reduzir faltas de clientes não exige soluções complexas ou investimentos altos. Com um <strong>sistema de agendamento online</strong> que oferece lembretes automáticos, facilidade de cancelamento e confirmação ativa, você pode cortar suas faltas pela metade - e transformar horários vazios em faturamento.</p>
 <p>O <a href="https://agenndo.com.br">Agenndo</a> oferece todas essas funcionalidades com plano gratuito para você começar. <a href="https://agenndo.com.br/login">Crie sua conta gratuitamente</a> e veja os resultados já nas primeiras semanas.</p>
 `,
   },
@@ -228,8 +228,8 @@ export const seedPosts: BlogPost[] = [
     reading_time_min: 11,
     content: `
 <h2>O mercado de estética e a necessidade de agendamento digital</h2>
-<p>O Brasil é o terceiro maior mercado de estética do mundo, e o segmento cresce mais de 10% ao ano. Com tanta concorrência, clínicas que oferecem uma experiência de agendamento moderna e prática se destacam — e as que ainda dependem de ligações e WhatsApp ficam para trás.</p>
-<p>O <strong>agendamento online para clínicas de estética</strong> não é mais um diferencial: é uma necessidade. Clientes de procedimentos estéticos esperam conveniência, discrição e profissionalismo desde o primeiro contato — e esse primeiro contato, cada vez mais, é digital.</p>
+<p>O Brasil é o terceiro maior mercado de estética do mundo, e o segmento cresce mais de 10% ao ano. Com tanta concorrência, clínicas que oferecem uma experiência de agendamento moderna e prática se destacam - e as que ainda dependem de ligações e WhatsApp ficam para trás.</p>
+<p>O <strong>agendamento online para clínicas de estética</strong> não é mais um diferencial: é uma necessidade. Clientes de procedimentos estéticos esperam conveniência, discrição e profissionalismo desde o primeiro contato - e esse primeiro contato, cada vez mais, é digital.</p>
 
 <h2>Desafios específicos de clínicas de estética</h2>
 <p>Diferente de outros segmentos, clínicas de estética enfrentam particularidades no agendamento:</p>
@@ -238,7 +238,7 @@ export const seedPosts: BlogPost[] = [
   <li><strong>Intervalos entre procedimentos:</strong> Alguns equipamentos precisam de tempo de preparação entre pacientes.</li>
   <li><strong>Contraindicações e fichas de anamnese:</strong> Nem todo cliente pode fazer qualquer procedimento.</li>
   <li><strong>Pacotes e sessões:</strong> Muitos tratamentos são vendidos em pacotes de 5, 10 ou mais sessões.</li>
-  <li><strong>Múltiplos profissionais e salas:</strong> Esteticistas, biomédicos, dermatologistas — cada um com sua agenda.</li>
+  <li><strong>Múltiplos profissionais e salas:</strong> Esteticistas, biomédicos, dermatologistas - cada um com sua agenda.</li>
   <li><strong>Sazonalidade:</strong> Demanda maior antes do verão e em datas comemorativas.</li>
 </ul>
 
@@ -261,7 +261,7 @@ export const seedPosts: BlogPost[] = [
 <p>Após um procedimento que requer preparação de sala (como radiofrequência ou criolipólise), o sistema deve bloquear automaticamente um intervalo antes do próximo agendamento naquela sala.</p>
 
 <h3>Lembretes e confirmações</h3>
-<p>Procedimentos estéticos costumam ser agendados com antecedência. Um lembrete 24-48 horas antes é fundamental para reduzir no-shows — especialmente porque muitos tratamentos estéticos têm custo alto e a falta prejudica tanto a clínica quanto o protocolo do paciente.</p>
+<p>Procedimentos estéticos costumam ser agendados com antecedência. Um lembrete 24-48 horas antes é fundamental para reduzir no-shows - especialmente porque muitos tratamentos estéticos têm custo alto e a falta prejudica tanto a clínica quanto o protocolo do paciente.</p>
 
 <h2>Passo a passo para implementar</h2>
 
@@ -314,7 +314,7 @@ export const seedPosts: BlogPost[] = [
 <h2>Erros que clínicas de estética cometem no agendamento online</h2>
 
 <h3>Não adaptar a duração dos serviços</h3>
-<p>Se um procedimento leva 1 hora mas você cadastrou como 45 minutos, terá atrasos cascata o dia inteiro. Seja realista com as durações — é melhor ter um intervalo livre do que acumular atrasos.</p>
+<p>Se um procedimento leva 1 hora mas você cadastrou como 45 minutos, terá atrasos cascata o dia inteiro. Seja realista com as durações - é melhor ter um intervalo livre do que acumular atrasos.</p>
 
 <h3>Ignorar o tempo de preparação</h3>
 <p>Equipamentos como laser e radiofrequência precisam ser preparados e limpos entre pacientes. Inclua esse tempo na duração total do serviço.</p>
@@ -325,10 +325,10 @@ export const seedPosts: BlogPost[] = [
 <h2>Como o agendamento online impacta o faturamento</h2>
 <p>Clínicas que implementam agendamento online reportam, em média:</p>
 <ul>
-  <li><strong>+30% de agendamentos</strong> — clientes que agendam fora do horário comercial.</li>
-  <li><strong>-40% de faltas</strong> — com lembretes automáticos.</li>
-  <li><strong>+2 horas por dia</strong> — economia de tempo da recepcionista.</li>
-  <li><strong>+15% de ticket médio</strong> — quando o cliente vê todos os serviços disponíveis, tende a adicionar procedimentos.</li>
+  <li><strong>+30% de agendamentos</strong> - clientes que agendam fora do horário comercial.</li>
+  <li><strong>-40% de faltas</strong> - com lembretes automáticos.</li>
+  <li><strong>+2 horas por dia</strong> - economia de tempo da recepcionista.</li>
+  <li><strong>+15% de ticket médio</strong> - quando o cliente vê todos os serviços disponíveis, tende a adicionar procedimentos.</li>
 </ul>
 
 <h2>A importância da presença online para clínicas</h2>
@@ -358,7 +358,7 @@ export const seedPosts: BlogPost[] = [
     reading_time_min: 9,
     content: `
 <h2>O desafio da agenda do personal trainer</h2>
-<p>Se você é personal trainer, provavelmente vive refém do WhatsApp. Mensagens às 22h pedindo para remarcar, alunos que somem sem avisar, horários livres que poderiam ter sido preenchidos — tudo isso é tempo e dinheiro perdidos.</p>
+<p>Se você é personal trainer, provavelmente vive refém do WhatsApp. Mensagens às 22h pedindo para remarcar, alunos que somem sem avisar, horários livres que poderiam ter sido preenchidos - tudo isso é tempo e dinheiro perdidos.</p>
 <p>O <strong>agendamento online para personal trainer</strong> resolve esses problemas de forma simples: seus alunos agendam, reagendam e cancelam pelos próprios celulares, e você gerencia tudo em um único lugar.</p>
 
 <h2>Por que personal trainers precisam de agendamento online?</h2>
@@ -366,7 +366,7 @@ export const seedPosts: BlogPost[] = [
   <li><strong>Agenda lotada de buracos:</strong> Cancelamentos de última hora criam "janelas" no dia que raramente são preenchidas. Com agendamento online, horários cancelados ficam automaticamente disponíveis para outros alunos.</li>
   <li><strong>WhatsApp caótico:</strong> Gerenciar 15-20 alunos por mensagem é insustentável. Mensagens se perdem, confirmações ficam sem resposta, e você gasta mais tempo no celular do que treinando.</li>
   <li><strong>Dificuldade de prospectar:</strong> Novos alunos potenciais que encontram seu perfil no Instagram precisam enviar mensagem e esperar resposta. Muitos desistem no caminho. Com um link de agendamento, eles marcam uma aula experimental em segundos.</li>
-  <li><strong>Falta de profissionalismo percebido:</strong> Uma página de agendamento profissional posiciona você como um personal organizado e moderno — e clientes pagam mais por profissionais assim.</li>
+  <li><strong>Falta de profissionalismo percebido:</strong> Uma página de agendamento profissional posiciona você como um personal organizado e moderno - e clientes pagam mais por profissionais assim.</li>
 </ul>
 
 <h2>Configurando seu agendamento online passo a passo</h2>
@@ -374,11 +374,11 @@ export const seedPosts: BlogPost[] = [
 <h3>1. Defina seus serviços</h3>
 <p>Crie serviços claros e diretos. Para um personal trainer, a estrutura típica seria:</p>
 <ul>
-  <li><strong>Treino individual</strong> — 60 min — R$ 120</li>
-  <li><strong>Treino em dupla</strong> — 60 min — R$ 80 por pessoa</li>
-  <li><strong>Aula experimental</strong> — 45 min — Gratuito ou R$ 50</li>
-  <li><strong>Avaliação física</strong> — 60 min — R$ 150</li>
-  <li><strong>Consultoria online</strong> — 30 min — R$ 80</li>
+  <li><strong>Treino individual</strong> - 60 min - R$ 120</li>
+  <li><strong>Treino em dupla</strong> - 60 min - R$ 80 por pessoa</li>
+  <li><strong>Aula experimental</strong> - 45 min - Gratuito ou R$ 50</li>
+  <li><strong>Avaliação física</strong> - 60 min - R$ 150</li>
+  <li><strong>Consultoria online</strong> - 30 min - R$ 80</li>
 </ul>
 <p>No <a href="https://agenndo.com.br">Agenndo</a>, você cadastra esses serviços em minutos e eles ficam disponíveis na sua <a href="https://agenndo.com.br/agendamento-online">página de agendamento</a> para alunos novos e atuais.</p>
 
@@ -407,7 +407,7 @@ export const seedPosts: BlogPost[] = [
 <h2>Estratégias de crescimento com agendamento online</h2>
 
 <h3>Aula experimental com agendamento fácil</h3>
-<p>A aula experimental é o principal funil de conversão de um personal trainer. Quanto mais fácil for agendar, mais aulas experimentais você terá — e mais alunos fechará.</p>
+<p>A aula experimental é o principal funil de conversão de um personal trainer. Quanto mais fácil for agendar, mais aulas experimentais você terá - e mais alunos fechará.</p>
 <p>Crie um serviço específico de "Aula experimental gratuita" no seu sistema de agendamento e divulgue-o nos seus posts e stories. Um link direto elimina a barreira de "mandar mensagem para saber mais".</p>
 
 <h3>Horários de pico e preços dinâmicos</h3>
@@ -428,11 +428,11 @@ export const seedPosts: BlogPost[] = [
   <li><strong>Faltas sem aviso (média 15%):</strong> ~3 treinos/semana × R$ 120 = R$ 1.440/mês</li>
   <li><strong>Aulas experimentais perdidas:</strong> 3-5 leads que desistem por demora na resposta = R$ 1.500-3.000/mês em receita recorrente potencial</li>
 </ul>
-<p>Total estimado de prejuízo: <strong>R$ 3.000 a R$ 5.000 por mês</strong> — mais do que suficiente para justificar qualquer investimento em um sistema de agendamento.</p>
+<p>Total estimado de prejuízo: <strong>R$ 3.000 a R$ 5.000 por mês</strong> - mais do que suficiente para justificar qualquer investimento em um sistema de agendamento.</p>
 
 <h2>Dicas práticas para personal trainers</h2>
 <blockquote>
-  <p>"Trate seu trabalho como personal trainer como um negócio. Profissionalismo na gestão de agenda se reflete diretamente no valor percebido pelo aluno — e no quanto ele está disposto a pagar."</p>
+  <p>"Trate seu trabalho como personal trainer como um negócio. Profissionalismo na gestão de agenda se reflete diretamente no valor percebido pelo aluno - e no quanto ele está disposto a pagar."</p>
 </blockquote>
 <ul>
   <li><strong>Defina uma política de cancelamento:</strong> Cancelamentos com menos de 6 horas de antecedência podem ser cobrados como treino realizado.</li>
@@ -464,13 +464,13 @@ export const seedPosts: BlogPost[] = [
     reading_time_min: 10,
     content: `
 <h2>A revolução digital nas barbearias brasileiras</h2>
-<p>As barbearias viveram um boom no Brasil nos últimos anos. O mercado de grooming masculino movimenta bilhões de reais e cresce acima de 8% ao ano. Mas com o crescimento veio a concorrência — e as barbearias que se destacam são aquelas que combinam experiência diferenciada com gestão inteligente.</p>
+<p>As barbearias viveram um boom no Brasil nos últimos anos. O mercado de grooming masculino movimenta bilhões de reais e cresce acima de 8% ao ano. Mas com o crescimento veio a concorrência - e as barbearias que se destacam são aquelas que combinam experiência diferenciada com gestão inteligente.</p>
 <p>A <strong>agenda online para barbearia</strong> é uma das ferramentas mais impactantes nesse cenário. Ela não só organiza o dia a dia como pode aumentar diretamente o faturamento do seu negócio. Veja como.</p>
 
 <h2>Como a agenda online aumenta o faturamento</h2>
 
 <h3>1. Captura de clientes fora do horário comercial</h3>
-<p>Quando um cliente decide que quer cortar o cabelo às 23h de domingo, o que acontece? Se ele precisa ligar ou mandar mensagem, vai esquecer até segunda-feira — e pode acabar indo para o concorrente mais acessível.</p>
+<p>Quando um cliente decide que quer cortar o cabelo às 23h de domingo, o que acontece? Se ele precisa ligar ou mandar mensagem, vai esquecer até segunda-feira - e pode acabar indo para o concorrente mais acessível.</p>
 <p>Com uma <a href="https://agenndo.com.br/agendamento-online">agenda online</a>, ele agenda na hora. Dado interno de barbearias que usam agendamento digital mostra que <strong>35% dos agendamentos acontecem fora do horário comercial</strong>.</p>
 
 <h3>2. Redução de tempo ocioso entre clientes</h3>
@@ -487,17 +487,17 @@ export const seedPosts: BlogPost[] = [
 
 <h3>Serviços típicos para cadastrar</h3>
 <ul>
-  <li><strong>Corte masculino</strong> — 30 min — R$ 45</li>
-  <li><strong>Barba</strong> — 20 min — R$ 30</li>
-  <li><strong>Corte + barba</strong> — 45 min — R$ 65</li>
-  <li><strong>Sobrancelha</strong> — 10 min — R$ 15</li>
-  <li><strong>Pigmentação</strong> — 60 min — R$ 80</li>
-  <li><strong>Hidratação capilar</strong> — 30 min — R$ 40</li>
-  <li><strong>Combo completo (corte + barba + sobrancelha)</strong> — 50 min — R$ 75</li>
+  <li><strong>Corte masculino</strong> - 30 min - R$ 45</li>
+  <li><strong>Barba</strong> - 20 min - R$ 30</li>
+  <li><strong>Corte + barba</strong> - 45 min - R$ 65</li>
+  <li><strong>Sobrancelha</strong> - 10 min - R$ 15</li>
+  <li><strong>Pigmentação</strong> - 60 min - R$ 80</li>
+  <li><strong>Hidratação capilar</strong> - 30 min - R$ 40</li>
+  <li><strong>Combo completo (corte + barba + sobrancelha)</strong> - 50 min - R$ 75</li>
 </ul>
 
 <h3>Dica: crie combos estratégicos</h3>
-<p>Combos são excelentes para aumentar o ticket médio. O preço do combo deve ser ligeiramente menor que a soma dos serviços individuais — assim o cliente percebe valor e você ganha mais por atendimento.</p>
+<p>Combos são excelentes para aumentar o ticket médio. O preço do combo deve ser ligeiramente menor que a soma dos serviços individuais - assim o cliente percebe valor e você ganha mais por atendimento.</p>
 
 <h3>Configuração por barbeiro</h3>
 <p>Cada barbeiro deve ter sua própria agenda no sistema. Isso é fundamental porque:</p>
@@ -558,10 +558,10 @@ export const seedPosts: BlogPost[] = [
 
 <h2>Quanto custa e como começar</h2>
 <p>A maioria dos sistemas de agendamento para barbearias oferece planos gratuitos ou com período de teste. O <a href="https://agenndo.com.br">Agenndo</a>, por exemplo, tem um plano gratuito que permite configurar múltiplos barbeiros, serviços e receber agendamentos sem nenhum custo.</p>
-<p>O investimento em um plano pago, quando necessário, fica entre R$ 29 e R$ 99/mês — facilmente compensado pelo aumento de faturamento que a organização traz.</p>
+<p>O investimento em um plano pago, quando necessário, fica entre R$ 29 e R$ 99/mês - facilmente compensado pelo aumento de faturamento que a organização traz.</p>
 
 <h2>Conclusão</h2>
-<p>Uma <strong>barbearia com agenda online</strong> não é só mais organizada — é mais lucrativa. A conveniência para o cliente, combinada com dados para decisões inteligentes, cria um ciclo de crescimento: mais clientes, mais fidelização, maior ticket médio, mais faturamento.</p>
+<p>Uma <strong>barbearia com agenda online</strong> não é só mais organizada - é mais lucrativa. A conveniência para o cliente, combinada com dados para decisões inteligentes, cria um ciclo de crescimento: mais clientes, mais fidelização, maior ticket médio, mais faturamento.</p>
 <p>Se você ainda gerencia sua barbearia no caderninho ou no WhatsApp, está deixando dinheiro na mesa. <a href="https://agenndo.com.br/login">Comece gratuitamente com o Agenndo</a> e veja a diferença na prática.</p>
 `,
   },
@@ -604,12 +604,12 @@ export const seedPosts: BlogPost[] = [
 <p>O <a href="https://agenndo.com.br">Agenndo</a> se destaca por ser projetado especificamente para o mercado brasileiro, com interface 100% em português e pensado para a realidade de prestadores de serviço do país.</p>
 <p><strong>Prós:</strong></p>
 <ul>
-  <li>Interface extremamente simples — configuração em menos de 10 minutos</li>
+  <li>Interface extremamente simples - configuração em menos de 10 minutos</li>
   <li>Plano gratuito generoso com agendamentos ilimitados</li>
   <li><a href="https://agenndo.com.br/agendamento-online">Página pública de agendamento</a> bonita e otimizada para SEO</li>
   <li>100% em português brasileiro</li>
   <li>Design moderno e responsivo</li>
-  <li>Leve e rápido — funciona bem em qualquer dispositivo</li>
+  <li>Leve e rápido - funciona bem em qualquer dispositivo</li>
 </ul>
 <p><strong>Contras:</strong></p>
 <ul>
@@ -631,7 +631,7 @@ export const seedPosts: BlogPost[] = [
   <li>Não é traduzido nativamente para português</li>
   <li>Não foi pensado para prestadores de serviço (salões, barbearias, etc.)</li>
   <li>Plano gratuito limitado a 1 tipo de evento</li>
-  <li>Preços em dólar — pode pesar no bolso com a cotação atual</li>
+  <li>Preços em dólar - pode pesar no bolso com a cotação atual</li>
   <li>Sem conceito de "serviços com duração e preço"</li>
 </ul>
 <p><strong>Ideal para:</strong> Consultores, coaches e profissionais que agendam reuniões online.</p>
@@ -684,7 +684,7 @@ export const seedPosts: BlogPost[] = [
   <li>Não tem página pública de agendamento</li>
   <li>Sem lembretes automáticos para clientes</li>
   <li>Sem gestão de serviços, preços ou profissionais</li>
-  <li>Não profissional — clientes veem sua agenda pessoal</li>
+  <li>Não profissional - clientes veem sua agenda pessoal</li>
   <li>Sem métricas ou relatórios</li>
 </ul>
 <p><strong>Ideal para:</strong> Uso pessoal ou profissional com 2-3 clientes no máximo.</p>
@@ -706,7 +706,7 @@ export const seedPosts: BlogPost[] = [
   <li><strong>Pagamento integrado:</strong> Receber pagamento ou sinal no momento do agendamento.</li>
   <li><strong>WhatsApp Business API:</strong> Lembretes e confirmações diretamente pelo WhatsApp.</li>
   <li><strong>Páginas de agendamento otimizadas para SEO:</strong> Para que clientes encontrem você pelo Google.</li>
-  <li><strong>Mobile-first:</strong> A maioria dos agendamentos já acontece pelo celular — o sistema precisa funcionar perfeitamente nele.</li>
+  <li><strong>Mobile-first:</strong> A maioria dos agendamentos já acontece pelo celular - o sistema precisa funcionar perfeitamente nele.</li>
 </ul>
 
 <h2>Conclusão: qual escolher?</h2>
@@ -818,7 +818,7 @@ export const seedPosts: BlogPost[] = [
 <p>Plataformas como o <a href="https://agenndo.com.br">Agenndo</a> são projetadas exatamente assim: o plano gratuito é completo o suficiente para você validar e crescer, e quando precisar de mais, o upgrade é suave e sem perda de dados.</p>
 
 <h2>Conclusão</h2>
-<p>A decisão entre <strong>agendamento online grátis ou pago</strong> não é sobre "qual é melhor" — é sobre o que faz sentido para o momento do seu negócio. Comece sem gastar nada, entenda o valor que o agendamento online traz, e invista quando os números mostrarem que vale a pena.</p>
+<p>A decisão entre <strong>agendamento online grátis ou pago</strong> não é sobre "qual é melhor" - é sobre o que faz sentido para o momento do seu negócio. Comece sem gastar nada, entenda o valor que o agendamento online traz, e invista quando os números mostrarem que vale a pena.</p>
 <p>O mais importante é começar. Não perca mais clientes por falta de organização. <a href="https://agenndo.com.br/login">Crie sua conta gratuita no Agenndo</a> e teste sem compromisso.</p>
 `,
   },
@@ -870,7 +870,7 @@ export const seedPosts: BlogPost[] = [
 <h2>Passo a passo para configurar</h2>
 
 <h3>1. Crie sua conta em uma plataforma de agendamento</h3>
-<p>Escolha uma plataforma que funcione bem no celular. O <a href="https://agenndo.com.br">Agenndo</a> é projetado para funcionar perfeitamente em dispositivos móveis — tanto para você gerenciar quanto para o cliente agendar.</p>
+<p>Escolha uma plataforma que funcione bem no celular. O <a href="https://agenndo.com.br">Agenndo</a> é projetado para funcionar perfeitamente em dispositivos móveis - tanto para você gerenciar quanto para o cliente agendar.</p>
 
 <h3>2. Cadastre seus serviços</h3>
 <p>Pelo próprio celular, cadastre os serviços que você oferece com nome, duração e preço. Seja específico para evitar dúvidas do cliente.</p>
@@ -879,7 +879,7 @@ export const seedPosts: BlogPost[] = [
 <p>Configure os dias e horários em que você atende. Assim, o sistema mostra apenas os horários realmente disponíveis para o cliente.</p>
 
 <h3>4. Personalize sua página</h3>
-<p>Adicione seu nome profissional, foto, descrição e localização. Essa é a sua <a href="https://agenndo.com.br/agendamento-online">página pública de agendamento</a> — funciona como um mini site profissional.</p>
+<p>Adicione seu nome profissional, foto, descrição e localização. Essa é a sua <a href="https://agenndo.com.br/agendamento-online">página pública de agendamento</a> - funciona como um mini site profissional.</p>
 
 <h3>5. Compartilhe o link</h3>
 <p>Agora, distribua o link da sua página em todos os seus canais de comunicação.</p>
@@ -938,7 +938,7 @@ export const seedPosts: BlogPost[] = [
 </ul>
 
 <h2>Conclusão</h2>
-<p><strong>Receber agendamentos pelo celular</strong> não precisa ser sinônimo de caos no WhatsApp. Com um sistema de agendamento online, seu celular se torna uma central de gestão organizada — e seus clientes ganham a conveniência de agendar em segundos.</p>
+<p><strong>Receber agendamentos pelo celular</strong> não precisa ser sinônimo de caos no WhatsApp. Com um sistema de agendamento online, seu celular se torna uma central de gestão organizada - e seus clientes ganham a conveniência de agendar em segundos.</p>
 <p>Configure sua <a href="https://agenndo.com.br/agendamento-online">página de agendamento no Agenndo</a> gratuitamente e transforme seu celular de vilão em aliado do seu negócio.</p>
 `,
   },
@@ -961,8 +961,8 @@ export const seedPosts: BlogPost[] = [
     author: "Equipe Agenndo",
     reading_time_min: 10,
     content: `
-<h2>O agendamento online está mudando — e rápido</h2>
-<p>Se em 2023, ter uma <strong>agenda online</strong> já era um diferencial, em 2026 é o mínimo. O mercado de agendamento digital no Brasil amadureceu e as expectativas dos clientes subiram. Eles não querem mais apenas agendar online — querem uma experiência inteligente, rápida e integrada.</p>
+<h2>O agendamento online está mudando - e rápido</h2>
+<p>Se em 2023, ter uma <strong>agenda online</strong> já era um diferencial, em 2026 é o mínimo. O mercado de agendamento digital no Brasil amadureceu e as expectativas dos clientes subiram. Eles não querem mais apenas agendar online - querem uma experiência inteligente, rápida e integrada.</p>
 <p>Neste artigo, exploramos as <strong>tendências de agendamento online para 2026</strong> que estão moldando o futuro dos prestadores de serviço no Brasil.</p>
 
 <h2>1. Inteligência Artificial na gestão de agendas</h2>
@@ -977,7 +977,7 @@ export const seedPosts: BlogPost[] = [
 </ul>
 
 <h3>Otimização automática de agenda</h3>
-<p>A IA pode reorganizar agendamentos para minimizar "buracos" na agenda. Se um cliente cancela o horário das 10h e você tem outro às 11h30, o sistema pode sugerir ao próximo cliente que agende às 10h em vez de 11h — reduzindo tempo ocioso.</p>
+<p>A IA pode reorganizar agendamentos para minimizar "buracos" na agenda. Se um cliente cancela o horário das 10h e você tem outro às 11h30, o sistema pode sugerir ao próximo cliente que agende às 10h em vez de 11h - reduzindo tempo ocioso.</p>
 
 <h3>Chatbots inteligentes para agendamento</h3>
 <p>Chatbots com IA conversacional que entendem pedidos naturais como "quero cortar o cabelo sexta de tarde" e fazem o agendamento sem que o cliente precise navegar em uma interface. A integração com WhatsApp torna isso ainda mais poderoso no contexto brasileiro.</p>
@@ -989,7 +989,7 @@ export const seedPosts: BlogPost[] = [
 <p>Cobrar 20-30% do valor no ato do agendamento reduz faltas em até 70% e melhora o fluxo de caixa. Com PIX instantâneo, a experiência é suave para o cliente brasileiro.</p>
 
 <h3>Pagamento antecipado completo</h3>
-<p>Para serviços de alto valor (procedimentos estéticos, pacotes de treino), o pagamento antecipado está se tornando padrão. O cliente paga, agenda e pronto — sem surpresas para nenhum dos lados.</p>
+<p>Para serviços de alto valor (procedimentos estéticos, pacotes de treino), o pagamento antecipado está se tornando padrão. O cliente paga, agenda e pronto - sem surpresas para nenhum dos lados.</p>
 
 <h3>Assinaturas recorrentes</h3>
 <p>Modelos de assinatura onde o cliente paga mensalmente e agenda as sessões dentro do período. Comum para personal trainers, terapeutas e clínicas que trabalham com pacotes.</p>
@@ -1023,7 +1023,7 @@ export const seedPosts: BlogPost[] = [
 <h2>6. Integração WhatsApp Business API</h2>
 <p>O WhatsApp é o canal de comunicação dominante no Brasil, e em 2026 a integração com sistemas de agendamento está mais madura:</p>
 <ul>
-  <li><strong>Lembretes pelo WhatsApp:</strong> Mais eficaz que e-mail — taxa de leitura acima de 90%.</li>
+  <li><strong>Lembretes pelo WhatsApp:</strong> Mais eficaz que e-mail - taxa de leitura acima de 90%.</li>
   <li><strong>Confirmação por WhatsApp:</strong> Cliente confirma presença com um toque.</li>
   <li><strong>Agendamento dentro do WhatsApp:</strong> Botões interativos que permitem agendar sem sair do app.</li>
   <li><strong>Reagendamento pelo WhatsApp:</strong> Cliente responde "Reagendar" e recebe link direto.</li>
@@ -1049,11 +1049,11 @@ export const seedPosts: BlogPost[] = [
 </ul>
 
 <h2>O que isso significa para você</h2>
-<p>Se você é prestador de serviço, a mensagem é clara: o agendamento online não é mais uma questão de "se", mas de "como". As tendências de 2026 apontam para sistemas que são mais do que uma agenda — são plataformas de crescimento para o seu negócio.</p>
+<p>Se você é prestador de serviço, a mensagem é clara: o agendamento online não é mais uma questão de "se", mas de "como". As tendências de 2026 apontam para sistemas que são mais do que uma agenda - são plataformas de crescimento para o seu negócio.</p>
 <p>Não precisa adotar tudo de uma vez. Comece pelo básico (ter uma agenda online profissional), depois vá incorporando as funcionalidades que fazem sentido para seu perfil.</p>
 
 <h2>Conclusão</h2>
-<p>As <strong>tendências de agendamento online para 2026</strong> convergem para uma direção: mais inteligência, mais automação, mais integração. O profissional que abraçar essas mudanças estará à frente da concorrência — e o primeiro passo é ter uma presença digital de agendamento.</p>
+<p>As <strong>tendências de agendamento online para 2026</strong> convergem para uma direção: mais inteligência, mais automação, mais integração. O profissional que abraçar essas mudanças estará à frente da concorrência - e o primeiro passo é ter uma presença digital de agendamento.</p>
 <p>O <a href="https://agenndo.com.br">Agenndo</a> está acompanhando essas tendências de perto, trazendo inovações que fazem sentido para o prestador de serviço brasileiro. <a href="https://agenndo.com.br/login">Comece gratuitamente</a> e prepare seu negócio para o futuro.</p>
 `,
   },
@@ -1071,16 +1071,16 @@ export const seedPosts: BlogPost[] = [
     reading_time_min: 9,
     content: `
 <h2>Por que aparecer no Google importa tanto</h2>
-<p>Quando alguém pesquisa "cabeleireiro perto de mim" ou "clínica de estética em [sua cidade]" no Google, quem aparece nos resultados leva o cliente. É simples assim. E cada vez mais brasileiros usam o Google para encontrar prestadores de serviço — são mais de 60 milhões de buscas locais por mês no país.</p>
+<p>Quando alguém pesquisa "cabeleireiro perto de mim" ou "clínica de estética em [sua cidade]" no Google, quem aparece nos resultados leva o cliente. É simples assim. E cada vez mais brasileiros usam o Google para encontrar prestadores de serviço - são mais de 60 milhões de buscas locais por mês no país.</p>
 <p>O problema é que muitos profissionais não têm nenhuma presença online além do Instagram. E o Instagram, por mais importante que seja, não aparece nas buscas do Google da mesma forma que uma página própria.</p>
 <p>É aí que a <strong>página pública de agendamento</strong> entra como uma ferramenta poderosa de SEO local.</p>
 
 <h2>O que é uma página pública de agendamento</h2>
-<p>É uma página web dedicada ao seu negócio onde clientes podem ver seus serviços, preços, horários disponíveis e agendar diretamente. Diferente de um perfil em rede social, essa página é indexável pelo Google — ou seja, pode aparecer nos resultados de busca.</p>
+<p>É uma página web dedicada ao seu negócio onde clientes podem ver seus serviços, preços, horários disponíveis e agendar diretamente. Diferente de um perfil em rede social, essa página é indexável pelo Google - ou seja, pode aparecer nos resultados de busca.</p>
 <p>Com o <a href="https://agenndo.com.br">Agenndo</a>, por exemplo, cada profissional recebe uma <a href="https://agenndo.com.br/agendamento-online">página pública de agendamento</a> que funciona como um mini site profissional, otimizado para mecanismos de busca.</p>
 
 <h2>Como funciona o SEO local</h2>
-<p>SEO (Search Engine Optimization) é o conjunto de práticas que ajudam uma página a aparecer nos resultados do Google. O SEO local foca em buscas com intenção geográfica — que é exatamente o que clientes fazem ao procurar prestadores de serviço.</p>
+<p>SEO (Search Engine Optimization) é o conjunto de práticas que ajudam uma página a aparecer nos resultados do Google. O SEO local foca em buscas com intenção geográfica - que é exatamente o que clientes fazem ao procurar prestadores de serviço.</p>
 <p>O Google considera vários fatores para ranquear páginas em buscas locais:</p>
 <ol>
   <li><strong>Relevância:</strong> A página fala sobre o que o usuário pesquisou?</li>
@@ -1108,7 +1108,7 @@ export const seedPosts: BlogPost[] = [
 <p>Uma página pública com informações completas, avaliações de clientes e links de outras fontes (Instagram, Google Meu Negócio) aumenta a "proeminência" do seu negócio aos olhos do Google.</p>
 
 <h3>Experiência do usuário</h3>
-<p>Páginas de agendamento modernas são projetadas para carregar rápido e funcionar perfeitamente no celular — dois fatores cruciais para o ranking do Google. O Agenndo, por exemplo, otimiza automaticamente a performance da página para dispositivos móveis.</p>
+<p>Páginas de agendamento modernas são projetadas para carregar rápido e funcionar perfeitamente no celular - dois fatores cruciais para o ranking do Google. O Agenndo, por exemplo, otimiza automaticamente a performance da página para dispositivos móveis.</p>
 
 <h3>Dados estruturados (Schema Markup)</h3>
 <p>Dados estruturados são informações "legíveis por máquina" que ajudam o Google a entender melhor sua página. Uma boa plataforma de agendamento inclui automaticamente:</p>
@@ -1117,7 +1117,7 @@ export const seedPosts: BlogPost[] = [
   <li>Schema de Service (serviços oferecidos)</li>
   <li>Schema de OpeningHours (horários de funcionamento)</li>
 </ul>
-<p>Isso pode resultar em "rich snippets" — aqueles resultados destacados no Google com estrelas, horários e botão de ação.</p>
+<p>Isso pode resultar em "rich snippets" - aqueles resultados destacados no Google com estrelas, horários e botão de ação.</p>
 
 <h2>Estratégias práticas de SEO com sua página de agendamento</h2>
 
@@ -1176,7 +1176,7 @@ export const seedPosts: BlogPost[] = [
 </ul>
 
 <h2>Conclusão</h2>
-<p>Sua <strong>página pública de agendamento</strong> não é só uma ferramenta de conveniência para o cliente — é uma arma de marketing. Com as otimizações certas, ela coloca seu negócio na frente de pessoas que estão ativamente procurando seus serviços no Google.</p>
+<p>Sua <strong>página pública de agendamento</strong> não é só uma ferramenta de conveniência para o cliente - é uma arma de marketing. Com as otimizações certas, ela coloca seu negócio na frente de pessoas que estão ativamente procurando seus serviços no Google.</p>
 <p>Não desperdice essa oportunidade. <a href="https://agenndo.com.br/agendamento-online">Crie sua página de agendamento otimizada</a> no Agenndo e comece a aparecer para novos clientes hoje mesmo.</p>
 `,
   },
@@ -1200,8 +1200,8 @@ export const seedPosts: BlogPost[] = [
     content: `
 <h2>O que faz um sistema de agendamento ser "o melhor"?</h2>
 <p>Quando um prestador de serviço brasileiro busca o <strong>melhor sistema de agendamento online</strong>, ele normalmente precisa de três coisas: que funcione bem, que seja fácil de usar e que caiba no bolso. Parece simples, mas a maioria das plataformas do mercado falha em pelo menos um desses pilares.</p>
-<p>Algumas cobram caro desde o primeiro dia. Outras são gratuitas, mas tão limitadas que você precisa fazer upgrade antes mesmo de configurar tudo. Outras ainda foram feitas para o mercado americano e nunca se adaptaram de verdade ao Brasil — moeda errada, idioma parcial, suporte que não fala português.</p>
-<p>O <strong>Agenndo</strong> nasceu para resolver exatamente isso. É um sistema de agendamento online <strong>feito no Brasil, para prestadores brasileiros</strong>, com tudo o que você precisa para gerenciar sua agenda de forma profissional — e com um preço que nenhum concorrente do mercado oferece.</p>
+<p>Algumas cobram caro desde o primeiro dia. Outras são gratuitas, mas tão limitadas que você precisa fazer upgrade antes mesmo de configurar tudo. Outras ainda foram feitas para o mercado americano e nunca se adaptaram de verdade ao Brasil - moeda errada, idioma parcial, suporte que não fala português.</p>
+<p>O <strong>Agenndo</strong> nasceu para resolver exatamente isso. É um sistema de agendamento online <strong>feito no Brasil, para prestadores brasileiros</strong>, com tudo o que você precisa para gerenciar sua agenda de forma profissional - e com um preço que nenhum concorrente do mercado oferece.</p>
 
 <h2>Gratuito para começar: teste completo, sem pegadinhas</h2>
 <p>Diferente da maioria das plataformas que te dão 7 dias e depois cobram, o Agenndo oferece um <strong>período de teste gratuito com acesso total</strong>. Isso significa que durante o trial você usa absolutamente tudo: agenda, página pública, equipe, serviços, financeiro, analytics, personalização. Não existe recurso bloqueado.</p>
@@ -1212,7 +1212,7 @@ export const seedPosts: BlogPost[] = [
 <p>O grande diferencial do Agenndo é que ele não é apenas uma "agenda online". É um <strong>sistema completo de gestão para prestadores de serviço</strong>. Veja o que está incluso:</p>
 
 <h3>Página pública de agendamento</h3>
-<p>Cada negócio cadastrado no Agenndo recebe uma <strong>página pública exclusiva</strong> com URL própria (ex: agenndo.com.br/seu-negocio). Nessa página, seu cliente vê seus serviços, preços, equipe e horários disponíveis — e agenda direto pelo celular, 24 horas por dia.</p>
+<p>Cada negócio cadastrado no Agenndo recebe uma <strong>página pública exclusiva</strong> com URL própria (ex: agenndo.com.br/seu-negocio). Nessa página, seu cliente vê seus serviços, preços, equipe e horários disponíveis - e agenda direto pelo celular, 24 horas por dia.</p>
 <p>A página vem com <strong>QR Code</strong> que você pode imprimir e colocar no balcão, vitrine, cartão de visita ou redes sociais. É marketing gratuito trabalhando por você o tempo todo.</p>
 
 <h3>Agenda com disponibilidade inteligente</h3>
@@ -1220,7 +1220,7 @@ export const seedPosts: BlogPost[] = [
 <p>Cada agendamento tem status claro: <strong>confirmado, compareceu, faltou, cancelado</strong>. Você sabe exatamente o que aconteceu com cada cliente.</p>
 
 <h3>Gestão de equipe e colaboradores</h3>
-<p>Se você tem uma equipe, o Agenndo permite cadastrar cada profissional, vincular serviços específicos e definir disponibilidade individual. O cliente escolhe com quem quer agendar — ou seleciona "primeiro disponível".</p>
+<p>Se você tem uma equipe, o Agenndo permite cadastrar cada profissional, vincular serviços específicos e definir disponibilidade individual. O cliente escolhe com quem quer agendar - ou seleciona "primeiro disponível".</p>
 <p>Tem mais: com o <strong>módulo de comissões</strong>, cada colaborador pode acessar um painel próprio para ver seus atendimentos e comissões. Se o profissional trabalha em mais de um negócio que usa Agenndo, ele vê tudo unificado em uma tela só.</p>
 
 <h3>Serviços e preços organizados</h3>
@@ -1230,10 +1230,10 @@ export const seedPosts: BlogPost[] = [
 <p>Acompanhe as entradas do seu negócio diretamente no painel. O financeiro do Agenndo está integrado ao fluxo de agendamentos, então você não precisa de planilha separada para saber quanto faturou no mês.</p>
 
 <h3>Analytics e relatórios</h3>
-<p>Saiba quantos agendamentos você recebeu, qual serviço é mais procurado, qual colaborador atende mais, taxa de faltas — tudo com gráficos claros no painel.</p>
+<p>Saiba quantos agendamentos você recebeu, qual serviço é mais procurado, qual colaborador atende mais, taxa de faltas - tudo com gráficos claros no painel.</p>
 
 <h3>Personalização completa</h3>
-<p>Logo, cores, banner, galeria de fotos, redes sociais, texto de apresentação — sua página pública no Agenndo tem a cara do seu negócio, não a cara de uma ferramenta genérica.</p>
+<p>Logo, cores, banner, galeria de fotos, redes sociais, texto de apresentação - sua página pública no Agenndo tem a cara do seu negócio, não a cara de uma ferramenta genérica.</p>
 
 <h3>Clientes e histórico</h3>
 <p>Base de clientes vinculada aos agendamentos. Saiba quantas vezes cada pessoa agendou, quando foi a última visita e qual serviço preferiu.</p>
@@ -1245,25 +1245,25 @@ export const seedPosts: BlogPost[] = [
 <p>A maioria dos sistemas de agendamento cobra entre R$ 49 e R$ 199/mês para funcionalidades básicas. Alguns cobram por número de colaboradores, outros por volume de agendamentos. O Agenndo tem <strong>planos sob medida</strong> definidos no onboarding, que consideram o tamanho e perfil do seu negócio. Para profissionais solo, o valor costuma ser significativamente menor que o praticado pela concorrência.</p>
 
 <h3>Funcionalidades inclusas</h3>
-<p>Onde outros sistemas separam recursos em planos (básico, intermediário, profissional), o Agenndo dá acesso a <strong>tudo no período de teste</strong>. Página pública, equipe, comissões, financeiro, analytics, personalização — tudo disponível desde o primeiro dia.</p>
+<p>Onde outros sistemas separam recursos em planos (básico, intermediário, profissional), o Agenndo dá acesso a <strong>tudo no período de teste</strong>. Página pública, equipe, comissões, financeiro, analytics, personalização - tudo disponível desde o primeiro dia.</p>
 
 <h3>Idioma e suporte</h3>
-<p>O Agenndo é 100% em português brasileiro. Interface, suporte, termos de uso, tudo. Não é uma tradução automática de um produto americano — foi construído do zero pensando no mercado brasileiro.</p>
+<p>O Agenndo é 100% em português brasileiro. Interface, suporte, termos de uso, tudo. Não é uma tradução automática de um produto americano - foi construído do zero pensando no mercado brasileiro.</p>
 
 <h3>Facilidade de uso</h3>
-<p>O onboarding guia você pelos passos essenciais: cadastrar serviços, definir horários e pronto — sua página pública já está no ar. <strong>Não precisa saber programar</strong>, não precisa contratar ninguém, não precisa de horas de configuração.</p>
+<p>O onboarding guia você pelos passos essenciais: cadastrar serviços, definir horários e pronto - sua página pública já está no ar. <strong>Não precisa saber programar</strong>, não precisa contratar ninguém, não precisa de horas de configuração.</p>
 
 <h2>Para quem o Agenndo é ideal?</h2>
 <p>O Agenndo foi projetado para <strong>qualquer prestador de serviço que trabalhe com hora marcada</strong>. Isso inclui:</p>
 <ul>
-  <li><strong>Salões de beleza e barbearias</strong> — dos pequenos aos grandes, com ou sem equipe</li>
-  <li><strong>Clínicas de estética</strong> — depilação, massagem, tratamentos faciais e corporais</li>
-  <li><strong>Consultórios</strong> — nutricionistas, psicólogos, fisioterapeutas, dentistas</li>
-  <li><strong>Personal trainers</strong> — aulas avulsas, pacotes de sessão, treinos individuais</li>
-  <li><strong>Estúdios de tatuagem e piercing</strong> — agendamento com portfólio visual</li>
-  <li><strong>Pet shops</strong> — banho, tosa e consultas veterinárias</li>
-  <li><strong>Fotógrafos e videomakers</strong> — sessões por hora marcada</li>
-  <li><strong>Coworkings e estúdios</strong> — reserva de salas e espaços por hora</li>
+  <li><strong>Salões de beleza e barbearias</strong> - dos pequenos aos grandes, com ou sem equipe</li>
+  <li><strong>Clínicas de estética</strong> - depilação, massagem, tratamentos faciais e corporais</li>
+  <li><strong>Consultórios</strong> - nutricionistas, psicólogos, fisioterapeutas, dentistas</li>
+  <li><strong>Personal trainers</strong> - aulas avulsas, pacotes de sessão, treinos individuais</li>
+  <li><strong>Estúdios de tatuagem e piercing</strong> - agendamento com portfólio visual</li>
+  <li><strong>Pet shops</strong> - banho, tosa e consultas veterinárias</li>
+  <li><strong>Fotógrafos e videomakers</strong> - sessões por hora marcada</li>
+  <li><strong>Coworkings e estúdios</strong> - reserva de salas e espaços por hora</li>
   <li><strong>Qualquer outro serviço por hora marcada</strong></li>
 </ul>
 
@@ -1272,13 +1272,13 @@ export const seedPosts: BlogPost[] = [
 <ol>
   <li><strong>Menos faltas:</strong> com a confirmação digital e lembretes, os no-shows caem drasticamente.</li>
   <li><strong>Mais agendamentos:</strong> clientes que não ligavam passam a agendar pelo link a qualquer hora.</li>
-  <li><strong>Mais tempo livre:</strong> sem precisar responder mensagem por mensagem, sobra tempo para atender — ou descansar.</li>
+  <li><strong>Mais tempo livre:</strong> sem precisar responder mensagem por mensagem, sobra tempo para atender - ou descansar.</li>
 </ol>
 
 <h2>Funcionalidades no horizonte</h2>
 <p>O Agenndo está em constante evolução. No roadmap já estão previstos:</p>
 <ul>
-  <li><strong>Pagamento online via Mercado Pago</strong> — incluindo sinal/caução no agendamento</li>
+  <li><strong>Pagamento online via Mercado Pago</strong> - incluindo sinal/caução no agendamento</li>
   <li><strong>Nota fiscal automática</strong> por atendimento</li>
   <li><strong>Integrações com Google Agenda e calendários externos</strong></li>
   <li><strong>App nativo</strong> (hoje funciona como PWA instalável pelo navegador)</li>
@@ -1290,7 +1290,7 @@ export const seedPosts: BlogPost[] = [
   <li>Acesse <a href="https://agenndo.com.br/login">agenndo.com.br/login</a> e entre com sua conta Google</li>
   <li>Siga o onboarding: nome do negócio, serviços, horários e pronto</li>
   <li>Sua página pública já está no ar com link e QR Code</li>
-  <li>Compartilhe o link no Instagram, WhatsApp, cartão de visita — onde quiser</li>
+  <li>Compartilhe o link no Instagram, WhatsApp, cartão de visita - onde quiser</li>
 </ol>
 <p>Todo o processo leva menos de 5 minutos. E o período de teste é <strong>gratuito, sem cartão de crédito</strong>.</p>
 
@@ -1298,7 +1298,7 @@ export const seedPosts: BlogPost[] = [
 <p>No cenário atual de sistemas de agendamento online no Brasil, o Agenndo se destaca em três frentes:</p>
 <ul>
   <li><strong>Preço justo:</strong> planos sob medida que cabem no bolso de qualquer prestador, do autônomo ao salão com equipe grande</li>
-  <li><strong>Completude:</strong> página pública, agenda, equipe, comissões, financeiro, analytics e personalização — tudo em um só sistema</li>
+  <li><strong>Completude:</strong> página pública, agenda, equipe, comissões, financeiro, analytics e personalização - tudo em um só sistema</li>
   <li><strong>Simplicidade:</strong> feito para quem não é de tecnologia. Configura em minutos, usa no celular, funciona como app</li>
 </ul>
 <p>Se você está procurando o <strong>melhor e mais acessível sistema de agendamento online do Brasil</strong>, o Agenndo é a resposta. <a href="https://agenndo.com.br/login">Crie sua conta gratuita agora</a> e veja na prática.</p>

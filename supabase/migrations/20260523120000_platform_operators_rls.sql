@@ -1,5 +1,5 @@
 -- Console interno YWP: operadores com leitura/gestão global via JWT + RLS (sem service role no browser).
--- Tabela propositalmente NÃO se chama admin_* — ver docs/ACCOUNTS.md e supabase/scripts/grant-platform-operator.sql
+-- Tabela propositalmente NÃO se chama admin_* - ver docs/ACCOUNTS.md e supabase/scripts/grant-platform-operator.sql
 
 CREATE TABLE IF NOT EXISTS public.platform_operators (
   user_id UUID PRIMARY KEY REFERENCES auth.users (id) ON DELETE CASCADE,
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.platform_operators (
 );
 
 COMMENT ON TABLE public.platform_operators IS
-  'Operadores internos YWP com acesso global (RLS). INSERT só via SQL/migração/service role — nunca pelo app cliente.';
+  'Operadores internos YWP com acesso global (RLS). INSERT só via SQL/migração/service role - nunca pelo app cliente.';
 
 ALTER TABLE public.platform_operators ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.platform_operators FORCE ROW LEVEL SECURITY;

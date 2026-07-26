@@ -17,7 +17,7 @@ ALTER TABLE public.businesses
 COMMENT ON COLUMN public.businesses.mp_user_id IS 'User id do vendedor no Mercado Pago (OAuth).';
 COMMENT ON COLUMN public.businesses.mp_access_token_enc IS 'Access token OAuth criptografado (AES-GCM).';
 COMMENT ON COLUMN public.businesses.payment_policy IS 'off | optional | required_deposit | required_full';
-COMMENT ON COLUMN public.businesses.deposit_mode IS 'percent | fixed — usado com required_deposit';
+COMMENT ON COLUMN public.businesses.deposit_mode IS 'percent | fixed - usado com required_deposit';
 COMMENT ON COLUMN public.businesses.mp_checkout_enabled IS 'Prestador ativou cobrança online (requer mp conectado para políticas obrigatórias).';
 
 ALTER TABLE public.businesses

@@ -77,7 +77,7 @@ function applyUser(user: User | null) {
   });
 }
 
-/** Uma única assinatura auth no browser — sobrevive a remounts (vitrine ↔ agendar ↔ /conta). */
+/** Uma única assinatura auth no browser - sobrevive a remounts (vitrine ↔ agendar ↔ /conta). */
 export function initBrowserAuthStore(supabase: SupabaseClient) {
   if (started || typeof window === "undefined") return;
   started = true;

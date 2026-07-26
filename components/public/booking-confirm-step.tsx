@@ -194,7 +194,7 @@ export function PublicBookingConfirmStep({
                   ) : null}
                   {!onlinePayment.canPayOnline ? (
                     <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                      Cobrança online temporariamente indisponível — combine o pagamento com o estabelecimento.
+                      Cobrança online temporariamente indisponível - combine o pagamento com o estabelecimento.
                     </p>
                   ) : null}
                 </div>

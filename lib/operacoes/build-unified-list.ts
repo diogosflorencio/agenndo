@@ -161,7 +161,7 @@ export async function fetchUnifiedRows(
   const bizByProfile = new Map(businesses.map((b) => [b.profile_id, b]));
   const bizById = new Map(businesses.map((b) => [b.id, b]));
 
-  /** auth_user_id já listado em `clients` — evita duplicar como profile. */
+  /** auth_user_id já listado em `clients` - evita duplicar como profile. */
   const authUserIdsInClients = new Set(
     clients.map((c) => c.auth_user_id).filter((id): id is string => Boolean(id))
   );
@@ -218,7 +218,7 @@ export async function fetchUnifiedRows(
       publicSlug: b.slug,
       publicUrl: buildPublicSlugUrl(siteBase, b.slug),
       avatarUrl: b.logo_url ?? p?.avatar_url ?? null,
-      name: b.name || p?.full_name || "—",
+      name: b.name || p?.full_name || "-",
       email: p?.email ?? null,
       phone: b.phone ?? null,
       plan,
@@ -291,7 +291,7 @@ export async function fetchUnifiedRows(
       publicSlug,
       publicUrl: buildPublicSlugUrl(siteBase, publicSlug),
       avatarUrl: p.avatar_url,
-      name: p.full_name || p.email || "—",
+      name: p.full_name || p.email || "-",
       email: p.email,
       phone,
       plan,
@@ -332,7 +332,7 @@ export async function fetchUnifiedRows(
       publicSlug: biz?.slug ?? null,
       publicUrl: buildPublicSlugUrl(siteBase, biz?.slug ?? null),
       avatarUrl: profile?.avatar_url ?? null,
-      name: c.name || profile?.full_name || "—",
+      name: c.name || profile?.full_name || "-",
       email: c.email ?? profile?.email ?? null,
       phone: c.phone ?? null,
       plan,

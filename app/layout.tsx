@@ -48,7 +48,7 @@ const supabaseOrigin = (() => {
 })();
 
 export const viewport: Viewport = {
-  themeColor: "#13EC5B",
+  themeColor: "#ffffff",
 };
 
 // Favicon alternativos: em metadata.icons use /favicon-v1.svg ou /favicon-v2.svg no lugar de /icon.svg
@@ -222,7 +222,7 @@ export default function RootLayout({
         {supabaseOrigin ? <link rel="dns-prefetch" href={supabaseOrigin} /> : null}
       </head>
       <body
-        className={`${inter.variable} font-sans antialiased bg-[#020403] text-white`}
+        className={`${inter.variable} font-sans antialiased bg-white text-gray-900`}
       >
         <script
           type="application/ld+json"

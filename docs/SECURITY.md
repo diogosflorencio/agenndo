@@ -1,6 +1,6 @@
-# Segurança — Agenndo
+# Segurança - Agenndo
 
-Documento de referência após endurecimento de RLS (Row Level Security). **Segurança em primeiro lugar**: não existe painel “ver todos os utilizadores” via JWT normal — isso é intencional.
+Documento de referência após endurecimento de RLS (Row Level Security). **Segurança em primeiro lugar**: não existe painel “ver todos os utilizadores” via JWT normal - isso é intencional.
 
 ## Autenticação
 
@@ -44,7 +44,7 @@ curl "https://SEU_PROJETO.supabase.co/rest/v1/businesses?select=*" \
   -H "apikey: ANON_KEY" -H "Authorization: Bearer ANON_KEY"
 ```
 
-Esperado: erro de permissão ou lista vazia — **não** deve devolver linhas com `stripe_customer_id`, etc.
+Esperado: erro de permissão ou lista vazia - **não** deve devolver linhas com `stripe_customer_id`, etc.
 
 Com sessão de prestador no app: dashboard, serviços, agendamentos e imagens devem funcionar normalmente.
 
@@ -52,8 +52,8 @@ Página pública `https://seu-dominio/SLUG`: serviços, equipa e imagens devem c
 
 ## Migrations aplicadas (produção)
 
-- `20260521120000_rls_hardening` — remove políticas públicas amplas, REVOKE anon, RPC `is_business_slug_available`
-- `20260521130000_enable_rls_all` — `ENABLE` + `FORCE` RLS em todas as tabelas (obrigatório: `FORCE` sozinho não ativa RLS)
+- `20260521120000_rls_hardening` - remove políticas públicas amplas, REVOKE anon, RPC `is_business_slug_available`
+- `20260521130000_enable_rls_all` - `ENABLE` + `FORCE` RLS em todas as tabelas (obrigatório: `FORCE` sozinho não ativa RLS)
 
 Histórico antigo do projeto foi alinhado com `supabase migration repair` (schema já existia antes do CLI).
 
@@ -62,8 +62,8 @@ Histórico antigo do projeto foi alinhado com `supabase migration repair` (schem
 Procure no repositório:
 
 - `SECURITY:` em comentários
-- `lib/public-catalog-server.ts` — catálogo público
-- `lib/supabase/admin.ts` — service role
+- `lib/public-catalog-server.ts` - catálogo público
+- `lib/supabase/admin.ts` - service role
 
 Qualquer nova rota que use `createAdminClient()` deve documentar **por que** precisa ignorar RLS e validar entrada (slug, ids, rate limit).
 
@@ -78,18 +78,18 @@ Webhook Stripe permanece fora do matcher (`/api/stripe/webhook`).
 
 ## Tipos de conta
 
-- `user_accounts` + `user_account_memberships` — dono, funcionário (`collaborators.auth_user_id`), cliente (`clients.auth_user_id`)
+- `user_accounts` + `user_account_memberships` - dono, funcionário (`collaborators.auth_user_id`), cliente (`clients.auth_user_id`)
 - Enum `user_account_kind`: `business_owner`, `business_staff`, `client`, `platform_admin`
 - Login grava `signup_channel` no OAuth; triggers mantêm memberships alinhados
 
 ## Operadores internos (console `/operacoes`)
 
-- Lista em **`platform_operators`** — sem INSERT/UPDATE via API `authenticated`
+- Lista em **`platform_operators`** - sem INSERT/UPDATE via API `authenticated`
 - RLS: `is_platform_operator()` libera gestão global (`*_console` nas tabelas)
 - Não promover via `profiles.role` / `account_kind` (trigger bloqueia)
 - Adicionar pessoa: SQL manual (`supabase/scripts/grant-platform-operator.sql`)
 
 ## Impersonação
 
-- Tokens em `user_impersonate_tokens` — só o próprio utilizador (RLS).
+- Tokens em `user_impersonate_tokens` - só o próprio utilizador (RLS).
 - Nunca expor `SUPABASE_SERVICE_ROLE_KEY` no cliente.

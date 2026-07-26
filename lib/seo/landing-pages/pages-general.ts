@@ -33,7 +33,7 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
     ],
     h1: "Plataforma de agendamento online para o seu negócio",
     heroSubtitle:
-      "Centralize reservas, disponibilidade, serviços e clientes em uma plataforma pensada para quem vive de hora marcada — sem planilha, sem conflito de horário e com atendimento profissional.",
+      "Centralize reservas, disponibilidade, serviços e clientes em uma plataforma pensada para quem vive de hora marcada - sem planilha, sem conflito de horário e com atendimento profissional.",
     sections: [
       {
         id: "o-que-e",
@@ -41,7 +41,7 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
         level: 2,
         paragraphs: [
           "Uma <strong class=\"text-white\">plataforma de agendamento online</strong> vai além de um calendário: ela conecta a vitrine do seu negócio ao fluxo real de reservas. O cliente escolhe serviço, profissional (quando aplicável), data e horário; o sistema valida disponibilidade e registra o compromisso.",
-          "No <strong class=\"text-white\">Agenndo</strong>, cada negócio ganha uma página pública com a sua marca. Você gerencia agenda, colaboradores, bloqueios e confirmações em um painel único — ideal para salões, clínicas, barbearias, consultórios e estúdios.",
+          "No <strong class=\"text-white\">Agenndo</strong>, cada negócio ganha uma página pública com a sua marca. Você gerencia agenda, colaboradores, bloqueios e confirmações em um painel único - ideal para salões, clínicas, barbearias, consultórios e estúdios.",
         ],
       },
       {
@@ -50,10 +50,10 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
         level: 2,
         paragraphs: ["Quem migra do WhatsApp ou do caderninho costuma ganhar previsibilidade e tempo:"],
         bullets: [
-          "<strong class=\"text-white\">Agendamento 24 horas</strong> — o cliente marca quando quiser, sem esperar resposta.",
-          "<strong class=\"text-white\">Menos faltas</strong> — confirmações e lembretes reduzem no-show.",
-          "<strong class=\"text-white\">Equipe organizada</strong> — agendas separadas por profissional.",
-          "<strong class=\"text-white\">Imagem profissional</strong> — link único para bio, Google e WhatsApp.",
+          "<strong class=\"text-white\">Agendamento 24 horas</strong> - o cliente marca quando quiser, sem esperar resposta.",
+          "<strong class=\"text-white\">Menos faltas</strong> - confirmações e lembretes reduzem no-show.",
+          "<strong class=\"text-white\">Equipe organizada</strong> - agendas separadas por profissional.",
+          "<strong class=\"text-white\">Imagem profissional</strong> - link único para bio, Google e WhatsApp.",
         ],
       },
       {
@@ -99,7 +99,7 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
     keywords: ["sistema de agendamento online", "sistema agenda online", "software gestão agendamentos"],
     h1: "Sistema de agendamento online completo",
     heroSubtitle:
-      "Do primeiro clique do cliente à confirmação do horário: um sistema integrado para reservas, operação e relacionamento — sem depender de planilhas ou grupos de mensagem.",
+      "Do primeiro clique do cliente à confirmação do horário: um sistema integrado para reservas, operação e relacionamento - sem depender de planilhas ou grupos de mensagem.",
     sections: [
       {
         id: "definicao",
@@ -127,7 +127,7 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
         title: "Gestão além do calendário",
         level: 2,
         paragraphs: [
-          "Sistemas fracos viram apenas um calendário bonito. O Agenndo inclui cadastro de serviços, personalização visual, disponibilidade semanal, exceções por data, lista de clientes e visão de operações — tudo alinhado ao mesmo banco de horários.",
+          "Sistemas fracos viram apenas um calendário bonito. O Agenndo inclui cadastro de serviços, personalização visual, disponibilidade semanal, exceções por data, lista de clientes e visão de operações - tudo alinhado ao mesmo banco de horários.",
           "Compare opções no artigo <a href=\"/blog/melhores-sistemas-de-agendamento-online\" class=\"text-primary hover:underline\">melhores sistemas de agendamento online</a>.",
         ],
       },
@@ -137,7 +137,7 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
       {
         question: "Substitui o Google Agenda?",
         answer:
-          "Para reservas com clientes externos, sim — é o papel da página pública. Muitos negócios mantêm Google Agenda pessoal em paralelo; leia nosso comparativo Google Agenda vs. plataforma de agendamento no blog.",
+          "Para reservas com clientes externos, sim - é o papel da página pública. Muitos negócios mantêm Google Agenda pessoal em paralelo; leia nosso comparativo Google Agenda vs. plataforma de agendamento no blog.",
       },
     ],
     relatedLinks: pickRelatedLinks(
@@ -153,7 +153,7 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
     keywords: ["software de agendamento", "software agenda online", "programa agendamento"],
     h1: "Software de agendamento feito para serviços",
     heroSubtitle:
-      "Automatize marcações, organize sua equipe e ofereça ao cliente um canal claro para reservar — com software em nuvem, sem instalação e acessível do celular.",
+      "Automatize marcações, organize sua equipe e ofereça ao cliente um canal claro para reservar - com software em nuvem, sem instalação e acessível do celular.",
     sections: [
       {
         id: "por-que-software",
@@ -206,7 +206,7 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
     keywords: ["agenda online", "agenda digital", "agenda virtual", "criar agenda online"],
     h1: "Agenda online profissional para receber clientes 24h",
     heroSubtitle:
-      "Transforme seu link de bio em uma agenda que vende horários: serviços claros, horários reais e confirmação automática — sem troca infinita de mensagens.",
+      "Transforme seu link de bio em uma agenda que vende horários: serviços claros, horários reais e confirmação automática - sem troca infinita de mensagens.",
     sections: [
       {
         id: "criar",
@@ -246,7 +246,7 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
       {
         question: "A agenda online é a mesma coisa que site?",
         answer:
-          "É uma página pública focada em reservas — pode funcionar como “mini site” de agendamento, especialmente para quem ainda não tem site institucional completo.",
+          "É uma página pública focada em reservas - pode funcionar como “mini site” de agendamento, especialmente para quem ainda não tem site institucional completo.",
       },
     ],
     relatedLinks: pickRelatedLinks(
@@ -267,7 +267,7 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
     ],
     h1: "Receba sinal e pagamento antecipado no agendamento",
     heroSubtitle:
-      "Além do Pix com orientação ao cliente, conecte sua conta Mercado Pago e exija sinal ou pagamento integral antes de confirmar — com pagamento na própria página, sem redirecionar para outro site.",
+      "Além do Pix com orientação ao cliente, conecte sua conta Mercado Pago e exija sinal ou pagamento integral antes de confirmar - com pagamento na própria página, sem redirecionar para outro site.",
     sections: [
       {
         id: "pix-e-mp",
@@ -305,7 +305,7 @@ export const generalLandingPages: SeoLandingPageConfig[] = [
       {
         question: "O dinheiro cai na conta de quem?",
         answer:
-          "Na conta Mercado Pago do prestador que conectou OAuth — o Agenndo não fica no meio do recebimento.",
+          "Na conta Mercado Pago do prestador que conectou OAuth - o Agenndo não fica no meio do recebimento.",
       },
       {
         question: "Posso usar só Pix sem Mercado Pago?",

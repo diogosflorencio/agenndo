@@ -523,7 +523,7 @@ export default function AnalyticsPage() {
     lines.push(`Receita (R$)${sep}${centsToReais(kpis.receita.curr).toFixed(2)}${sep}${centsToReais(kpis.receita.prev).toFixed(2)}${sep}${mRec.text}`);
     lines.push(`Ticket médio (R$)${sep}${centsToReais(kpis.ticket.curr).toFixed(2)}${sep}${centsToReais(kpis.ticket.prev).toFixed(2)}${sep}${mTicket.text}`);
     lines.push(`Novos clientes${sep}${kpis.novosClientes.curr}${sep}${kpis.novosClientes.prev}${sep}${mNovos.text}`);
-    lines.push(`Taxa de presença (%)${sep}${kpis.taxaPresenca.curr ?? "—"}${sep}${kpis.taxaPresenca.prev ?? "—"}${sep}${mTaxa.text}`);
+    lines.push(`Taxa de presença (%)${sep}${kpis.taxaPresenca.curr ?? "-"}${sep}${kpis.taxaPresenca.prev ?? "-"}${sep}${mTaxa.text}`);
     lines.push(`Taxa de cancelamento (%)${sep}${kpis.taxaCancel.curr}${sep}${kpis.taxaCancel.prev}${sep}`);
 
     h("═══ EVOLUÇÃO POR PERÍODO ═══");

@@ -1,7 +1,7 @@
-import { buildHomeFaqPageJsonLd } from "@/lib/seo/home-faq-jsonld";
+import { buildHomeLandingJsonLd } from "@/lib/seo/home-landing-jsonld";
 
 export function HomeFaqJsonLd() {
-  const json = buildHomeFaqPageJsonLd();
+  const json = buildHomeLandingJsonLd();
   return (
     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(json) }} />
   );

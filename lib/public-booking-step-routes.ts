@@ -1,4 +1,4 @@
-/** Etapas do agendamento público — segmentos estáveis na URL (`/[slug]/agendar/...`). */
+/** Etapas do agendamento público - segmentos estáveis na URL (`/[slug]/agendar/...`). */
 
 export const PUBLIC_BOOKING_STEP_SEGMENTS = [
   "servico",

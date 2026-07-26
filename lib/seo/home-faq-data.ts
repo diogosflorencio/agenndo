@@ -29,8 +29,8 @@ export const HOME_FAQS = [
     a: "Qualquer prestador que trabalhe com hora marcada: salão, clínica de estética, barbearia, consultório, estúdio, personal, pet shop, fotógrafo e outros.",
   },
   {
-    q: "Vão aceitar pagamento dos meus clientes pelo app?",
-    a: "Está no roadmap: integração com Mercado Pago para você receber valores dos clientes (incluindo ideia de sinal/caução no agendamento) e evolução para NF automática por agendamento - sem data fixa anunciada aqui.",
+    q: "Posso receber pagamento dos clientes pelo app?",
+    a: "Sim. Você pode cadastrar Pix e conectar Mercado Pago para cobrar sinal ou pagamento antecipado no agendamento. Também há templates de WhatsApp para confirmação e lembretes.",
   },
   {
     q: "Como cancelar minha assinatura?",

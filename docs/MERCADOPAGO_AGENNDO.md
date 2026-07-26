@@ -26,16 +26,16 @@ Crie um app em [Mercado Pago Developers](https://www.mercadopago.com.br/develope
 |----------|------------|-----|
 | `MERCADOPAGO_CLIENT_ID` | App → Credenciais | OAuth |
 | `MERCADOPAGO_CLIENT_SECRET` | App → Credenciais | OAuth + API |
-| `MERCADOPAGO_REDIRECT_URI` | Você define | **OAuth:** `https://SEU_DOMINIO/api/mercadopago/oauth/callback` — **não** use a URL do webhook aqui |
+| `MERCADOPAGO_REDIRECT_URI` | Você define | **OAuth:** `https://SEU_DOMINIO/api/mercadopago/oauth/callback` - **não** use a URL do webhook aqui |
 | `NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY` | App → Credenciais públicas | Payment Brick no browser |
 | `MERCADOPAGO_WEBHOOK_SECRET` | App → Webhooks → assinatura | Só para validar `POST /api/mercadopago/webhook` (URL do webhook é configurada no **painel** MP, não nesta variável) |
 | `APP_ENCRYPTION_KEY` | String longa aleatória (32+ chars) | Criptografia dos tokens OAuth + HMAC do `state` |
 
-Opcional: `NEXT_PUBLIC_SITE_URL` — fallback de origem se redirect URI for outro host.
+Opcional: `NEXT_PUBLIC_SITE_URL` - fallback de origem se redirect URI for outro host.
 
 ### Painel Mercado Pago
 
-1. **URLs de redirecionamento** = valor **idêntico** de `MERCADOPAGO_REDIRECT_URI` — **somente HTTPS** (o MP não aceita `http://localhost`)
+1. **URLs de redirecionamento** = valor **idêntico** de `MERCADOPAGO_REDIRECT_URI` - **somente HTTPS** (o MP não aceita `http://localhost`)
    - Produção: `https://www.agenndo.com.br/api/mercadopago/oauth/callback`
 2. **Webhook** URL = `https://SEU_DOMINIO/api/mercadopago/webhook`
 3. Eventos: pagamentos (`payment`)
@@ -72,11 +72,11 @@ Use credenciais de **test** do app e usuários de teste MP. A Public Key de test
 
 ## Arquivos principais
 
-- `lib/mercadopago/*` — OAuth, API, webhook
-- `lib/business-payment-policy.ts` — cálculo de sinal
-- `app/api/mercadopago/*` — rotas
-- `app/dashboard/pagamentos/page.tsx` — configuração
-- `components/public/mercadopago-payment-brick.tsx` — UI cliente
+- `lib/mercadopago/*` - OAuth, API, webhook
+- `lib/business-payment-policy.ts` - cálculo de sinal
+- `app/api/mercadopago/*` - rotas
+- `app/dashboard/pagamentos/page.tsx` - configuração
+- `components/public/mercadopago-payment-brick.tsx` - UI cliente
 - `supabase/migrations/20260528120000_mercadopago_appointments.sql`
 
 ## Integração pública (vitrine)

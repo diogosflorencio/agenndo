@@ -116,7 +116,7 @@ export function SeoLandingPageView({ page }: { page: SeoLandingPageConfig }) {
             href="/login"
             className="inline-flex justify-center items-center px-8 py-3.5 rounded-xl bg-primary text-black font-bold text-sm hover:bg-primary/90 transition-colors"
           >
-            Começar agora — é grátis para testar
+            Começar agora - é grátis para testar
           </Link>
         </section>
       </article>

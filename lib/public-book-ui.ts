@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** Centraliza emoji/ícone dentro de caixa com tamanho fixo (não usar `size-full` aqui — conflita com `size-14` etc.). */
+/** Centraliza emoji/ícone dentro de caixa com tamanho fixo (não usar `size-full` aqui - conflita com `size-14` etc.). */
 export const publicMediaTileClass = "flex items-center justify-center shrink-0";
 
 export function publicEmojiClass(size: "sm" | "md" | "lg" = "md") {
@@ -43,7 +43,7 @@ export function getPublicBookUi(isDark: boolean) {
     navBtn: isDark
       ? "bg-white/[0.06] hover:bg-white/10 text-gray-400 hover:text-white"
       : "bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-900",
-    /** Card informativo / resumo — fundo escuro, borda verde suave. */
+    /** Card informativo / resumo - fundo escuro, borda verde suave. */
     accentCard: isDark ? panelDark : "rounded-xl border border-primary/20 bg-primary/[0.04]",
     accentCardTitle: isDark ? "font-semibold text-white" : "font-semibold text-gray-900",
     accentCardBody: isDark ? "text-gray-300" : "text-gray-700",

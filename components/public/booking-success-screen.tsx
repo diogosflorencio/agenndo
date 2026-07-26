@@ -134,7 +134,7 @@ export function PublicBookingSuccessScreen({
 
   const profName =
     collaboratorName ??
-    (collab === "any" ? "Equipe (definida no agendamento)" : (collab as CollabRow)?.name ?? "—");
+    (collab === "any" ? "Equipe (definida no agendamento)" : (collab as CollabRow)?.name ?? "-");
 
   const dateLabel = date
     ? new Date(date + "T12:00:00").toLocaleDateString("pt-BR", {
@@ -142,7 +142,7 @@ export function PublicBookingSuccessScreen({
         day: "numeric",
         month: "long",
       })
-    : "—";
+    : "-";
 
   return (
     <div
@@ -208,7 +208,7 @@ export function PublicBookingSuccessScreen({
               { label: "Serviço", value: serviceName },
               { label: "Profissional", value: profName },
               { label: "Data", value: dateLabel },
-              { label: "Horário", value: time ?? "—" },
+              { label: "Horário", value: time ?? "-" },
               {
                 label: "Valor do serviço",
                 value: formatCurrency(bookedPriceCents / 100),
@@ -270,11 +270,11 @@ export function PublicBookingSuccessScreen({
           <ul className="space-y-2 text-xs text-gray-400">
             <li className="flex items-start gap-2">
               <span className="material-symbols-outlined text-sm text-gray-600 shrink-0">mail</span>
-              Confirmação por e-mail — em desenvolvimento
+              Confirmação por e-mail - em desenvolvimento
             </li>
             <li className="flex items-start gap-2">
               <span className="material-symbols-outlined text-sm text-gray-600 shrink-0">calendar_add_on</span>
-              Adicionar ao Google Calendar — em desenvolvimento
+              Adicionar ao Google Calendar - em desenvolvimento
             </li>
           </ul>
         </section>

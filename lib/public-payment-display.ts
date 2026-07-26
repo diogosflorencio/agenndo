@@ -36,7 +36,7 @@ export type PublicMercadoPagoCard = {
   dueCents: number;
 };
 
-/** Card Mercado Pago na confirmação — não depende só de dueCents (evita sumir por mp_connected no cliente). */
+/** Card Mercado Pago na confirmação - não depende só de dueCents (evita sumir por mp_connected no cliente). */
 export function buildPublicMercadoPagoCard(
   priceCents: number,
   settings: PublicBusinessPaymentFields

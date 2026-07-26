@@ -54,14 +54,14 @@ export function getAppointmentPaymentBadge(apt: {
   if (ps === "pending") {
     const reserved = apt.status === "agendado";
     return {
-      label: reserved ? "Reservado — aguardando pagamento MP" : "Pagamento MP em processamento",
+      label: reserved ? "Reservado - aguardando pagamento MP" : "Pagamento MP em processamento",
       hint: [due > 0 ? `Valor devido: ${formatBrl(due)}` : null, mpIdHint].filter(Boolean).join(" · ") || null,
       tone: "warn",
     };
   }
   if (ps === "optional") {
     return {
-      label: "Agendado — pagamento online opcional",
+      label: "Agendado - pagamento online opcional",
       hint: due > 0 ? `Pode antecipar até ${formatBrl(due)} via Mercado Pago` : null,
       tone: "info",
     };

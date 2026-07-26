@@ -4,7 +4,7 @@ import { loadAndVerifyAppointmentPricing, sanitizePriceCents } from "@/lib/publi
 
 /**
  * Fonte de verdade: confirma agendamento após pagamento MP aprovado (webhook).
- * Não chamar no /checkout/process — só quando o MP confirmar via webhook.
+ * Não chamar no /checkout/process - só quando o MP confirmar via webhook.
  */
 export async function applyMercadoPagoPaymentApproved(
   admin: SupabaseClient,

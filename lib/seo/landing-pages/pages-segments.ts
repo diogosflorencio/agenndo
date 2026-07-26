@@ -132,7 +132,7 @@ export const segmentLandingPages: SeoLandingPageConfig[] = [
     keywords: ["agenda online clínica", "agendamento consultório", "sistema clínica"],
     h1: "Agenda online para clínicas e consultórios",
     heroSubtitle:
-      "Consultas, retornos e procedimentos com horário definido — sem sala de espera lotada por falta de organização. Ideal para clínicas multiprofissionais e consultórios individuais.",
+      "Consultas, retornos e procedimentos com horário definido - sem sala de espera lotada por falta de organização. Ideal para clínicas multiprofissionais e consultórios individuais.",
     sections: [
       {
         id: "contexto",
@@ -153,7 +153,7 @@ export const segmentLandingPages: SeoLandingPageConfig[] = [
           "Histórico de agendamentos por paciente",
         ],
         paragraphs: [
-          "O Agenndo não substitui prontuário eletrônico ou legislação específica da sua área — foca na camada de reserva e operação da agenda.",
+          "O Agenndo não substitui prontuário eletrônico ou legislação específica da sua área - foca na camada de reserva e operação da agenda.",
         ],
       },
       {
@@ -201,7 +201,7 @@ export const segmentLandingPages: SeoLandingPageConfig[] = [
         title: "Experiência discreta para o paciente",
         level: 2,
         paragraphs: [
-          "O paciente agenda pelo link, sem expor detalhes em grupo ou status público. Você recebe a reserva no painel e mantém a rotina organizada — presencial ou online, conforme sua oferta de serviço cadastrada.",
+          "O paciente agenda pelo link, sem expor detalhes em grupo ou status público. Você recebe a reserva no painel e mantém a rotina organizada - presencial ou online, conforme sua oferta de serviço cadastrada.",
         ],
       },
       {
@@ -240,7 +240,7 @@ export const segmentLandingPages: SeoLandingPageConfig[] = [
         title: "Procedimentos e pacotes",
         level: 2,
         paragraphs: [
-          "Estética combina serviços de durações variadas — limpeza de pele, laser, massagem, avaliação. Na <strong class=\"text-white\">agenda online para estética</strong>, cada procedimento leva tempo e preço corretos para o sistema calcular a agenda.",
+          "Estética combina serviços de durações variadas - limpeza de pele, laser, massagem, avaliação. Na <strong class=\"text-white\">agenda online para estética</strong>, cada procedimento leva tempo e preço corretos para o sistema calcular a agenda.",
         ],
       },
       {

@@ -1,6 +1,6 @@
 "use client";
 
-/** Cache client do catálogo público — evita refetch completo ao vitrine ↔ agendar. */
+/** Cache client do catálogo público - evita refetch completo ao vitrine ↔ agendar. */
 
 export type PublicPageCatalogClient = {
   business: {

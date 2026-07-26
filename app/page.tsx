@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { HomeFaqJsonLd } from "@/components/home-faq-jsonld";
 import HomePage from "@/components/home-page";
-import { SITE_DESCRIPTION, SITE_TITLE_DEFAULT } from "@/lib/seo/site-metadata";
+import { SITE_DESCRIPTION, SITE_KEYWORDS, SITE_TITLE_DEFAULT } from "@/lib/seo/site-metadata";
 import { getSiteUrl } from "@/lib/site-url";
 import { isMercadoPagoOAuthState } from "@/lib/mercadopago/oauth-state";
 
@@ -23,6 +23,7 @@ const description = SITE_DESCRIPTION;
 export const metadata: Metadata = {
   title: { absolute: titleDefault },
   description,
+  keywords: [...SITE_KEYWORDS],
   alternates: {
     canonical: siteUrl,
     languages: { "pt-BR": siteUrl, "x-default": siteUrl },
@@ -51,6 +52,7 @@ export const metadata: Metadata = {
     title: titleDefault,
     description,
   },
+  category: "business",
 };
 
 /** Supabase às vezes devolve OAuth na Site URL (/) em vez de /auth/callback. */

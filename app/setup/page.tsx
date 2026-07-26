@@ -794,7 +794,7 @@ function Step4({ data, update, colors }: { data: { primaryColor: string; busines
   );
 }
 
-// Step 5 — trial; precificação calculada em background (sem exibir valor na UI)
+// Step 5 - trial; precificação calculada em background (sem exibir valor na UI)
 function Step5({
   data,
   dynamicPlan,
@@ -821,7 +821,7 @@ function Step5({
         <h1 className="text-2xl font-bold text-white mb-2">Comece pelo teste gratuito</h1>
         <p className="text-gray-400 text-sm leading-relaxed">
           Entre e use sem cartão para explorar o Agenndo com acesso completo. Se gostar, você assina depois em{" "}
-          <span className="text-white/90">Conta → Meu plano</span>, quando quiser — o valor mensal aparece só lá.
+          <span className="text-white/90">Conta → Meu plano</span>, quando quiser - o valor mensal aparece só lá.
         </p>
       </div>
 
@@ -832,7 +832,7 @@ function Step5({
             <p className="text-sm font-bold text-white">Teste de 7 dias (pode ser estendido)</p>
             <p className="text-xs text-gray-400 mt-1 leading-snug">
               Você começa com <span className="text-gray-300">7 dias de teste</span> com tudo liberado. Precisa de mais tempo
-              para avaliar? Fale com o suporte — em muitos casos estendemos o período (até cerca de 1 mês, conforme combinação).
+              para avaliar? Fale com o suporte - em muitos casos estendemos o período (até cerca de 1 mês, conforme combinação).
             </p>
             <a
               href={waTrialHref}

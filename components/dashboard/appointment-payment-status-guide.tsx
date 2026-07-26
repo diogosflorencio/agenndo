@@ -288,7 +288,7 @@ function LegendItem({
       <span className={cn("size-1.5 rounded-full mt-1.5 shrink-0", dotClass)} />
       <span>
         <span className={cn("font-medium", surfaces.title)}>{title}</span>
-        {" — "}
+        {" - "}
         {text}
       </span>
     </li>

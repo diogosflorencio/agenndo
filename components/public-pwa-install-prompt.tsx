@@ -26,7 +26,7 @@ function isStandaloneDisplay(): boolean {
 
 /**
  * Convite para instalar atalho (PWA) na vitrine do cliente.
- * Não usa `beforeinstallprompt.prompt()` — no Android isso pode abrir o pedido do Chrome
+ * Não usa `beforeinstallprompt.prompt()` - no Android isso pode abrir o pedido do Chrome
  * “acessar outros apps e serviços neste dispositivo”. Instruções manuais são suficientes.
  */
 export function PublicPwaInstallPrompt({

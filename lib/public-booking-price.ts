@@ -3,7 +3,7 @@ import { computeAppointmentDueCents, type BusinessPaymentSettings } from "@/lib/
 import { normalizeVariantGallery, variantEffectivePriceCents } from "@/lib/service-variants";
 import { toPublicPaymentSettings } from "@/lib/public-payment-display";
 
-/** Teto de sanidade (~R$ 500.000) — evita overflow / valores absurdos. */
+/** Teto de sanidade (~R$ 500.000) - evita overflow / valores absurdos. */
 export const MAX_BOOKING_PRICE_CENTS = 50_000_000;
 
 const FORBIDDEN_BOOKING_BODY_KEYS = new Set([

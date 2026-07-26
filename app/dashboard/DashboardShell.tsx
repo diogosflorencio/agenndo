@@ -199,7 +199,7 @@ function DashboardLayoutInner({
         >
           <p className="min-w-0 flex-1 truncate leading-tight">
             <span className="font-semibold">Acesso compartilhado</span>
-            <span className="opacity-80"> · {business?.name ?? "—"}</span>
+            <span className="opacity-80"> · {business?.name ?? "-"}</span>
             {profile?.email ? (
               <span className="hidden opacity-75 sm:inline"> · {profile.email}</span>
             ) : null}

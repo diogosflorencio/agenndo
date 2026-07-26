@@ -48,7 +48,7 @@ function loadMpSdk(): Promise<void> {
 }
 
 /**
- * Payment Brick embutido — exige `amount` + `preferenceId` (MP) e processa via /checkout/process.
+ * Payment Brick embutido - exige `amount` + `preferenceId` (MP) e processa via /checkout/process.
  */
 export function MercadoPagoPaymentBrick({
   appointmentId,
@@ -166,7 +166,7 @@ export function MercadoPagoPaymentBrick({
         <MercadoPagoLogo className="h-6 w-auto" />
         <div>
           <p className="text-sm font-semibold text-white">Pagar com Mercado Pago</p>
-          <p className="text-xs text-gray-400">{amountLabel} — Pix, cartão e outros meios</p>
+          <p className="text-xs text-gray-400">{amountLabel} - Pix, cartão e outros meios</p>
         </div>
       </div>
       {err ? <p className="text-xs text-red-400">{err}</p> : null}

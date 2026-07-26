@@ -851,7 +851,7 @@ function ProfilePanel({
           </div>
           <div className="flex justify-between gap-3">
             <dt className="text-gray-500">Login</dt>
-            <dd className="text-white font-medium text-right truncate max-w-[160px]">{userEmail ?? "—"}</dd>
+            <dd className="text-white font-medium text-right truncate max-w-[160px]">{userEmail ?? "-"}</dd>
           </div>
         </dl>
         <p className="text-[11px] text-gray-600 leading-relaxed pt-2 border-t border-white/10">

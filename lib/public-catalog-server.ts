@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { type PaymentPolicy, type DepositMode } from "@/lib/business-payment-policy";
 import { toPublicPaymentSettings, type PublicBusinessPaymentFields } from "@/lib/public-payment-display";
 
-/** Colunas seguras para a página pública — não expõe billing/Stripe nem tokens MP. */
+/** Colunas seguras para a página pública - não expõe billing/Stripe nem tokens MP. */
 export type PublicBusinessRow = {
   id: string;
   name: string;

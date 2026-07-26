@@ -67,7 +67,7 @@ type DashboardContextValue = {
   business: BusinessRow | null;
   loading: boolean;
   refetch: () => void;
-  /** Sem negócio próprio, só vínculo de equipe — navegação restrita a comissões/conta. */
+  /** Sem negócio próprio, só vínculo de equipe - navegação restrita a comissões/conta. */
   isStaffDashboard: boolean;
   /** Tem vínculo em collaborators (pode coexistir com negócio próprio). */
   hasStaffMembership: boolean;

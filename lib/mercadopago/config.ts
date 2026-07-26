@@ -28,7 +28,7 @@ export function getMercadoPagoConfig(): MercadoPagoConfig | null {
     console.error(
       "[mercadopago] MERCADOPAGO_REDIRECT_URI inválido:",
       redirectUri,
-      "— use https://SEU_DOMINIO/api/mercadopago/oauth/callback (não a URL do webhook)."
+      "- use https://SEU_DOMINIO/api/mercadopago/oauth/callback (não a URL do webhook)."
     );
     return null;
   }

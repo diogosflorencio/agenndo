@@ -17,58 +17,70 @@ type FeatureCard = {
   highlight?: FeatureHighlight;
 };
 
-/** Pilares do produto: base contínua + destaque onde houve evolução visível. */
+/** Pilares visíveis na landing (conversão + SEO por segmento). */
+const SEGMENTS = [
+  { label: "Salões", href: "/agenda-online-para-salao", icon: "content_cut" },
+  { label: "Barbearias", href: "/agenda-online-para-barbearia", icon: "face_6" },
+  { label: "Clínicas", href: "/agenda-online-para-clinicas", icon: "medical_services" },
+  { label: "Estética", href: "/agenda-online-para-estetica", icon: "spa" },
+  { label: "Psicólogos", href: "/agenda-online-para-psicologos", icon: "psychology" },
+  { label: "Outros serviços", href: "/agenda-online", icon: "handyman" },
+] as const;
+
+const FEATURE_PILLARS = [
+  {
+    icon: "qr_code_2",
+    title: "Agenda online que vende por você",
+    desc: "Página pública com sua marca, link único e QR Code. Cliente agenda sozinho - inclusive de madrugada.",
+    bullets: ["Link para bio, WhatsApp e Google", "Serviços, profissionais e horários reais", "Confirmação e lembretes automáticos"],
+  },
+  {
+    icon: "dashboard",
+    title: "Painel completo no celular",
+    desc: "Do primeiro agendamento ao financeiro: tudo num só lugar, pensado para quem vive na correria.",
+    bullets: ["Agenda, equipe e disponibilidade", "Pix e Mercado Pago para sinal ou pagamento", "Clientes, comissões e analytics"],
+  },
+  {
+    icon: "trending_up",
+    title: "Menos faltas, mais receita",
+    desc: "Lembretes, status de comparecimento e visão clara do que entrou no caixa.",
+    bullets: ["Lembretes por WhatsApp (configurável)", "Marca compareceu / faltou na hora", "Financeiro ligado aos agendamentos"],
+  },
+] as const;
+
+/** Destaques do produto (grid compacto). */
 const FEATURE_CARDS: FeatureCard[] = [
   {
     icon: "calendar_month",
-    title: "Agenda, disponibilidade e agendamentos",
-    desc: "Horários semanais, exceções, bloqueios e agenda do dia com status (confirmado, compareceu, faltou, cancelado).",
-  },
-  {
-    icon: "qr_code_2",
-    title: "Página pública, link e QR Code",
-    desc: "Sua marca em uma URL única; cliente escolhe serviço, profissional e horário. QR para balcão, vitrine ou cartão.",
-  },
-  {
-    icon: "category",
-    title: "Serviços e preços",
-    desc: "Cadastro de serviços, duração, valores e variantes para combinar com sua operação.",
+    title: "Agenda e agendamentos",
+    desc: "Horários, bloqueios, status e visão do dia.",
   },
   {
     icon: "groups",
-    title: "Equipe e colaboradores",
-    desc: "Profissionais ativos na agenda, vínculo com serviços e - quando você configurar - conta do colaborador para comissões.",
-  },
-  {
-    icon: "savings",
-    title: "Comissões e área do profissional",
-    desc: "Módulo de comissões por atendimento; o profissional acessa um painel próprio e vê tudo em um só lugar se trabalhar em mais de um negócio.",
+    title: "Equipe e comissões",
+    desc: "Colaboradores, serviços por profissional e painel do profissional.",
     highlight: "evoluindo",
   },
   {
-    icon: "person_search",
-    title: "Clientes",
-    desc: "Base de clientes vinculada aos agendamentos para histórico e atendimento.",
-  },
-  {
     icon: "payments",
-    title: "Financeiro",
-    desc: "Visão de entradas e movimentos ligados à operação; integra com o fluxo de agendamentos.",
-  },
-  {
-    icon: "analytics",
-    title: "Analytics",
-    desc: "Indicadores de ocupação, receita por serviço e hábitos de agenda para decidir com dados.",
+    title: "Receber pagamentos",
+    desc: "Pix manual ou Mercado Pago conectado para sinal e pagamento antecipado.",
   },
   {
     icon: "palette",
     title: "Personalização",
-    desc: "Logo, cores, banner, galeria e redes - página alinhada à sua marca.",
+    desc: "Logo, cores, banner e galeria na sua página pública.",
   },
   {
-    icon: "notifications_active",
-    title: "Lembretes e notificações",
-    desc: "Fluxos para reduzir faltas e manter cliente informado, conforme as configurações do negócio.",
+    icon: "analytics",
+    title: "Analytics",
+    desc: "Ocupação, receita por serviço e hábitos da agenda.",
+  },
+  {
+    icon: "chat",
+    title: "WhatsApp automático",
+    desc: "Templates de confirmação, lembrete e alertas - você configura o que enviar.",
+    highlight: "evoluindo",
   },
 ];
 
@@ -143,117 +155,127 @@ const MOCK_NOTIFICATION_TOASTS: {
 ];
 
 export default function HomePage() {
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  const primaryCta =
+    "inline-flex items-center justify-center gap-2 px-8 py-4 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-lg shadow-primary/25";
 
   return (
-    <>
+    <div className="min-h-screen bg-white text-gray-900 pb-20 md:pb-0">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-[#020403]/80 backdrop-blur-lg border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="text-xl font-bold tracking-tight">Agenndo</span>
-          <div className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
-            <Link className="hover:text-primary transition-colors" href="/sobre">Sobre nós</Link>
-            <Link className="hover:text-primary transition-colors" href="/termos">Termos</Link>
-            <Link className="hover:text-primary transition-colors" href="/politicas">Políticas</Link>
+      <nav className="fixed top-0 w-full z-50 bg-white/90 backdrop-blur-lg border-b border-gray-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          <Link href="/" className="text-xl font-bold tracking-tight text-gray-900 shrink-0">
+            Agenndo
+          </Link>
+          <div className="hidden lg:flex items-center gap-7 text-sm font-medium text-gray-600">
+            <Link className="hover:text-gray-900 transition-colors" href="#funcionalidades">
+              Funcionalidades
+            </Link>
+            <Link className="hover:text-gray-900 transition-colors" href="#segmentos">
+              Para quem é
+            </Link>
+            <Link className="hover:text-gray-900 transition-colors" href="#faq">
+              FAQ
+            </Link>
+            <Link className="hover:text-gray-900 transition-colors" href="/blog">
+              Blog
+            </Link>
+            <Link className="hover:text-gray-900 transition-colors" href="/sobre">
+              Sobre
+            </Link>
           </div>
-          <LoginEntryLink
-            className="bg-primary hover:bg-primary/90 text-black font-bold py-2 px-5 rounded-full text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.4)]"
-          >
-            Entrar
-          </LoginEntryLink>
+          <div className="flex items-center gap-2 shrink-0">
+            <LoginEntryLink className="hidden sm:inline-flex text-sm font-semibold text-gray-600 hover:text-gray-900 px-3 py-2">
+              Entrar
+            </LoginEntryLink>
+            <LoginEntryLink className={`${primaryCta} text-sm py-2.5 px-5 rounded-full`}>
+              Começar grátis
+            </LoginEntryLink>
+          </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <header className="relative pt-32 pb-20 md:pt-48 md:pb-32 px-6 overflow-hidden bg-[#020403]">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
-
+      {/* Hero */}
+      <header className="relative pt-28 pb-16 md:pt-40 md:pb-24 px-4 sm:px-6 overflow-hidden bg-gradient-to-b from-emerald-50/90 via-white to-white">
+        <div className="absolute top-20 right-0 w-[480px] h-[480px] bg-primary/10 blur-[100px] rounded-full pointer-events-none" />
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
-          <div className="text-center lg:text-left space-y-8 z-10 order-2 lg:order-1">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider">
+          <div className="text-center lg:text-left space-y-7 z-10 order-2 lg:order-1">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 border border-emerald-200/80 text-emerald-800 text-xs font-semibold uppercase tracking-wider">
               <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              YWP · agenda pública + painel completo
+              Sistema de agendamento online · teste 7 dias grátis
             </div>
 
-            <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-[1.1]">
-              A agenda que seu negócio{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-400">
-                merece ter
+            <h1
+              id="hero-headline"
+              className="text-4xl md:text-[2.75rem] lg:text-5xl font-extrabold tracking-tight text-gray-900 leading-[1.08]"
+            >
+              Agenda online para{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-600">
+                salão, clínica e barbearia
               </span>
             </h1>
 
-            <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
-              Para <strong className="text-white">clínicas, salões, consultórios, estúdios e prestadores de serviço</strong> em geral. Seus clientes agendam 24h por dia; você foca no que sabe fazer.
+            <p id="hero-summary" className="text-lg text-gray-600 max-w-xl mx-auto lg:mx-0 leading-relaxed">
+              Plataforma de agendamento com página pública, link e QR Code. Seus clientes marcam horário 24h; você
+              organiza equipe, pagamentos e lembretes em um painel simples - feito para prestadores de serviço no
+              Brasil.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-              <LoginEntryLink
-                className="w-full sm:w-auto px-8 py-4 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(19,236,91,0.3)] flex items-center justify-center gap-2"
-              >
-                Teste Grátis por 7 Dias
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3">
+              <LoginEntryLink className={`${primaryCta} w-full sm:w-auto`}>
+                Criar minha agenda grátis
                 <span className="material-symbols-outlined text-lg">arrow_forward</span>
               </LoginEntryLink>
               <Link
-                href="/ywp"
-                className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2"
+                href="/agendamento-online"
+                className="w-full sm:w-auto px-8 py-4 bg-white border border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-800 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm"
               >
-                <span className="material-symbols-outlined">play_circle</span>
-                Ver Demo
+                Como funciona
               </Link>
             </div>
 
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-6 text-sm text-gray-500 font-medium">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-base">check_circle</span>
-                Sem cartão de crédito
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-base">check_circle</span>
-                7 dias grátis
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-base">check_circle</span>
-                Suporte em português
-              </div>
-            </div>
+            <ul className="flex flex-col sm:flex-row flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-2 text-sm text-gray-500 font-medium">
+              {["Sem cartão no teste", "7 dias grátis", "Suporte em português", "Cancele quando quiser"].map((t) => (
+                <li key={t} className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary text-base">check_circle</span>
+                  {t}
+                </li>
+              ))}
+            </ul>
 
-            {/* Mobile mockup */}
-            <div className="lg:hidden relative mx-auto z-10 mt-8">
+            <div className="lg:hidden relative mx-auto z-10 mt-4">
               <PhoneMockup />
             </div>
           </div>
 
-          {/* Desktop mockup */}
           <div className="hidden lg:block relative mx-auto lg:mr-0 z-10 order-1 lg:order-2">
             <PhoneMockup large />
-
-            {/* Floating cards */}
             <div
-              className="absolute top-[160px] -right-12 bg-[#14221A] p-4 rounded-xl border border-primary/30 shadow-xl z-20 animate-bounce hidden xl:block"
-              style={{ animationDuration: "3s" }}
+              className="absolute top-[160px] -right-8 bg-white p-4 rounded-xl border border-gray-200 shadow-xl z-20 hidden xl:block"
+              style={{ animation: "bounce 3s infinite" }}
             >
               <div className="flex items-center gap-3">
-                <div className="bg-primary/20 p-2 rounded-lg">
-                  <span className="material-symbols-outlined text-primary">payments</span>
+                <div className="bg-emerald-100 p-2 rounded-lg">
+                  <span className="material-symbols-outlined text-emerald-600">payments</span>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">Receita Hoje</p>
-                  <p className="text-sm font-bold text-white">R$ 850,00</p>
+                  <p className="text-xs text-gray-500">Receita hoje</p>
+                  <p className="text-sm font-bold text-gray-900">R$ 850,00</p>
                 </div>
               </div>
             </div>
-
             <div
-              className="absolute bottom-44 -left-12 bg-[#14221A] p-4 rounded-xl border border-primary/30 shadow-xl z-20 animate-bounce hidden xl:block"
-              style={{ animationDuration: "4s" }}
+              className="absolute bottom-44 -left-8 bg-white p-4 rounded-xl border border-gray-200 shadow-xl z-20 hidden xl:block"
+              style={{ animation: "bounce 4s infinite" }}
             >
               <div className="flex items-center gap-3">
-                <div className="bg-blue-500/20 p-2 rounded-lg">
-                  <span className="material-symbols-outlined text-blue-400">star</span>
+                <div className="bg-amber-100 p-2 rounded-lg">
+                  <span className="material-symbols-outlined text-amber-600">star</span>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400">Avaliação</p>
-                  <p className="text-sm font-bold text-white">4.9/5.0</p>
+                  <p className="text-xs text-gray-500">Novo agendamento</p>
+                  <p className="text-sm font-bold text-gray-900">Via link público</p>
                 </div>
               </div>
             </div>
@@ -262,254 +284,252 @@ export default function HomePage() {
       </header>
 
       {/* Stats */}
-      <section className="py-14 bg-[#080c0a] border-y border-white/5">
-        <div className="max-w-7xl mx-auto px-6">
+      <section className="py-12 bg-gray-50 border-y border-gray-200/80" aria-label="Números do Agenndo">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
               { value: "2.000+", label: "Profissionais ativos" },
               { value: "7 dias", label: "Teste gratuito" },
-              { value: "99.9%", label: "Uptime garantido" },
               { value: "24/7", label: "Agendamento online" },
+              { value: "100%", label: "Em português" },
             ].map((s) => (
               <div key={s.label} className="text-center">
-                <p className="text-3xl font-extrabold text-white mb-1">{s.value}</p>
-                <p className="text-sm text-gray-500">{s.label}</p>
+                <p className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-1">{s.value}</p>
+                <p className="text-sm text-gray-600">{s.label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="funcionalidades" className="py-24 bg-[#020403]">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12 max-w-3xl mx-auto">
-            <p className="text-xs font-semibold uppercase tracking-wider text-primary mb-3">Plataforma</p>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-              O que você já tem no painel -{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-400">
-                e o que segue evoluindo
-              </span>
+      {/* Segmentos - SEO interno + conversão */}
+      <section id="segmentos" className="py-16 md:py-20 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 mb-2">Para quem é</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+              Software de agendamento para o seu tipo de negócio
             </h2>
-            <p className="text-gray-400 leading-relaxed">
-              Lista objetiva do que o Agenndo cobre hoje (agenda até analytics). Itens com etiqueta indicam áreas em que o produto
-              tem recebido melhorias recentes - não é só “novidade”, é o conjunto do sistema que já descrevemos na página,
-              agora organizado para você comparar com o que precisa no dia a dia.
+            <p className="text-gray-600 text-sm md:text-base leading-relaxed">
+              Mesma plataforma, configurada para salões, clínicas, barbearias, consultórios e qualquer serviço por hora
+              marcada.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {SEGMENTS.map((seg) => (
+              <Link
+                key={seg.href}
+                href={seg.href}
+                className="group flex flex-col items-center gap-2 p-4 rounded-2xl border border-gray-200 bg-white hover:border-emerald-300 hover:shadow-md hover:shadow-emerald-500/5 transition-all text-center"
+              >
+                <span className="material-symbols-outlined text-2xl text-emerald-600 group-hover:scale-110 transition-transform">
+                  {seg.icon}
+                </span>
+                <span className="text-sm font-semibold text-gray-800">{seg.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pilares */}
+      <section id="funcionalidades" className="py-16 md:py-20 bg-white px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 mb-2">Por que assinar</p>
+            <h2 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4">
+              Tudo que você precisa para encher a agenda
+            </h2>
+            <p className="text-gray-600 leading-relaxed">
+              Não é só um link de agendamento: é operação completa - da vitrine online ao financeiro.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+          <div className="grid md:grid-cols-3 gap-6 mb-14">
+            {FEATURE_PILLARS.map((pillar) => (
+              <article
+                key={pillar.title}
+                className="rounded-2xl border border-gray-200 bg-gradient-to-b from-gray-50/80 to-white p-6 md:p-7 shadow-sm"
+              >
+                <div className="size-11 rounded-xl bg-emerald-100 flex items-center justify-center mb-4">
+                  <span className="material-symbols-outlined text-emerald-700 text-2xl">{pillar.icon}</span>
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{pillar.title}</h3>
+                <p className="text-sm text-gray-600 mb-4 leading-relaxed">{pillar.desc}</p>
+                <ul className="space-y-2">
+                  {pillar.bullets.map((b) => (
+                    <li key={b} className="flex items-start gap-2 text-sm text-gray-700">
+                      <span className="material-symbols-outlined text-primary text-base shrink-0 mt-0.5">check</span>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ))}
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
             {FEATURE_CARDS.map((f) => (
               <div
                 key={f.title}
-                className="bg-[#0f1c15] p-6 md:p-7 rounded-2xl border border-white/5 hover:border-primary/25 transition-all duration-300 group hover:-translate-y-0.5 flex flex-col"
+                className="bg-white p-5 md:p-6 rounded-2xl border border-gray-200 hover:border-emerald-200 hover:shadow-md transition-all duration-300 group flex flex-col"
               >
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div className="size-11 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                    <span className="material-symbols-outlined text-primary text-2xl">{f.icon}</span>
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="size-10 rounded-xl bg-emerald-50 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                    <span className="material-symbols-outlined text-emerald-600 text-xl">{f.icon}</span>
                   </div>
                   {f.highlight ? (
-                    <span
-                      className={cn(
-                        "text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border shrink-0",
-                        f.highlight === "novo"
-                          ? "border-primary/40 bg-primary/15 text-primary"
-                          : "border-teal-500/35 bg-teal-500/10 text-teal-300"
-                      )}
-                    >
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border border-teal-200 bg-teal-50 text-teal-700 shrink-0">
                       {f.highlight === "novo" ? "Novo" : "Evoluindo"}
                     </span>
                   ) : null}
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2 leading-snug">{f.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed flex-1">{f.desc}</p>
+                <h3 className="text-base font-bold text-gray-900 mb-1.5">{f.title}</h3>
+                <p className="text-gray-600 text-sm leading-relaxed flex-1">{f.desc}</p>
               </div>
             ))}
+          </div>
+
+          <div className="mt-12 text-center">
+            <LoginEntryLink className={primaryCta}>
+              Quero testar grátis por 7 dias
+              <span className="material-symbols-outlined text-lg">arrow_forward</span>
+            </LoginEntryLink>
           </div>
         </div>
       </section>
 
-      {/* Roadmap - visão futura sem overselling */}
-      <section className="py-16 bg-[#080c0a] border-y border-white/5">
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2">Roadmap</p>
-          <h3 className="text-xl md:text-2xl font-bold text-white mb-4">Para ficar ainda mais completo</h3>
-          <p className="text-gray-400 text-sm leading-relaxed">
-            Estamos preparando{" "}
-            <strong className="text-gray-200">recebimento de pagamentos</strong> com possibilidade de conectar o{" "}
-            <strong className="text-gray-200">Mercado Pago</strong> - o que abrirá caminho para cobrar{" "}
-            <strong className="text-gray-200">sinal ou caução</strong> em agendamentos - e{" "}
-            <strong className="text-gray-200">emissão automática de nota fiscal</strong> alinhada a cada atendimento. Sem data
-            anunciada aqui; detalhes virão nas atualizações do produto.
-          </p>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="py-24 bg-[#080c0a] border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Como Funciona</h2>
-            <p className="text-gray-400 max-w-xl mx-auto">
-              Em 3 passos simples, você começa a gerenciar seu negócio de forma profissional
+      {/* Como funciona */}
+      <section className="py-16 md:py-24 bg-gray-50 border-y border-gray-200/80 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12 md:mb-16">
+            <h2 className="text-2xl md:text-4xl font-bold text-gray-900 mb-3">Como funciona o agendamento online</h2>
+            <p className="text-gray-600 max-w-xl mx-auto">
+              Em três passos você publica sua agenda e começa a receber clientes pelo link
             </p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8 relative">
-            {/* Connector line */}
-            <div className="hidden md:block absolute top-8 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+            <div className="hidden md:block absolute top-8 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-emerald-300 to-transparent" />
 
             {[
               {
                 n: "1",
-                title: "Teste grátis por 7 dias",
-                desc: "Faça login com Google e configure seu negócio em minutos. Teste todas as funcionalidades sem cartão de crédito.",
+                title: "Crie sua conta grátis",
+                desc: "Entre com Google, configure nome e slug da sua página (ex.: agenndo.com.br/seu-negocio). 7 dias de teste, sem cartão.",
                 icon: "rocket_launch",
               },
               {
                 n: "2",
-                title: "Configure serviços e horários",
-                desc: "Adicione seus serviços, defina horários de trabalho e personalize sua página pública.",
+                title: "Cadastre serviços e horários",
+                desc: "Serviços, equipe, disponibilidade e personalização visual. Seu link fica pronto para compartilhar.",
                 icon: "tune",
               },
               {
                 n: "3",
-                title: "Compartilhe e receba agendamentos",
-                desc: "Compartilhe seu link ou QR Code e comece a receber agendamentos dos seus clientes 24h por dia.",
+                title: "Divulgue e receba agendamentos",
+                desc: "Bio do Instagram, WhatsApp, QR no balcão. Clientes marcam 24h; você acompanha tudo no painel.",
                 icon: "share",
               },
             ].map((step) => (
-              <div key={step.n} className="text-center relative">
-                <div className="size-16 rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center mx-auto mb-6">
-                  <span className="text-2xl font-bold text-primary">{step.n}</span>
+              <article key={step.n} className="text-center relative bg-white md:bg-transparent rounded-2xl md:rounded-none border md:border-0 border-gray-200 p-6 md:p-0">
+                <div className="size-14 rounded-full bg-emerald-100 border-2 border-emerald-500 flex items-center justify-center mx-auto mb-5">
+                  <span className="text-xl font-bold text-emerald-700">{step.n}</span>
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">{step.title}</h3>
-                <p className="text-gray-400 text-sm leading-relaxed">{step.desc}</p>
-              </div>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">{step.title}</h3>
+                <p className="text-gray-600 text-sm leading-relaxed">{step.desc}</p>
+              </article>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Depoimentos - COM SELO GOOGLE */}
-    <section className="py-16 sm:py-24 bg-[#020403] border-t border-white/5">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-12 sm:mb-16">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
-            O Que Nossos Clientes Dizem
-          </h2>
-          <p className="text-base sm:text-lg text-gray-400 max-w-2xl mx-auto">
-            Avaliações reais de quem organizou a operação e aumentou os agendamentos
-          </p>
-        </div>
+      {/* Depoimentos */}
+      <section className="py-16 md:py-24 bg-white px-4 sm:px-6" aria-label="Depoimentos de clientes">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-10 md:mb-14">
+            <h2 className="text-2xl md:text-4xl font-bold text-gray-900 mb-3">Quem usa recomenda</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              Prestadores que saíram do caderninho e do WhatsApp manual
+            </p>
+          </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {[
-            {
-              name: "Fernanda Rocha",
-              username: "@studio_rocha",
-              role: "Salão de beleza",
-              plan: "Plano Pro",
-              city: "São Paulo, SP",
-              info: "8 profissionais",
-              rating: 5,
-              text: "Em 3 dias já tinha minha agenda pública funcionando. Meus clientes agendam sozinhos, até de madrugada, e eu chego de manhã com a agenda cheia. Não troco por nada.",
-            },
-            {
-              name: "Ricardo Alves",
-              username: "@clinica_alves",
-              role: "Clínica estética",
-              plan: "Plano Premium",
-              city: "Belo Horizonte, MG",
-              info: "4 colaboradores",
-              rating: 5,
-              text: "O controle de comissões da equipe me salvou horas toda semana. Cada profissional vê o próprio painel, sem precisar me perguntar nada. Suporte em português, rápido e sem enrolação.",
-            },
-            {
-              name: "Camila Torres",
-              username: "@consultorio_torres",
-              role: "Consultório odonto",
-              plan: "Plano Pro",
-              city: "Curitiba, PR",
-              info: "240 clientes",
-              rating: 5,
-              text: "Coloquei o link na bio do Instagram e os agendamentos vieram sozinhos. A página pública ficou tão profissional que clientes novos perguntam se somos uma rede de clínicas. Recomendo muito.",
-            },
-          ].map((testimonial, i) => (
-            <div
-              key={i}
-              className="bg-[#0f1c15] rounded-2xl p-6 border border-white/5 hover:border-primary/25 transition-all duration-300"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex gap-1 text-yellow-400">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+            {[
+              {
+                name: "Fernanda Rocha",
+                role: "Salão de beleza · São Paulo",
+                text: "Em 3 dias tinha minha agenda pública no ar. Clientes agendam sozinhos e eu chego com a agenda organizada.",
+              },
+              {
+                name: "Ricardo Alves",
+                role: "Clínica estética · Belo Horizonte",
+                text: "Comissões da equipe e painel do profissional economizam horas por semana. Suporte em português, direto ao ponto.",
+              },
+              {
+                name: "Camila Torres",
+                role: "Consultório · Curitiba",
+                text: "Link na bio do Instagram e os agendamentos vieram. Página profissional que passa confiança.",
+              },
+            ].map((testimonial) => (
+              <blockquote
+                key={testimonial.name}
+                className="bg-gray-50 rounded-2xl p-6 border border-gray-200 hover:border-emerald-200 transition-colors"
+              >
+                <div className="flex gap-1 text-amber-500 mb-3">
                   {[...Array(5)].map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-yellow-400" />
+                    <Star key={j} className="w-4 h-4 fill-amber-400 text-amber-400" />
                   ))}
                 </div>
-                <div className="flex items-center gap-1 px-2 py-1 bg-blue-950/40 rounded-full flex-shrink-0">
-                  <svg className="w-3 h-3" viewBox="0 0 48 48" fill="none">
-                    <path d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" fill="#FFC107"/>
-                    <path d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" fill="#FF3D00"/>
-                    <path d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" fill="#4CAF50"/>
-                    <path d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" fill="#1976D2"/>
-                  </svg>
-                  <span className="text-xs font-medium text-blue-400">Google</span>
-                </div>
-              </div>
-
-              <p className="text-sm text-gray-300 mb-4 italic leading-relaxed">"{testimonial.text}"</p>
-
-              <div className="border-t border-white/5 pt-4">
-                <p className="text-sm font-bold text-white">{testimonial.name}</p>
-                <p className="text-xs text-gray-500 mb-3">
-                  {testimonial.username} • {testimonial.city}
-                </p>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs px-2 py-1 bg-white/5 rounded-full text-gray-400">{testimonial.plan}</span>
-                  <span className="text-xs text-gray-600">•</span>
-                  <span className="text-xs text-gray-500">{testimonial.info}</span>
-                  <span className="text-xs text-gray-600">•</span>
-                  <span className="text-xs text-gray-500">{testimonial.role}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">Avaliações verificadas de clientes reais no Google</p>
-        </div>
-      </div>
-    </section>
-
-      {/* Preço sob medida (CTA) */}
-      <section className="py-24 bg-[#080c0a] border-t border-white/5">
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-semibold uppercase tracking-wider mb-4">
-            7 dias grátis, sem cartão
+                <p className="text-sm text-gray-700 mb-4 leading-relaxed">&ldquo;{testimonial.text}&rdquo;</p>
+                <footer>
+                  <p className="text-sm font-bold text-gray-900">{testimonial.name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{testimonial.role}</p>
+                </footer>
+              </blockquote>
+            ))}
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Preço sob medida para o seu negócio
+        </div>
+      </section>
+
+      {/* Preço / CTA */}
+      <section className="py-16 md:py-20 bg-emerald-50 border-y border-emerald-100 px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white border border-emerald-200 text-emerald-800 text-xs font-semibold uppercase tracking-wider mb-4">
+            7 dias grátis · sem cartão
+          </div>
+          <h2 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4">
+            Comece grátis. Assine só se fizer sentido.
           </h2>
-          <p className="text-gray-400 mb-8">
-            No onboarding você escolhe testar grátis por 7 dias. Depois, o valor é definido conforme seu uso e aparece em <strong className="text-white">Conta</strong> para você assinar quando quiser.
+          <p className="text-gray-600 mb-8 leading-relaxed">
+            Teste o painel completo por uma semana. Depois, o plano aparece em <strong>Conta</strong>, conforme o perfil
+            do seu negócio - sem surpresa escondida.
           </p>
-          <LoginEntryLink
-            className="inline-flex items-center gap-2 px-8 py-4 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(19,236,91,0.3)]"
-          >
-            Começar teste grátis
-            <span className="material-symbols-outlined">arrow_forward</span>
+          <LoginEntryLink className={primaryCta}>
+            Criar minha agenda agora
+            <span className="material-symbols-outlined text-lg">arrow_forward</span>
           </LoginEntryLink>
+          <p className="mt-4 text-xs text-gray-500">
+            Também disponível:{" "}
+            <Link href="/plataforma-de-agendamento-online" className="text-emerald-700 font-medium hover:underline">
+              plataforma de agendamento
+            </Link>
+            ,{" "}
+            <Link href="/software-de-agendamento" className="text-emerald-700 font-medium hover:underline">
+              software de agendamento
+            </Link>{" "}
+            e páginas por segmento no rodapé.
+          </p>
         </div>
       </section>
 
       {/* FAQ */}
-      <section className="py-24 bg-[#020403] border-t border-white/5">
-        <div className="max-w-3xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold text-white mb-4">Perguntas frequentes</h2>
-            <p className="text-gray-400 max-w-lg mx-auto text-sm">
-              Do teste grátis ao dia a dia no painel, comissões e o que está por vir no roadmap.
+      <section id="faq" className="py-16 md:py-24 bg-white px-4 sm:px-6">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-10 md:mb-14">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">Perguntas frequentes</h2>
+            <p className="text-gray-600 text-sm max-w-lg mx-auto">
+              Dúvidas comuns sobre teste grátis, painel, pagamentos e cancelamento
             </p>
           </div>
 
@@ -518,19 +538,20 @@ export default function HomePage() {
               <div
                 key={faq.q}
                 className={cn(
-                  "bg-[#0f1c15] rounded-xl border transition-all duration-200 overflow-hidden",
-                  openFaq === i ? "border-primary/35 shadow-[0_0_0_1px_rgba(19,236,91,0.08)]" : "border-white/5 hover:border-white/10"
+                  "bg-white rounded-xl border transition-all duration-200 overflow-hidden",
+                  openFaq === i ? "border-emerald-300 shadow-sm" : "border-gray-200 hover:border-gray-300"
                 )}
               >
                 <button
                   type="button"
                   onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                  className="w-full p-5 md:p-6 text-left flex items-center justify-between gap-4"
+                  className="w-full p-5 text-left flex items-center justify-between gap-4"
+                  aria-expanded={openFaq === i}
                 >
-                  <span className="font-semibold text-white text-sm md:text-[15px] leading-snug pr-2">{faq.q}</span>
+                  <span className="font-semibold text-gray-900 text-sm md:text-[15px] leading-snug pr-2">{faq.q}</span>
                   <span
                     className={cn(
-                      "material-symbols-outlined text-primary shrink-0 transition-transform duration-200",
+                      "material-symbols-outlined text-emerald-600 shrink-0 transition-transform duration-200",
                       openFaq === i ? "rotate-180" : ""
                     )}
                   >
@@ -538,8 +559,8 @@ export default function HomePage() {
                   </span>
                 </button>
                 {openFaq === i ? (
-                  <div className="px-5 md:px-6 pb-5 md:pb-6 pt-0 -mt-1 border-t border-white/5">
-                    <p className="text-gray-400 text-sm leading-relaxed">{faq.a}</p>
+                  <div className="px-5 pb-5 pt-0 border-t border-gray-100">
+                    <p className="home-faq-answer text-gray-600 text-sm leading-relaxed">{faq.a}</p>
                   </div>
                 ) : null}
               </div>
@@ -548,97 +569,81 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* CTA Final */}
-      <section className="py-24 bg-[#080c0a] border-t border-white/5 relative overflow-hidden">
-        <div className="absolute inset-0 bg-primary/5 blur-3xl pointer-events-none" />
-        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
-          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4">
-            Pronto para transformar<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-400">
-              seu negócio?
-            </span>
+      {/* CTA final */}
+      <section className="py-16 md:py-24 bg-gray-900 text-white px-4 sm:px-6 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/20 to-transparent pointer-events-none" />
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <h2 className="text-3xl md:text-4xl font-extrabold mb-4">
+            Sua agenda online pronta em minutos
           </h2>
-          <p className="text-gray-400 text-lg mb-10">
-            Junte-se a mais de 2.000 profissionais que já usam o Agenndo.
+          <p className="text-gray-300 text-lg mb-8 max-w-xl mx-auto">
+            Junte-se a milhares de prestadores que já usam o Agenndo para receber agendamentos todos os dias.
           </p>
           <LoginEntryLink
-            className="inline-flex items-center gap-2 px-10 py-5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-[0_0_30px_rgba(19,236,91,0.4)] text-lg"
+            className="inline-flex items-center gap-2 px-10 py-5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl transition-all shadow-lg shadow-primary/30 text-lg"
           >
-            Teste Grátis por 7 Dias
+            Teste grátis por 7 dias
             <span className="material-symbols-outlined">arrow_forward</span>
           </LoginEntryLink>
-          <div className="mt-8 flex items-center justify-center gap-8 text-sm text-gray-500 flex-wrap">
-            {["7 dias grátis", "Sem cartão de crédito", "Suporte em português", "Cancele quando quiser"].map((t) => (
-              <div key={t} className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-base">check_circle</span>
-                {t}
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#020403] border-t border-white/10 pt-16 pb-8">
-        <div className="max-w-7xl mx-auto px-6">
+      <footer className="bg-gray-50 border-t border-gray-200 pt-14 pb-8 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-10 mb-12">
             <div className="col-span-2">
-              <div className="mb-4">
-                <span className="text-xl font-bold text-white">Agenndo</span>
-              </div>
-              <p className="text-gray-400 text-sm max-w-sm mb-6 leading-relaxed">
-                Transformando a maneira como prestadores de serviços gerenciam seus negócios. Simples, rápido e eficiente.
+              <Link href="/" className="text-xl font-bold text-gray-900">
+                Agenndo
+              </Link>
+              <p className="text-gray-600 text-sm max-w-sm mt-4 mb-6 leading-relaxed">
+                Plataforma de agendamento online para prestadores de serviço no Brasil. Agenda, link público, equipe e
+                financeiro em um só lugar.
               </p>
-              <div className="flex gap-4 text-sm text-gray-500">
-                <a href="#" className="hover:text-white transition-colors">Instagram</a>
-                <a href="#" className="hover:text-white transition-colors">LinkedIn</a>
-                <a href="#" className="hover:text-white transition-colors">Twitter</a>
-              </div>
             </div>
             <div>
-              <h4 className="text-white font-bold mb-4 text-sm">Produto</h4>
-              <ul className="space-y-3 text-sm text-gray-400">
-                <li><Link href="/sobre" className="hover:text-primary transition-colors">Sobre nós</Link></li>
-                <li>
-                  <Link href="/agendamento-online" className="hover:text-primary transition-colors">
-                    Software de agendamento
-                  </Link>
-                </li>
-                <li><Link href="/blog" className="hover:text-primary transition-colors">Blog</Link></li>
-                <li><Link href="/termos" className="hover:text-primary transition-colors">Termos</Link></li>
-                <li><Link href="/politicas" className="hover:text-primary transition-colors">Políticas</Link></li>
+              <h4 className="text-gray-900 font-bold mb-4 text-sm">Produto</h4>
+              <ul className="space-y-2.5 text-sm text-gray-600">
+                <li><Link href="/agendamento-online" className="hover:text-emerald-700">Como funciona</Link></li>
+                <li><Link href="/sobre" className="hover:text-emerald-700">Sobre nós</Link></li>
+                <li><Link href="/blog" className="hover:text-emerald-700">Blog</Link></li>
+                <li><Link href="/login" className="hover:text-emerald-700">Entrar</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-bold mb-4 text-sm">Agenda online</h4>
-              <ul className="space-y-3 text-sm text-gray-400">
-                <li><Link href="/plataforma-de-agendamento-online" className="hover:text-primary transition-colors">Plataforma de agendamento</Link></li>
-                <li><Link href="/agenda-online" className="hover:text-primary transition-colors">Agenda online</Link></li>
-                <li><Link href="/agenda-online-para-salao" className="hover:text-primary transition-colors">Para salões</Link></li>
-                <li><Link href="/agenda-online-para-barbearia" className="hover:text-primary transition-colors">Para barbearias</Link></li>
-                <li><Link href="/agenda-online-para-clinicas" className="hover:text-primary transition-colors">Para clínicas</Link></li>
+              <h4 className="text-gray-900 font-bold mb-4 text-sm">Agenda online</h4>
+              <ul className="space-y-2.5 text-sm text-gray-600">
+                <li><Link href="/plataforma-de-agendamento-online" className="hover:text-emerald-700">Plataforma</Link></li>
+                <li><Link href="/sistema-de-agendamento-online" className="hover:text-emerald-700">Sistema</Link></li>
+                <li><Link href="/software-de-agendamento" className="hover:text-emerald-700">Software</Link></li>
+                <li><Link href="/agenda-online-para-salao" className="hover:text-emerald-700">Salões</Link></li>
+                <li><Link href="/agenda-online-para-barbearia" className="hover:text-emerald-700">Barbearias</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-white font-bold mb-4 text-sm">Legal</h4>
-              <ul className="space-y-3 text-sm text-gray-400">
-                <li><Link href="/termos" className="hover:text-primary transition-colors">Termos de Uso</Link></li>
-                <li><Link href="/politicas" className="hover:text-primary transition-colors">Política de Privacidade</Link></li>
+              <h4 className="text-gray-900 font-bold mb-4 text-sm">Legal</h4>
+              <ul className="space-y-2.5 text-sm text-gray-600">
+                <li><Link href="/termos" className="hover:text-emerald-700">Termos</Link></li>
+                <li><Link href="/politicas" className="hover:text-emerald-700">Privacidade</Link></li>
               </ul>
             </div>
           </div>
-          <div className="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-600">
-            <p>Serviço <strong className="text-gray-400">YWP</strong> · © 2024–2026 Agenndo. Todos os direitos reservados.</p>
-            <div className="flex gap-6">
-              <Link href="/termos" className="hover:text-gray-400">Termos</Link>
-              <Link href="/politicas" className="hover:text-gray-400">Privacidade</Link>
-            </div>
+          <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
+            <p>© 2024–2026 Agenndo · YWP (YourWebPlace). Todos os direitos reservados.</p>
+            <p>Sistema de agendamento online para prestadores de serviço no Brasil.</p>
           </div>
         </div>
       </footer>
 
+      {/* CTA fixo mobile */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 p-3 bg-white/95 backdrop-blur border-t border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+        <LoginEntryLink className={`${primaryCta} w-full text-sm py-3.5`}>
+          Começar grátis - 7 dias
+        </LoginEntryLink>
+      </div>
+
       <WhatsAppSupportWidget context="landing" />
-    </>
+    </div>
   );
 }
 
