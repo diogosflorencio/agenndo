@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import { cn, formatCurrency } from "@/lib/utils";
+import { publicAccentCssProperties, brandEdgeBorderDataAttribute } from "@/lib/brand-color";
 import { publicMaterialIconClass } from "@/lib/public-book-ui";
 import { MercadoPagoPaymentBrick } from "@/components/public/mercadopago-payment-brick";
 import { PublicPwaInstallPrompt } from "@/components/public-pwa-install-prompt";
@@ -147,7 +148,9 @@ export function PublicBookingSuccessScreen({
   return (
     <div
       className="min-h-screen bg-[#020403] text-white px-4 py-8 sm:py-12"
-      style={{ ["--public-accent"]: accentColor } as CSSProperties}
+      data-public-accent-root
+      style={publicAccentCssProperties(accentColor, true)}
+      {...brandEdgeBorderDataAttribute(accentColor, true)}
     >
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[min(100%,28rem)] h-72 bg-[color-mix(in_srgb,var(--public-accent)_12%,transparent)] blur-[90px] rounded-full pointer-events-none" />
 
@@ -301,7 +304,7 @@ export function PublicBookingSuccessScreen({
             <Link
               href="/conta"
               prefetch
-              className="w-full py-3.5 bg-[var(--public-accent)] hover:brightness-95 text-black font-bold rounded-xl text-sm text-center transition-all"
+              className="w-full py-3.5 bg-[var(--public-accent)] hover:brightness-95 text-on-brand-accent font-bold rounded-xl text-sm text-center transition-all"
             >
               Meus agendamentos
             </Link>

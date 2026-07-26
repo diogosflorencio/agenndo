@@ -148,10 +148,10 @@ export function BookingSelectionPath({
                   "border text-[11px] sm:text-xs leading-tight",
                   isActive
                     ? cn(
-                        "font-semibold border-[color-mix(in_srgb,var(--public-accent)_45%,transparent)]",
+                        "font-semibold border-[color-mix(in_srgb,var(--public-accent)_45%,transparent)] text-brand-accent-mark",
                         isDark
-                          ? "bg-[color-mix(in_srgb,var(--public-accent)_12%,transparent)] text-white"
-                          : "bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)] text-gray-900"
+                          ? "bg-[color-mix(in_srgb,var(--public-accent)_12%,transparent)]"
+                          : "bg-[color-mix(in_srgb,var(--public-accent)_10%,transparent)]"
                       )
                     : isPast
                       ? cn(
@@ -167,7 +167,7 @@ export function BookingSelectionPath({
                 <span
                   className={cn(
                     "material-symbols-outlined text-[15px] sm:text-[16px] shrink-0",
-                    isActive || isPast ? "text-[var(--public-accent)]" : bookUi.muted
+                    isActive || isPast ? "text-brand-accent-mark" : bookUi.muted
                   )}
                 >
                   {crumb.icon}

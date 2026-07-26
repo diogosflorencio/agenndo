@@ -94,7 +94,7 @@ export default function ClienteDetalhePage() {
           <h1 className={cn("text-2xl font-bold", surfaces.title)}>Detalhes do cliente</h1>
           <p className={cn("text-sm mt-0.5", surfaces.subtitle)}>{client.name}</p>
         </div>
-        <Link href="/dashboard/agendamentos/novo" className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm">
+        <Link href="/dashboard/agendamentos/novo" className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-on-brand-accent font-bold rounded-xl text-sm">
           <span className="material-symbols-outlined text-base">add</span>
           Agendar
         </Link>

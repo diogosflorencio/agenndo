@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useState, type ReactNode } from "react";
 
 export type UserInfo = {
   /** Perfil efetivo (dono dos dados exibidos); igual a profile.id após o load. */
@@ -75,6 +75,9 @@ type DashboardContextValue = {
   staffCollaboratorId: string | null;
   /** Todos os negócios em que este login está na equipe (comissões unificadas). */
   staffContexts: StaffLink[];
+  /** Prévia da cor principal (ex.: personalização antes de salvar). */
+  brandColorPreview: string | null;
+  setBrandColorPreview: (color: string | null) => void;
 };
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -96,7 +99,9 @@ export function DashboardProvider({
   staffCollaboratorId,
   staffContexts,
   children,
-}: DashboardContextValue & { children: ReactNode }) {
+}: Omit<DashboardContextValue, "brandColorPreview" | "setBrandColorPreview"> & { children: ReactNode }) {
+  const [brandColorPreview, setBrandColorPreview] = useState<string | null>(null);
+
   return (
     <DashboardContext.Provider
       value={{
@@ -109,6 +114,8 @@ export function DashboardProvider({
         hasStaffMembership,
         staffCollaboratorId,
         staffContexts,
+        brandColorPreview,
+        setBrandColorPreview,
       }}
     >
       {children}

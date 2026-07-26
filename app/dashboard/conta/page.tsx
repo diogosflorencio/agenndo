@@ -367,7 +367,7 @@ export default function ContaPage() {
             key={t.key}
             onClick={() => setTab(t.key as Tab)}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-              tab === t.key ? "bg-primary text-black" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              tab === t.key ? "bg-primary text-on-brand-accent" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
             }`}
           >
             <span className="material-symbols-outlined text-sm hidden sm:block">{t.icon}</span>
@@ -479,7 +479,7 @@ export default function ContaPage() {
                   type="button"
                   disabled={checkoutLoading}
                   onClick={() => void startCheckout()}
-                  className="flex-1 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-60 text-black font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                  className="flex-1 py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-60 text-on-brand-accent font-bold rounded-xl text-sm transition-all flex items-center justify-center gap-1.5 shadow-sm"
                 >
                   <span className="material-symbols-outlined text-sm">shopping_cart</span>
                   {checkoutLoading
@@ -671,7 +671,7 @@ export default function ContaPage() {
                           }
                         })();
                       }}
-                      className="px-4 py-2 min-h-10 bg-primary hover:bg-primary/90 text-black text-sm font-bold rounded-xl shrink-0 w-full sm:w-auto"
+                      className="px-4 py-2 min-h-10 bg-primary hover:bg-primary/90 text-on-brand-accent text-sm font-bold rounded-xl shrink-0 w-full sm:w-auto"
                     >
                       {copyTokenDone ? "Copiado!" : "Copiar"}
                     </button>
@@ -718,7 +718,7 @@ export default function ContaPage() {
                       setImpersonateBusy(false);
                     });
                 }}
-                className="w-full py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-black font-bold rounded-xl text-sm transition-all"
+                className="w-full py-2.5 bg-primary hover:bg-primary/90 disabled:opacity-50 text-on-brand-accent font-bold rounded-xl text-sm transition-all"
               >
                 {impersonateBusy
                   ? "Entrando…"

@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { ArrowRight, MessageCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { contrastTextOnBrand } from "@/lib/brand-color";
 
 type WidgetContext = "landing" | "dashboard";
 
@@ -126,6 +127,7 @@ export function WhatsAppSupportWidget({ context }: WhatsAppSupportWidgetProps) {
   );
 
   const accentColor = isLanding ? "#22c55e" : "var(--button-bg, var(--primary))";
+  const accentTextColor = isLanding ? contrastTextOnBrand("#22c55e") : "var(--primary-fg, #111827)";
   const accentHover = isLanding ? "#16a34a" : "var(--button-hover, var(--primary))";
   const foregroundColor = isLanding ? "#ffff" : "var(--foreground)";
   const containerPosition = isLanding
@@ -177,7 +179,7 @@ export function WhatsAppSupportWidget({ context }: WhatsAppSupportWidgetProps) {
             target="_blank"
             rel="noopener noreferrer"
             className="flex w-full items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm font-semibold shadow-lg transition"
-            style={{ backgroundColor: accentColor, color: "#ffffff" }}
+            style={{ backgroundColor: accentColor, color: accentTextColor }}
             onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = accentHover)}
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = accentColor)}
           >
@@ -195,7 +197,7 @@ export function WhatsAppSupportWidget({ context }: WhatsAppSupportWidgetProps) {
       type="button"
       onClick={handleTogglePopup}
       className="flex h-12 w-12 items-center justify-center rounded-full shadow-xl transition hover:scale-105 focus:outline-none"
-      style={{ backgroundColor: accentColor, color: "#ffffff" }}
+      style={{ backgroundColor: accentColor, color: accentTextColor }}
       aria-label="Abrir conversa no WhatsApp"
     >
       <MessageCircle className="h-6 w-6" />

@@ -112,7 +112,7 @@ export default function ClientesPage() {
               onClick={() => setFilter(f.key)}
               className={cn(
                 "px-3 py-2 rounded-xl text-xs font-semibold transition-all border",
-                filter === f.key ? "bg-primary text-black border-transparent" : cn(surfaces.btnSecondary, surfaces.subtitle, "hover:opacity-90")
+                filter === f.key ? "bg-primary text-on-brand-accent border-transparent" : cn(surfaces.btnSecondary, surfaces.subtitle, "hover:opacity-90")
               )}
             >
               {f.label}

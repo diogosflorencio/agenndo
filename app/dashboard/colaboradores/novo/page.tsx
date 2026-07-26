@@ -167,7 +167,7 @@ export default function NovoColaboradorPage() {
           type="button"
           onClick={() => void handleSave()}
           disabled={!form.name.trim() || saving || !business?.id}
-          className="relative flex flex-1 items-center justify-center gap-2 px-3 py-4 pr-3 text-sm font-bold text-black transition-all bg-primary hover:bg-primary/90 disabled:bg-primary/40 disabled:cursor-not-allowed rounded-xl lg:pr-[4.75rem]"
+          className="relative flex flex-1 items-center justify-center gap-2 px-3 py-4 pr-3 text-sm font-bold text-on-brand-accent transition-all bg-primary hover:bg-primary/90 disabled:bg-primary/40 disabled:cursor-not-allowed rounded-xl lg:pr-[4.75rem]"
         >
           <span className="flex min-w-0 flex-1 items-center justify-center gap-2">
             {saving ? "Salvando…" : "Salvar e vincular serviços"}

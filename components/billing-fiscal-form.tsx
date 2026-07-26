@@ -74,7 +74,7 @@ export function BillingDocumentForm({ businessId, business }: Props) {
           onClick={() => void save()}
           className={cn(
             "py-2.5 px-4 rounded-xl text-sm font-bold transition-colors",
-            draftValid ? "bg-primary text-black hover:bg-primary/90" : "bg-gray-200 text-gray-500 cursor-not-allowed"
+            draftValid ? "bg-primary text-on-brand-accent hover:bg-primary/90" : "bg-gray-200 text-gray-500 cursor-not-allowed"
           )}
         >
           {saving ? "Salvando…" : "Salvar CPF/CNPJ"}

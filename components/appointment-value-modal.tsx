@@ -55,7 +55,7 @@ function AppointmentValueFooter({
         type="button"
         disabled={loading}
         onClick={() => onConfirmAction()}
-        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 pr-4 text-sm font-bold text-black transition-colors hover:opacity-90 disabled:opacity-50 sm:min-w-[180px] sm:w-auto lg:pr-[4.75rem]"
+        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 pr-4 text-sm font-bold text-on-brand-accent transition-colors hover:opacity-90 disabled:opacity-50 sm:min-w-[180px] sm:w-auto lg:pr-[4.75rem]"
       >
         <span className="flex min-w-0 flex-1 justify-center">{loading ? "Salvando…" : confirmLabel}</span>
         {!loading ? <HotkeyHint action="save" variant="primary" layout="floating-end" /> : null}

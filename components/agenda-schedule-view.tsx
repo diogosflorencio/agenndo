@@ -284,7 +284,7 @@ export function AgendaScheduleView({
                 onClick={() => onViewChange(v)}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-xs font-bold transition-colors",
-                  view === v ? "bg-primary text-black shadow-sm" : cn(surfaces.muted, isDark ? "hover:text-white" : "hover:text-gray-900")
+                  view === v ? "bg-primary text-on-brand-accent shadow-sm" : cn(surfaces.muted, isDark ? "hover:text-white" : "hover:text-gray-900")
                 )}
               >
                 {v === "day" ? "Dia" : v === "week" ? "Semana" : "Mês"}
@@ -334,7 +334,7 @@ export function AgendaScheduleView({
                 className={cn(
                   "flex min-w-[72px] flex-col items-center rounded-xl border px-2 py-2 text-center transition-all shrink-0",
                   x.isSel
-                    ? "border-primary bg-primary text-black shadow-md"
+                    ? "border-primary bg-primary text-on-brand-accent shadow-md"
                     : isDark
                       ? "border-white/10 bg-[#080c0a] text-gray-300 hover:border-white/20"
                       : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
@@ -372,7 +372,7 @@ export function AgendaScheduleView({
               const d = addDays(selectedD, -30);
               onDateChange(localISODate(d));
             }}
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-black"
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-on-brand-accent"
           >
             <span className="material-symbols-outlined">chevron_left</span>
           </button>
@@ -384,7 +384,7 @@ export function AgendaScheduleView({
                 onClick={() => onDateChange(localISODate(new Date(m.year, m.month, 1)))}
                 className={`min-w-[100px] flex-1 rounded-xl border px-3 py-2 text-center transition-all ${
                   m.isSel
-                    ? "border-primary bg-primary text-black shadow-md"
+                    ? "border-primary bg-primary text-on-brand-accent shadow-md"
                     : "border-gray-200 bg-white text-gray-800 hover:border-gray-300"
                 }`}
               >
@@ -399,7 +399,7 @@ export function AgendaScheduleView({
               const d = addDays(selectedD, 30);
               onDateChange(localISODate(d));
             }}
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-black"
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary text-on-brand-accent"
           >
             <span className="material-symbols-outlined">chevron_right</span>
           </button>
@@ -414,7 +414,7 @@ export function AgendaScheduleView({
             type="button"
             onClick={() => onFilterCollab("todos")}
             className={`rounded-full px-3 py-1 text-xs font-bold transition-colors ${
-              filterCollab === "todos" ? "bg-primary text-black" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              filterCollab === "todos" ? "bg-primary text-on-brand-accent" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
             Todos
@@ -425,7 +425,7 @@ export function AgendaScheduleView({
               type="button"
               onClick={() => onFilterCollab(c.id)}
               className={`max-w-[200px] truncate rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
-                filterCollab === c.id ? "bg-primary text-black" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                filterCollab === c.id ? "bg-primary text-on-brand-accent" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
               title={c.name}
             >
@@ -666,7 +666,7 @@ export function AgendaScheduleView({
             <button
               type="button"
               onClick={() => setMetricsOpen(false)}
-              className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-black transition-colors hover:opacity-90 sm:w-auto sm:min-w-[160px] lg:pr-[4.75rem]"
+              className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-on-brand-accent transition-colors hover:opacity-90 sm:w-auto sm:min-w-[160px] lg:pr-[4.75rem]"
             >
               <span className="flex min-w-0 flex-1 justify-center">Fechar</span>
               <HotkeyHint action="cancel" variant="primary" layout="floating-end" />

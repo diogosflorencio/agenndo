@@ -80,7 +80,7 @@ export function ImageCropModal({ imageFile, aspect, title, onConfirm, onCancel }
         type="button"
         disabled={processing || !croppedAreaPixels}
         onClick={() => void handleConfirm()}
-        className="min-h-11 w-full rounded-xl bg-primary px-5 text-sm font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-50 sm:w-auto sm:min-w-[140px]"
+        className="min-h-11 w-full rounded-xl bg-primary px-5 text-sm font-bold text-on-brand-accent transition-opacity hover:opacity-90 disabled:opacity-50 sm:w-auto sm:min-w-[140px]"
       >
         {processing ? "Cortando…" : "Confirmar"}
       </button>

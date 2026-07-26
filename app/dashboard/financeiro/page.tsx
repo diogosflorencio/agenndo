@@ -86,7 +86,7 @@ function FinanceManualModalFooter({ saving }: { saving: boolean }) {
         type="submit"
         form="finance-manual-add-form"
         disabled={saving}
-        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-black transition-colors hover:opacity-90 disabled:opacity-50 sm:min-w-[180px] sm:w-auto lg:pr-[4.75rem]"
+        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-on-brand-accent transition-colors hover:opacity-90 disabled:opacity-50 sm:min-w-[180px] sm:w-auto lg:pr-[4.75rem]"
       >
         <span className="flex min-w-0 flex-1 justify-center">{saving ? "Salvando…" : "Salvar"}</span>
         {!saving ? <HotkeyHint action="save" variant="primary" layout="floating-end" /> : null}
@@ -117,7 +117,7 @@ function FinanceEditModalFooter({ saving }: { saving: boolean }) {
         type="submit"
         form="finance-edit-record-form"
         disabled={saving}
-        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-black transition-colors hover:opacity-90 disabled:opacity-50 sm:min-w-[200px] sm:w-auto lg:pr-[4.75rem]"
+        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-on-brand-accent transition-colors hover:opacity-90 disabled:opacity-50 sm:min-w-[200px] sm:w-auto lg:pr-[4.75rem]"
       >
         <span className="flex min-w-0 flex-1 justify-center">{saving ? "Salvando…" : "Salvar alterações"}</span>
         {!saving ? <HotkeyHint action="save" variant="primary" layout="floating-end" /> : null}
@@ -596,7 +596,7 @@ export default function FinanceiroPage() {
               <button
                 type="button"
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-on-brand-accent font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
               >
                 <span className="material-symbols-outlined shrink-0 text-base">add</span>
                 <span className="min-w-0 flex-1 text-left">Entrada manual</span>
@@ -644,7 +644,7 @@ export default function FinanceiroPage() {
                 onClick={() => setPeriod(p.key as typeof period)}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
                   period === p.key
-                    ? "bg-primary text-black"
+                    ? "bg-primary text-on-brand-accent"
                     : "text-gray-600 hover:text-gray-900 hover:bg-gray-200"
                 }`}
               >

@@ -143,7 +143,7 @@ export default function NovoAgendamentoPage() {
           </Link>
           <Link
             href="/dashboard/agendamentos"
-            className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm"
+            className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-on-brand-accent font-bold rounded-xl text-sm"
           >
             Ver agenda
           </Link>
@@ -374,7 +374,7 @@ export default function NovoAgendamentoPage() {
               !selectedDate ||
               !selectedTime
             }
-            className="flex-1 py-3 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl text-sm"
+            className="flex-1 py-3 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-on-brand-accent font-bold rounded-xl text-sm"
           >
             Criar agendamento
           </button>

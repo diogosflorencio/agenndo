@@ -456,7 +456,7 @@ function MiniCalendar({
                 relative h-7 w-full flex items-center justify-center text-[11px] font-medium transition-all
                 ${!inMonth ? "opacity-20" : ""}
                 ${isPast ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}
-                ${isSel ? "bg-primary text-black rounded-lg font-bold" : ""}
+                ${isSel ? "bg-primary text-on-brand-accent rounded-lg font-bold" : ""}
                 ${inWeek && !isSel ? (isDark ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary") : ""}
                 ${isWS && !isSel ? "rounded-l-lg" : ""}
                 ${isWE && !isSel ? "rounded-r-lg" : ""}
@@ -1044,7 +1044,7 @@ export default function DisponibilidadePage() {
                     onClick={() => setScope(opt.value)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                       scope === opt.value
-                        ? "bg-primary text-black shadow-sm"
+                        ? "bg-primary text-on-brand-accent shadow-sm"
                         : isDark
                         ? "text-white/50 hover:text-white"
                         : "text-gray-500 hover:text-gray-900"
@@ -1453,8 +1453,8 @@ export default function DisponibilidadePage() {
                 saveState === "ok"
                   ? "rounded-xl bg-primary/15 text-primary border border-primary/30"
                   : isDirty
-                    ? "rounded-xl bg-primary text-black hover:opacity-90 ring-2 ring-amber-500/50 ring-offset-2 ring-offset-transparent"
-                    : "rounded-xl bg-primary text-black hover:opacity-90"
+                    ? "rounded-xl bg-primary text-on-brand-accent hover:opacity-90 ring-2 ring-amber-500/50 ring-offset-2 ring-offset-transparent"
+                    : "rounded-xl bg-primary text-on-brand-accent hover:opacity-90"
               } disabled:opacity-50`}
             >
               <span className="min-w-0 px-1">

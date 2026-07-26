@@ -107,7 +107,7 @@ function MonthGrid({
               className={cn(
                 "aspect-square min-h-[2rem] sm:min-h-[2.25rem] lg:min-h-[2.5rem] text-xs rounded-lg font-semibold flex items-center justify-center transition-all",
                 isSelected
-                  ? "bg-[var(--public-accent)] text-black"
+                  ? "bg-[var(--public-accent)] text-on-brand-accent"
                   : isDisabled
                     ? reason === "past"
                       ? isDark
@@ -245,7 +245,7 @@ export function PublicDatePicker({
           Fechado
         </span>
         <span className="inline-flex items-center gap-1.5" style={{ color: accentColor }}>
-          <span className="size-5 rounded-md bg-[var(--public-accent)] text-black text-[9px] font-bold flex items-center justify-center">9</span>
+          <span className="size-5 rounded-md bg-[var(--public-accent)] text-on-brand-accent text-[9px] font-bold flex items-center justify-center">9</span>
           Selecionado
         </span>
       </div>

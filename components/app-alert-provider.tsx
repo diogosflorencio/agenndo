@@ -10,6 +10,8 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
+import { getAppAlertModalUi } from "@/lib/app-alert-modal-ui";
+import { useDashboardChromeTheme } from "@/lib/use-dashboard-chrome-theme";
 import { cn } from "@/lib/utils";
 
 type ShowOptions = { title?: string };
@@ -97,16 +99,15 @@ export function useAppAlert() {
   return ctx;
 }
 
-/** Painel tela cheia (mobile e desktop); tema escuro fixo para contraste sobre qualquer página. */
-const panelClass =
-  "relative z-[1] mt-auto flex w-full max-h-[96dvh] min-h-[80dvh] flex-1 flex-col overflow-hidden rounded-t-2xl border border-white/10 border-b-0 bg-[#14221A] shadow-[0_-12px_48px_rgba(0,0,0,0.45)] outline-none animate-fade-in sm:mt-0 sm:h-[100dvh] sm:max-h-none sm:min-h-0 sm:rounded-none sm:border-0 sm:shadow-none";
-
 export function AppAlertProvider({ children }: { children: React.ReactNode }) {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [phraseInput, setPhraseInput] = useState("");
   const [mounted, setMounted] = useState(false);
   const primaryBtnRef = useRef<HTMLButtonElement>(null);
   const titleId = useId();
+  const { isDark: dashboardIsDark, inDashboard, brandEdgeBorder } = useDashboardChromeTheme();
+  const isDark = inDashboard && dashboardIsDark;
+  const ui = getAppAlertModalUi(isDark);
 
   useEffect(() => setMounted(true), []);
 
@@ -260,10 +261,13 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
             : ""
         )}
         data-app-alert-dialog=""
+        {...(inDashboard ? { "data-dashboard-brand-root": true } : {})}
+        {...(inDashboard && brandEdgeBorder ? { "data-brand-edge-border": "true" } : {})}
+        data-theme={isDark ? "dark" : "light"}
       >
         <button
           type="button"
-          className="absolute inset-0 z-0 bg-black/55 backdrop-blur-[2px] transition-opacity"
+          className={cn("absolute inset-0 z-0 transition-opacity", ui.backdrop)}
           aria-label="Fechar"
           onClick={() => {
             if (modal.type === "alert") closeAlert();
@@ -281,47 +285,40 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
             role="alertdialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="relative z-[2] w-[min(100%,26rem)] rounded-2xl border border-white/12 bg-[#14221A] shadow-[0_24px_80px_rgba(0,0,0,0.55)] outline-none animate-fade-in"
+            className={cn(ui.dialogCard, ui.panel)}
           >
-            <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-primary text-xl">check_circle</span>
+            <div className={ui.body}>
+              <div className="mb-3 flex items-center gap-3">
+                <div className={ui.iconWrap}>
+                  <span className={ui.icon}>check_circle</span>
                 </div>
-                <h2 id={titleId} className="text-lg font-bold tracking-tight text-white">
+                <h2 id={titleId} className={cn("text-lg font-bold tracking-tight", ui.title)}>
                   {modal.title}
                 </h2>
               </div>
-              <p className="text-sm leading-relaxed text-gray-300 whitespace-pre-wrap break-words">
+              <p className={cn("whitespace-pre-wrap break-words text-sm leading-relaxed", ui.message)}>
                 {modal.message}
               </p>
             </div>
-            <div className="flex border-t border-white/10 px-5 py-4 sm:px-6 sm:pb-5">
-              <button
-                ref={primaryBtnRef}
-                type="button"
-                onClick={closeAlert}
-                className="min-h-11 w-full rounded-xl bg-primary px-6 text-sm font-bold text-black transition-opacity hover:opacity-90 active:opacity-80"
-              >
+            <div className={cn("flex", ui.footer)}>
+              <button ref={primaryBtnRef} type="button" onClick={closeAlert} className={ui.btnPrimaryWide}>
                 OK
               </button>
             </div>
           </div>
         ) : modal.type === "confirm" && modal.presentation === "sheet" ? (
-          <div role="alertdialog" aria-modal="true" aria-labelledby={titleId} className={panelClass}>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-10 sm:pb-8 sm:pt-10">
-              <h2 id={titleId} className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+          <div role="alertdialog" aria-modal="true" aria-labelledby={titleId} className={ui.sheetPanel}>
+            <div className={ui.sheetBody}>
+              <h2 id={titleId} className={ui.sheetTitle}>
                 {modal.title}
               </h2>
-              <p className="mt-4 max-w-prose text-base leading-relaxed text-gray-300 whitespace-pre-wrap break-words sm:text-lg">
-                {modal.message}
-              </p>
+              <p className={ui.sheetMessage}>{modal.message}</p>
             </div>
-            <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-white/10 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:px-10 sm:py-6">
+            <div className={ui.sheetFooter}>
               <button
                 type="button"
                 onClick={handleConfirmCancel}
-                className="min-h-12 w-full rounded-xl border border-white/20 px-5 text-base font-semibold text-white hover:bg-white/5 sm:w-auto sm:min-w-[140px]"
+                className={cn("min-h-12 w-full sm:w-auto sm:min-w-[140px]", ui.btnCancel)}
               >
                 {modal.cancelLabel}
               </button>
@@ -331,9 +328,7 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
                 onClick={handleConfirmOk}
                 className={cn(
                   "min-h-12 w-full rounded-xl px-6 text-base font-bold transition-opacity sm:w-auto sm:min-w-[160px]",
-                  modal.variant === "danger"
-                    ? "bg-red-600 text-white hover:opacity-90"
-                    : "bg-primary text-black hover:opacity-90"
+                  modal.variant === "danger" ? ui.btnDanger : ui.btnPrimary,
                 )}
               >
                 {modal.confirmLabel}
@@ -345,22 +340,18 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
             role="alertdialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="relative z-[2] w-[min(100%,26rem)] rounded-2xl border border-white/12 bg-[#14221A] shadow-[0_24px_80px_rgba(0,0,0,0.55)] outline-none animate-fade-in"
+            className={cn(ui.dialogCard, ui.panel)}
           >
-            <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
-              <h2 id={titleId} className="text-lg font-bold tracking-tight text-white sm:text-xl">
+            <div className={ui.body}>
+              <h2 id={titleId} className={cn("text-lg font-bold tracking-tight sm:text-xl", ui.title)}>
                 {modal.title}
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-gray-300 whitespace-pre-wrap break-words">
+              <p className={cn("mt-3 whitespace-pre-wrap break-words text-sm leading-relaxed", ui.message)}>
                 {modal.message}
               </p>
             </div>
-            <div className="flex flex-col-reverse gap-2 border-t border-white/10 px-5 py-4 sm:flex-row sm:justify-end sm:gap-3 sm:px-6 sm:pb-5">
-              <button
-                type="button"
-                onClick={handleConfirmCancel}
-                className="min-h-11 w-full rounded-xl border border-white/20 px-4 text-sm font-semibold text-white hover:bg-white/5 sm:w-auto sm:min-w-[120px]"
-              >
+            <div className={ui.footerRow}>
+              <button type="button" onClick={handleConfirmCancel} className={ui.btnCancelWide}>
                 {modal.cancelLabel}
               </button>
               <button
@@ -369,9 +360,7 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
                 onClick={handleConfirmOk}
                 className={cn(
                   "min-h-11 w-full rounded-xl px-5 text-sm font-bold transition-opacity sm:w-auto sm:min-w-[140px]",
-                  modal.variant === "danger"
-                    ? "bg-red-600 text-white hover:opacity-90"
-                    : "bg-primary text-black hover:opacity-90"
+                  modal.variant === "danger" ? ui.btnDanger : ui.btnPrimary,
                 )}
               >
                 {modal.confirmLabel}
@@ -380,72 +369,56 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
           </div>
         ) : modal.type === "unsaved" ? (
           <div
-            className="relative z-[2] flex min-h-0 w-[min(100%,26rem)] flex-col rounded-2xl border border-white/12 bg-[#14221A] shadow-[0_24px_80px_rgba(0,0,0,0.55)] outline-none animate-fade-in"
+            className={cn(ui.dialogCard, ui.panel, "flex min-h-0 flex-col")}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby={titleId}
           >
-            <div className="px-5 pt-5 pb-4 sm:px-6 sm:pt-6">
-              <h2 id={titleId} className="text-lg font-bold tracking-tight text-white">
+            <div className={ui.body}>
+              <h2 id={titleId} className={cn("text-lg font-bold tracking-tight", ui.title)}>
                 {modal.title}
               </h2>
-              <p className="mt-3 text-sm leading-relaxed text-gray-300">{modal.message}</p>
-              <p className="mt-2 text-xs text-gray-500">
-                <kbd className="rounded border border-white/15 px-1 py-0.5 font-mono text-[11px] text-gray-400">Esc</kbd>{" "}
-                continua editando
+              <p className={cn("mt-3 text-sm leading-relaxed", ui.message)}>{modal.message}</p>
+              <p className={cn("mt-2 text-xs", ui.hint)}>
+                <kbd className={ui.kbd}>Esc</kbd> continua editando
               </p>
             </div>
-            <div className="flex flex-col-reverse gap-2 border-t border-white/10 px-5 py-4 sm:flex-row sm:flex-wrap sm:justify-end sm:px-6">
-              <button
-                ref={primaryBtnRef}
-                type="button"
-                onClick={handleUnsavedCancel}
-                className="min-h-11 w-full rounded-xl border border-white/20 px-4 text-sm font-semibold text-white hover:bg-white/5 sm:w-auto sm:min-w-[9rem]"
-              >
+            <div className={ui.footerUnsaved}>
+              <button ref={primaryBtnRef} type="button" onClick={handleUnsavedCancel} className={ui.btnCancelWide}>
                 {modal.cancelLabel}
               </button>
-              <button
-                type="button"
-                onClick={handleUnsavedDiscard}
-                className="min-h-11 w-full rounded-xl border border-red-500/45 bg-red-950/35 px-4 text-sm font-semibold text-red-100 hover:bg-red-950/55 sm:w-auto sm:min-w-[8rem]"
-              >
+              <button type="button" onClick={handleUnsavedDiscard} className={ui.btnDiscard}>
                 {modal.discardLabel}
               </button>
-              <button
-                type="button"
-                onClick={handleUnsavedSave}
-                className="min-h-11 w-full rounded-xl bg-primary px-5 text-sm font-bold text-black transition-opacity hover:opacity-90 sm:w-auto sm:min-w-[8rem]"
-              >
+              <button type="button" onClick={handleUnsavedSave} className={cn(ui.btnPrimary, "w-full sm:w-auto sm:min-w-[8rem]")}>
                 {modal.saveLabel}
               </button>
             </div>
           </div>
         ) : modal.type === "phrase" ? (
-          <div role="alertdialog" aria-modal="true" aria-labelledby={titleId} className={panelClass}>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-4 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-10 sm:pb-8 sm:pt-10">
-              <h2 id={titleId} className="text-xl font-bold tracking-tight text-white sm:text-2xl">
+          <div role="alertdialog" aria-modal="true" aria-labelledby={titleId} className={ui.sheetPanel}>
+            <div className={ui.sheetBody}>
+              <h2 id={titleId} className={ui.sheetTitle}>
                 {modal.title}
               </h2>
-              <p className="mt-4 max-w-prose text-base leading-relaxed text-gray-300 whitespace-pre-wrap break-words sm:text-lg">
-                {modal.message}
-              </p>
+              <p className={ui.sheetMessage}>{modal.message}</p>
               <label className="mt-6 block max-w-md">
-                <span className="text-xs font-medium text-gray-400">{modal.inputPlaceholder}</span>
+                <span className={cn("text-xs font-medium", ui.inputLabel)}>{modal.inputPlaceholder}</span>
                 <input
                   type="text"
                   value={phraseInput}
                   onChange={(e) => setPhraseInput(e.target.value)}
                   autoComplete="off"
-                  className="mt-2 w-full rounded-xl border border-white/15 bg-black/25 px-4 py-3 text-base text-white placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className={ui.input}
                   placeholder={modal.phrase}
                 />
               </label>
             </div>
-            <div className="flex shrink-0 flex-col-reverse gap-3 border-t border-white/10 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:px-10 sm:py-6">
+            <div className={ui.sheetFooter}>
               <button
                 type="button"
                 onClick={handlePhraseCancel}
-                className="min-h-12 w-full rounded-xl border border-white/20 px-5 text-base font-semibold text-white hover:bg-white/5 sm:w-auto sm:min-w-[140px]"
+                className={cn("min-h-12 w-full sm:w-auto sm:min-w-[140px]", ui.btnCancel)}
               >
                 {modal.cancelLabel}
               </button>
@@ -454,7 +427,10 @@ export function AppAlertProvider({ children }: { children: React.ReactNode }) {
                 type="button"
                 disabled={phraseInput.trim() !== modal.phrase}
                 onClick={handlePhraseOk}
-                className="min-h-12 w-full rounded-xl bg-red-600 px-6 text-base font-bold text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:min-w-[160px]"
+                className={cn(
+                  "min-h-12 w-full rounded-xl px-6 text-base font-bold transition-opacity disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto sm:min-w-[160px]",
+                  ui.btnDanger,
+                )}
               >
                 {modal.confirmLabel}
               </button>

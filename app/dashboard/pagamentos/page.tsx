@@ -398,7 +398,7 @@ export default function PagamentosPage() {
               type="button"
               disabled={mpBusy || mpRedirectInsecure}
               onClick={() => void connectMp()}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-black text-sm font-bold hover:bg-primary/90 disabled:opacity-60"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-on-brand-accent text-sm font-bold hover:bg-primary/90 disabled:opacity-60"
             >
               Conectar minha conta Mercado Pago
               <span className="material-symbols-outlined text-base">open_in_new</span>
@@ -536,7 +536,7 @@ export default function PagamentosPage() {
         className={cn(
           "w-full flex items-center justify-center gap-2 px-4 py-4 rounded-xl font-bold text-sm transition-all",
           isDirty
-            ? "bg-primary text-black hover:bg-primary/90"
+            ? "bg-primary text-on-brand-accent hover:bg-primary/90"
             : isDark
               ? "bg-white/10 text-gray-500 cursor-not-allowed"
               : "bg-gray-200 text-gray-500 cursor-not-allowed"

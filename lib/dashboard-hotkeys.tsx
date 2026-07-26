@@ -168,7 +168,7 @@ export function HotkeyHint({ action, variant = "neutral", layout = "inline" }: H
     "rounded-lg border px-2.5 py-1 font-sans text-xs font-semibold leading-none tabular-nums tracking-tight",
     "transition-[color,background-color,border-color] duration-150",
     variant === "primary"
-      ? "border-black/25 bg-black/[0.14] text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[2px]"
+      ? "border-[color-mix(in_srgb,var(--primary-fg,#111827)_28%,transparent)] bg-[color-mix(in_srgb,var(--primary-fg,#111827)_14%,transparent)] text-[var(--primary-fg,#111827)] shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-[2px]"
       : isDark
         ? "border-white/[0.14] bg-white/[0.07] text-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]"
         : "border-gray-200 bg-gray-100/95 text-gray-600 shadow-sm shadow-gray-900/[0.04]",

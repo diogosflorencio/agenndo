@@ -359,7 +359,7 @@ export default function AgendamentosPage() {
         {canCreateAppointments ? (
           <Link
             href="/dashboard/agendamentos/novo"
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-on-brand-accent font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
           >
             <span className="material-symbols-outlined text-base">add</span>
             Novo agendamento

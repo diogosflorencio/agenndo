@@ -126,7 +126,7 @@ export default function ColaboradoresPage() {
         </div>
         <Link
           href="/dashboard/colaboradores/novo"
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
+          className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-on-brand-accent font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
         >
           <span className="material-symbols-outlined shrink-0 text-base">person_add</span>
           <span className="min-w-0 flex-1 text-left">Adicionar</span>
@@ -211,7 +211,7 @@ export default function ColaboradoresPage() {
         <div className={cn(surfaces.panel, "text-center py-12")}>
           <span className={cn("material-symbols-outlined text-4xl block mb-3", surfaces.muted)}>groups</span>
           <p className={cn("text-sm", surfaces.subtitle)}>Nenhum colaborador. Adicione sua primeira pessoa da equipe.</p>
-          <Link href="/dashboard/colaboradores/novo" className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-primary text-black font-bold rounded-xl text-sm">
+          <Link href="/dashboard/colaboradores/novo" className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-primary text-on-brand-accent font-bold rounded-xl text-sm">
             <span className="material-symbols-outlined text-base">person_add</span> Adicionar
           </Link>
         </div>

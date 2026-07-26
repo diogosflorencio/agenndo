@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: ["selector", '[data-theme="dark"]'],
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -10,8 +11,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: "#13EC5B",
-        "primary-dark": "#0fc44c",
+        primary: "rgb(var(--primary-rgb, 19 236 91) / <alpha-value>)",
+        "primary-mark": "rgb(var(--primary-mark-rgb, var(--primary-rgb, 19 236 91)) / <alpha-value>)",
+        "primary-dark": "var(--primary-dark, #0fc44c)",
         surface: "#0B120E",
         card: "#14221A",
         border: "#213428",

@@ -388,7 +388,7 @@ function MiniCalendar({
             onClick={() => onSelectYear(String(y))}
             className={`px-5 py-2.5 rounded-xl text-sm font-bold border transition-all ${
               yearNum === y
-                ? "bg-primary text-black border-primary"
+                ? "bg-primary text-on-brand-accent border-primary"
                 : isDark
                 ? "border-white/10 text-white/60 hover:border-primary/40 hover:text-white"
                 : "border-gray-200 text-gray-600 hover:border-primary/40 hover:text-gray-900"
@@ -415,7 +415,7 @@ function MiniCalendar({
               onClick={() => onSelectMonth(val)}
               className={`px-2 py-2 rounded-lg text-xs font-semibold border transition-all text-center ${
                 active
-                  ? "bg-primary text-black border-primary"
+                  ? "bg-primary text-on-brand-accent border-primary"
                   : isDark
                   ? "border-white/10 text-white/55 hover:border-primary/40 hover:text-white"
                   : "border-gray-200 text-gray-500 hover:border-primary/40 hover:text-gray-900"
@@ -512,7 +512,7 @@ function MiniCalendar({
                 relative h-7 w-full flex items-center justify-center text-[11px] font-medium transition-all
                 ${!inMonth ? "opacity-20" : ""}
                 ${isPast ? "opacity-30 cursor-not-allowed" : "cursor-pointer"}
-                ${isSel ? "bg-primary text-black rounded-lg font-bold" : ""}
+                ${isSel ? "bg-primary text-on-brand-accent rounded-lg font-bold" : ""}
                 ${inWeek && !isSel ? (isDark ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary") : ""}
                 ${isWS && !isSel ? "rounded-l-lg" : ""}
                 ${isWE && !isSel ? "rounded-r-lg" : ""}
@@ -928,7 +928,7 @@ export default function DisponibilidadePage() {
                     onClick={() => setScope(opt.value)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                       scope === opt.value
-                        ? "bg-primary text-black shadow-sm"
+                        ? "bg-primary text-on-brand-accent shadow-sm"
                         : isDark
                         ? "text-white/50 hover:text-white"
                         : "text-gray-500 hover:text-gray-900"
@@ -1142,7 +1142,7 @@ export default function DisponibilidadePage() {
             className={`w-full py-4 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
               saveState === "ok"
                 ? "bg-primary/15 text-primary border border-primary/30"
-                : "bg-primary text-black hover:opacity-90"
+                : "bg-primary text-on-brand-accent hover:opacity-90"
             } disabled:opacity-50`}
           >
             {saveState === "loading" ? "Salvando…" : saveState === "ok" ? "Salvo no servidor" : "Salvar no servidor"}

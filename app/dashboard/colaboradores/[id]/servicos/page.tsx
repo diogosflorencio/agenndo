@@ -233,7 +233,7 @@ export default function ColaboradorServicosPage() {
           type="button"
           disabled={saving}
           onClick={() => void handleSave()}
-          className="relative flex flex-1 items-center justify-center gap-2 px-3 py-4 pr-3 text-sm font-bold text-black transition-all bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-xl lg:pr-[4.75rem]"
+          className="relative flex flex-1 items-center justify-center gap-2 px-3 py-4 pr-3 text-sm font-bold text-on-brand-accent transition-all bg-primary hover:bg-primary/90 disabled:opacity-50 rounded-xl lg:pr-[4.75rem]"
         >
           <span className="flex min-w-0 flex-1 items-center justify-center gap-2">
             <span className="material-symbols-outlined shrink-0 text-base">save</span>

@@ -149,7 +149,7 @@ export function ServiceVariantGalleryEditor({
                         onClick={() => inputRefs.current[index]?.click()}
                         disabled={busySlot !== null}
                         title={slot.url ? "Trocar foto" : "Adicionar foto"}
-                        className="size-7 rounded-lg bg-primary text-black shadow-md border border-white/90 flex items-center justify-center hover:brightness-95 disabled:opacity-50 transition-transform active:scale-95"
+                        className="size-7 rounded-lg bg-primary text-on-brand-accent shadow-md border border-white/90 flex items-center justify-center hover:brightness-95 disabled:opacity-50 transition-transform active:scale-95"
                       >
                         <span className="material-symbols-outlined text-[15px] leading-none">
                           {slot.url ? "photo_camera" : "add_a_photo"}

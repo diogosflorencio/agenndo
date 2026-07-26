@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { QrCode, Printer, FileDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { contrastTextOnBrand, normalizeBrandHex } from "@/lib/brand-color";
 import { useTheme } from "@/lib/theme-context";
 import { getDashboardSurfaces } from "@/lib/dashboard-surfaces";
 
@@ -34,19 +35,6 @@ const PRESET_PALETTES_BASE = [
   { name: "Rose", fg: "#881337", bg: "#fff1f2" },
   { name: "Slate", fg: "#1e293b", bg: "#f8fafc" },
 ];
-
-function hexToLuminance(hex: string): number {
-  const h = hex.replace(/^#/, "");
-  if (h.length < 6) return 0.5;
-  const r = parseInt(h.slice(0, 2), 16) / 255;
-  const g = parseInt(h.slice(2, 4), 16) / 255;
-  const b = parseInt(h.slice(4, 6), 16) / 255;
-  return 0.299 * r + 0.587 * g + 0.114 * b;
-}
-
-function getContrastColor(bgHex: string): string {
-  return hexToLuminance(bgHex) < 0.45 ? "#ffffff" : "#111827";
-}
 
 export type PersonalizationShareQrProps = {
   publicUrl: string;
@@ -104,7 +92,7 @@ export function PersonalizationShareQr({
 
   const qrDataUrl = publicUrl;
   const hostLabel = typeof window !== "undefined" ? window.location.host : "agenndo.com.br";
-  const textOnCard = getContrastColor(bgColor);
+  const textOnCard = contrastTextOnBrand(bgColor);
 
   const presetPalettes = useMemo(() => {
     const pc = (primaryColor ?? "").trim();
@@ -757,7 +745,7 @@ export function PersonalizationShareQr({
                 type="button"
                 onClick={() => void handleSavePdf()}
                 disabled={savingPdf || !qrReady}
-                className="flex-1 py-3 bg-primary hover:bg-primary/90 text-black font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-45"
+                className="flex-1 py-3 bg-primary hover:bg-primary/90 text-on-brand-accent font-semibold rounded-xl text-sm transition-all flex items-center justify-center gap-2 disabled:opacity-45"
               >
                 <FileDown className="size-4 shrink-0" />
                 {savingPdf ? "Gerando…" : "Salvar PDF"}

@@ -12,6 +12,7 @@ import {
   type PricingLockPayload,
 } from "@/lib/pricing-lock";
 import { formatBrazilPhoneFromDigits, phoneDigitsOnly, slugify } from "@/lib/utils";
+import { brandAccentFillStyle } from "@/lib/brand-color";
 import { createClient } from "@/lib/supabase/client";
 import { APP_TRIAL_DAYS } from "@/lib/trial-config";
 import { getEffectiveUserId } from "@/lib/supabase/effective-user";
@@ -772,8 +773,8 @@ function Step4({ data, update, colors }: { data: { primaryColor: string; busines
           <div className="bg-[#080c0a] rounded-lg p-4 border border-white/5">
             <div className="flex items-center gap-3 mb-3">
               <div
-                className="size-10 rounded-full flex items-center justify-center text-black font-bold text-sm"
-                style={{ backgroundColor: data.primaryColor }}
+                className="size-10 rounded-full flex items-center justify-center font-bold text-sm"
+                style={brandAccentFillStyle(data.primaryColor, undefined, { surfaceIsDark: true })}
               >
                 {data.businessName[0]?.toUpperCase() || "A"}
               </div>
@@ -783,8 +784,8 @@ function Step4({ data, update, colors }: { data: { primaryColor: string; busines
               </div>
             </div>
             <button
-              className="w-full py-2 rounded-lg text-sm font-bold text-black transition-all"
-              style={{ backgroundColor: data.primaryColor }}
+              className="w-full py-2 rounded-lg text-sm font-bold transition-all"
+              style={brandAccentFillStyle(data.primaryColor, undefined, { surfaceIsDark: true })}
             >
               Agendar agora
             </button>

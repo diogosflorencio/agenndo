@@ -279,7 +279,7 @@ export function DashboardSetupGuide({ snapshot }: { snapshot: SetupProgressSnaps
                           className={cn(
                             "mt-0.5 size-5 rounded-full shrink-0 flex items-center justify-center text-xs font-bold",
                             task.done
-                              ? "bg-primary text-black"
+                              ? "bg-primary text-on-brand-accent"
                               : isDark
                                 ? "bg-white/10 border border-white/20 text-transparent"
                                 : "bg-gray-200 text-transparent border border-gray-300"

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ThemeProvider, useTheme } from "@/lib/theme-context";
 import { DashboardProvider, useDashboard } from "@/lib/dashboard-context";
@@ -19,7 +19,13 @@ import {
 } from "@/lib/dashboard-navigation-guard";
 import { cn } from "@/lib/utils";
 import { DashboardNotificationBell } from "@/components/dashboard/dashboard-notification-bell";
+import {
+  DashboardThemeHint,
+  useDashboardThemeHint,
+} from "@/components/dashboard/dashboard-theme-hint";
 import { useI18n } from "@/components/i18n-provider";
+import { dashboardBrandCssProperties, brandEdgeBorderDataAttribute } from "@/lib/brand-color";
+import { DashboardBrandChromeSync } from "@/components/dashboard/dashboard-brand-chrome-sync";
 import { dashboardGroupLabel, dashboardNavLabel } from "@/lib/i18n/dashboard-nav-labels";
 import type { DashboardMobileNavItem } from "@/lib/dashboard-nav";
 const MENU_AGENDA = [
@@ -92,8 +98,13 @@ function DashboardLayoutInner({
   const navLabel = (href: string, fallback: string) => dashboardNavLabel(locale, href, fallback);
   const groupLabel = (key: GroupKey, fallback: string) => dashboardGroupLabel(locale, key, fallback);
   const { theme, toggleTheme } = useTheme();
+  const themeHint = useDashboardThemeHint();
+  const handleToggleTheme = () => {
+    toggleTheme();
+    themeHint.dismiss();
+  };
   const { showAlert } = useAppAlert();
-  const { business, user, profile, isStaffDashboard, staffContexts } = useDashboard();
+  const { business, user, profile, isStaffDashboard, staffContexts, brandColorPreview } = useDashboard();
   const [impersonationExitLoading, setImpersonationExitLoading] = useState(false);
   /** Apenas um grupo aberto por vez; Início e Conta fecham todos. */
   const [openSidebarGroup, setOpenSidebarGroup] = useState<GroupKey | null>(null);
@@ -191,9 +202,22 @@ function DashboardLayoutInner({
   };
 
   const slug = isStaffDashboard ? "" : (business?.slug ?? "");
+  const brandHex = brandColorPreview ?? business?.primary_color;
+  const brandStyle = useMemo(() => dashboardBrandCssProperties(brandHex, !isLight), [brandHex, isLight]);
+  const brandEdgeBorderAttr = useMemo(
+    () => brandEdgeBorderDataAttribute(brandHex, !isLight),
+    [brandHex, isLight],
+  );
 
   return (
-    <div className={`min-h-screen flex flex-col lg:flex-row ${bgMain}`} data-theme={theme}>
+    <div
+      className={`min-h-screen flex flex-col lg:flex-row ${bgMain}`}
+      data-theme={theme}
+      data-dashboard-brand-root
+      style={brandStyle}
+      {...brandEdgeBorderAttr}
+    >
+      <DashboardBrandChromeSync />
       {user?.isImpersonating && (
         <div
           className={`fixed top-0 left-0 right-0 z-[100] flex h-10 items-center justify-between gap-2 border-b px-3 text-[11px] sm:text-xs ${
@@ -363,16 +387,24 @@ function DashboardLayoutInner({
               Página pública
             </Link>
           ) : null}
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className={`flex w-full items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isLight ? "text-gray-600 hover:bg-white" : "text-gray-400 hover:bg-white/10 hover:text-white"}`}
-            title={theme === "light" ? "Usar tema escuro" : "Usar tema claro"}
-            aria-label={theme === "light" ? "Tema escuro" : "Tema claro"}
-          >
-            <span className="material-symbols-outlined text-xl">{theme === "light" ? "dark_mode" : "light_mode"}</span>
-            {theme === "light" ? "Tema escuro" : "Tema claro"}
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={handleToggleTheme}
+              className={`flex w-full items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isLight ? "text-gray-600 hover:bg-white" : "text-gray-400 hover:bg-white/10 hover:text-white"}`}
+              title={theme === "light" ? "Usar tema escuro" : "Usar tema claro"}
+              aria-label={theme === "light" ? "Tema escuro" : "Tema claro"}
+            >
+              <span className="material-symbols-outlined text-xl">{theme === "light" ? "dark_mode" : "light_mode"}</span>
+              {theme === "light" ? "Tema escuro" : "Tema claro"}
+            </button>
+            <DashboardThemeHint
+              visible={themeHint.visible}
+              onDismiss={themeHint.dismiss}
+              placement="sidebar"
+              isLight={isLight}
+            />
+          </div>
         </div>
       </aside>
 
@@ -391,9 +423,23 @@ function DashboardLayoutInner({
                     <span className="material-symbols-outlined text-base">open_in_new</span>
                   </Link>
                 ) : null}
-                <button type="button" onClick={toggleTheme} className={`size-9 flex items-center justify-center rounded-lg transition-colors ${isLight ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900" : "text-gray-400 hover:bg-white/10 hover:text-white"}`} title={theme === "light" ? "Usar tema escuro" : "Usar tema claro"} aria-label={theme === "light" ? "Tema escuro" : "Tema claro"}>
-                  <span className="material-symbols-outlined text-xl">{theme === "light" ? "dark_mode" : "light_mode"}</span>
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={handleToggleTheme}
+                    className={`size-9 flex items-center justify-center rounded-lg transition-colors ${isLight ? "text-gray-600 hover:bg-gray-100 hover:text-gray-900" : "text-gray-400 hover:bg-white/10 hover:text-white"}`}
+                    title={theme === "light" ? "Usar tema escuro" : "Usar tema claro"}
+                    aria-label={theme === "light" ? "Tema escuro" : "Tema claro"}
+                  >
+                    <span className="material-symbols-outlined text-xl">{theme === "light" ? "dark_mode" : "light_mode"}</span>
+                  </button>
+                  <DashboardThemeHint
+                    visible={themeHint.visible}
+                    onDismiss={themeHint.dismiss}
+                    placement="mobile"
+                    isLight={isLight}
+                  />
+                </div>
                 {!isStaffDashboard ? (
                   <DashboardNotificationBell
                     className={cn(

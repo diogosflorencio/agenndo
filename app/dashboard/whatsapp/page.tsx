@@ -415,7 +415,7 @@ export default function WhatsAppDashboardPage() {
                   onClick={() => void sessionAction("connect")}
                   className={cn(
                     "px-4 py-2 rounded-xl text-xs font-semibold transition-opacity",
-                    isComingSoon ? surfaces.btnSecondary : "bg-primary text-black hover:opacity-90"
+                    isComingSoon ? surfaces.btnSecondary : "bg-primary text-on-brand-accent hover:opacity-90"
                   )}
                 >
                   {sessionBusy ? "Aguarde..." : isComingSoon ? "Em breve" : "Conectar"}
@@ -555,7 +555,7 @@ export default function WhatsAppDashboardPage() {
                   className={cn(
                     "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all min-w-0",
                     activeTab === tab.id
-                      ? "bg-primary text-black shadow-sm"
+                      ? "bg-primary text-on-brand-accent shadow-sm"
                       : isDark
                         ? "text-white/60 hover:text-white hover:bg-white/10"
                         : "text-gray-600 hover:text-gray-900 hover:bg-white"
@@ -751,7 +751,7 @@ export default function WhatsAppDashboardPage() {
         type="button"
         disabled={!isDirty || saving}
         onClick={() => void saveAll()}
-        className="w-full mt-8 py-4 bg-primary hover:bg-primary/90 disabled:opacity-50 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2"
+        className="w-full mt-8 py-4 bg-primary hover:bg-primary/90 disabled:opacity-50 text-on-brand-accent font-bold rounded-xl transition-all flex items-center justify-center gap-2"
       >
         <span className="material-symbols-outlined text-base">save</span>
         {saving ? "Salvando..." : "Salvar configuracoes"}

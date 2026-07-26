@@ -17,6 +17,7 @@ import { BookingStepPanel } from "@/components/public/booking-step-panel";
 import { BookingSelectionPath, type BookingPathStep } from "@/components/public/booking-selection-path";
 import { useSupabaseAuth } from "@/lib/auth/browser-auth-store";
 import { cn, formatBrazilPhoneFromDigits, formatCurrency, rgbaFromHex } from "@/lib/utils";
+import { brandAccentFillStyle, brandEdgeBorderDataAttribute, publicAccentCssProperties } from "@/lib/brand-color";
 import { recordPublicPageVisit } from "@/lib/visited-public-pages";
 import {
   collectAvailableStartMinutes,
@@ -938,7 +939,12 @@ export function PublicPageInner({
       "text-xs font-semibold px-3.5 py-2 rounded-full bg-black/45 backdrop-blur-md text-white border border-white/25 shadow-lg hover:bg-black/55 transition-colors";
 
     return (
-      <div className={cn("min-h-screen", isDark ? "bg-[#020403] text-white" : "bg-gray-50 text-gray-900")}>
+      <div
+        className={cn("min-h-screen", isDark ? "bg-[#020403] text-white" : "bg-gray-50 text-gray-900")}
+        data-public-accent-root
+        style={publicAccentCssProperties(accent, isDark)}
+        {...brandEdgeBorderDataAttribute(accent, isDark)}
+      >
         <div
           className={cn("fixed inset-0 pointer-events-none", isDark ? "opacity-[0.12]" : "opacity-[0.06]")}
           style={{
@@ -996,13 +1002,18 @@ export function PublicPageInner({
                   <div
                     className={cn(
                       "absolute bottom-0 left-0.2 z-[100] translate-y-1/2 pointer-events-auto",
-                      "size-[5.5rem] sm:size-28 rounded-2xl border-4 shadow-xl overflow-hidden flex items-center justify-center text-3xl sm:text-4xl font-bold text-black",
+                      "size-[5.5rem] sm:size-28 rounded-2xl border-4 shadow-xl overflow-hidden flex items-center justify-center text-3xl sm:text-4xl font-bold",
                       avatarBorder
                     )}
-                    style={{
-                      backgroundColor: business.logo_url ? undefined : accent,
-                      boxShadow: `0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.15)`,
-                    }}
+                    style={
+                      business.logo_url
+                        ? {
+                            boxShadow: `0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.15)`,
+                          }
+                        : brandAccentFillStyle(accent, {
+                            boxShadow: `0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.15)`,
+                          }, { surfaceIsDark: isDark })
+                    }
                   >
                     {business.logo_url ? (
                       <Image
@@ -1140,7 +1151,7 @@ export function PublicPageInner({
                   disabled={bookingBlocked}
                   onClick={() => startBooking()}
                   className={cn(
-                    "w-full lg:w-full px-8 py-4 rounded-xl font-bold text-black text-base shadow-lg transition-transform",
+                    "w-full lg:w-full px-8 py-4 rounded-xl font-bold text-on-brand-accent text-base shadow-lg transition-transform",
                     bookingBlocked ? "opacity-50 cursor-not-allowed grayscale" : "hover:scale-[1.02] active:scale-[0.98]"
                   )}
                   style={{ backgroundColor: accent, boxShadow: `0 0 28px ${accent}55` }}
@@ -1345,12 +1356,14 @@ export function PublicPageInner({
   return (
     <div
       className={bookUi.page}
+      data-public-accent-root
       style={
         {
-          ["--public-accent"]: accent,
+          ...publicAccentCssProperties(accent, isDark),
           ["--pa-slot-glow"]: rgbaFromHex(accent, 0.3),
         } as CSSProperties
       }
+      {...brandEdgeBorderDataAttribute(accent, isDark)}
     >
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-[color-mix(in_srgb,var(--public-accent)_8%,transparent)] blur-[100px] rounded-full pointer-events-none z-0" />
 
@@ -1430,14 +1443,16 @@ export function PublicPageInner({
                 <div
                   className={`size-7 shrink-0 rounded-full grid place-items-center transition-all duration-300 ease-out ${
                     step > s
-                      ? "bg-[var(--public-accent)] text-black"
+                      ? "bg-[var(--public-accent)] text-on-brand-accent"
                       : step === s
-                        ? "bg-[color-mix(in_srgb,var(--public-accent)_20%,transparent)] border-2 border-[var(--public-accent)] text-[var(--public-accent)]"
+                        ? "bg-[color-mix(in_srgb,var(--public-accent)_20%,transparent)] border-2 border-[var(--public-accent)] text-brand-accent-mark"
                         : bookUi.stepIdle
                   }`}
                 >
                   {step > s ? (
-                    <span className="material-symbols-outlined text-[32px] leading-none">check</span>
+                    <span className="material-symbols-outlined text-[32px] leading-none" aria-hidden>
+                      check
+                    </span>
                   ) : (
                     <span className="text-xs font-bold leading-none tabular-nums">{s}</span>
                   )}
@@ -1455,7 +1470,7 @@ export function PublicPageInner({
               <span
                 key={label}
                 className={`text-xs flex-1 text-center transition-colors duration-300 ease-out ${
-                  step === i + 1 ? "text-[var(--public-accent)] font-semibold" : isDark ? "text-gray-500" : "text-gray-600"
+                  step === i + 1 ? "text-brand-accent-mark font-semibold" : isDark ? "text-gray-500" : "text-gray-600"
                 }`}
               >
                 {label}
@@ -1660,7 +1675,7 @@ export function PublicPageInner({
                 goBookingStep(2);
                 setServicePickPhase("list");
               }}
-              className="w-full py-3.5 rounded-xl font-bold text-black transition-transform hover:scale-[1.01] active:scale-[0.99]"
+              className="w-full py-3.5 rounded-xl font-bold text-on-brand-accent transition-transform hover:scale-[1.01] active:scale-[0.99]"
               style={{ backgroundColor: accent, boxShadow: `0 0 24px ${rgbaFromHex(accent, 0.3)}` }}
             >
               Continuar para profissional e data
@@ -1875,7 +1890,7 @@ export function PublicPageInner({
                     goBookingStep(5, { time: t });
                   }}
                   style={{ boxShadow: `0 0 16px ${rgbaFromHex(accent, 0.25)}` }}
-                  className="w-full py-3.5 bg-[var(--public-accent)] hover:brightness-95 disabled:opacity-45 disabled:cursor-not-allowed text-black font-bold rounded-xl text-base transition-all"
+                  className="w-full py-3.5 bg-[var(--public-accent)] hover:brightness-95 disabled:opacity-45 disabled:cursor-not-allowed text-on-brand-accent font-bold rounded-xl text-base transition-all"
                 >
                   Continuar
                 </button>
@@ -1937,7 +1952,7 @@ export function PublicPageInner({
                               ),
                             cell.available &&
                               selectedTime === cell.start &&
-                              "bg-[var(--public-accent)] text-black border-[var(--public-accent)] shadow-[0_0_10px_var(--pa-slot-glow)]",
+                              "bg-[var(--public-accent)] text-on-brand-accent shadow-[0_0_10px_var(--pa-slot-glow)]",
                             cell.available &&
                               selectedTime !== cell.start &&
                               cn(

@@ -238,7 +238,7 @@ export default function ServicosPage() {
             setEditService(null);
             setShowModal(true);
           }}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-black font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary hover:bg-primary/90 text-on-brand-accent font-bold rounded-xl text-sm transition-all shadow-[0_0_15px_rgba(19,236,91,0.2)]"
         >
           <span className="material-symbols-outlined shrink-0 text-base">add</span>
           <span className="min-w-0 flex-1 text-left">Novo serviço</span>
@@ -552,7 +552,7 @@ function ServiceModalFooterActions({
         type="button"
         onClick={onSaveClick}
         disabled={saving || !canSubmit}
-        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-black transition-colors hover:bg-primary/90 disabled:opacity-50 sm:min-w-[220px] sm:w-auto lg:pr-[4.75rem]"
+        className="relative inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 pr-4 text-sm font-bold text-on-brand-accent transition-colors hover:bg-primary/90 disabled:opacity-50 sm:min-w-[220px] sm:w-auto lg:pr-[4.75rem]"
       >
         <span className="flex min-w-0 flex-1 justify-center">
           {saving ? "Salvando..." : isEdit ? "Salvar alterações" : "Criar serviço"}
@@ -880,7 +880,7 @@ function ServiceModal({
                         type="button"
                         onClick={() => newPhotoInputRef.current?.click()}
                         title="Adicionar foto"
-                        className="flex size-9 items-center justify-center rounded-xl border-2 border-white bg-primary text-black shadow-lg transition-transform hover:brightness-95 hover:scale-105 active:scale-95"
+                        className="flex size-9 items-center justify-center rounded-xl border-2 border-white bg-primary text-on-brand-accent shadow-lg transition-transform hover:brightness-95 hover:scale-105 active:scale-95"
                       >
                         <span className="material-symbols-outlined text-lg">add_a_photo</span>
                       </button>

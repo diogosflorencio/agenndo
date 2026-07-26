@@ -155,7 +155,7 @@ export function EntityPhotoControl({
               onClick={() => inputRef.current?.click()}
               disabled={busy}
               title={imageUrl ? "Trocar foto" : "Adicionar foto"}
-              className="size-9 rounded-xl bg-primary text-black shadow-lg border-2 border-white flex items-center justify-center hover:brightness-95 disabled:opacity-50 transition-transform hover:scale-105 active:scale-95"
+              className="size-9 rounded-xl bg-primary text-on-brand-accent shadow-lg border-2 border-white flex items-center justify-center hover:brightness-95 disabled:opacity-50 transition-transform hover:scale-105 active:scale-95"
             >
               <span className="material-symbols-outlined text-lg">
                 {imageUrl ? "photo_camera" : "add_a_photo"}

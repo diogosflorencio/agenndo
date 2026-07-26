@@ -177,7 +177,7 @@ const SaveNegocioButton = forwardRef<
       type="button"
       onClick={() => void handleSave()}
       disabled={saving}
-      className={`relative flex w-full items-center justify-center gap-2 px-4 py-4 text-black font-bold rounded-xl transition-all bg-primary hover:bg-primary/90 disabled:opacity-70 lg:pr-[4.75rem] ${
+      className={`relative flex w-full items-center justify-center gap-2 px-4 py-4 text-on-brand-accent font-bold rounded-xl transition-all bg-primary hover:bg-primary/90 disabled:opacity-70 lg:pr-[4.75rem] ${
         isDirty ? "ring-2 ring-amber-500/45" : ""
       }`}
     >

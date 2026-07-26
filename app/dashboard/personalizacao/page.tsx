@@ -7,6 +7,7 @@ import { useDashboard } from "@/lib/dashboard-context";
 import { createClient } from "@/lib/supabase/client";
 import { SwitchToggle } from "@/components/switch-toggle";
 import { cn, formatBrazilPhoneFromDigits, formatCurrency, maskPhoneInputRaw } from "@/lib/utils";
+import { brandAccentFillStyle, brandEdgeBorderDataAttribute, publicAccentCssProperties } from "@/lib/brand-color";
 import {
   uploadBusinessImage,
   tryRelativePathFromPublicUrl,
@@ -108,7 +109,7 @@ export default function PersonalizacaoPage() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const surfaces = getDashboardSurfaces(isDark);
-  const { business } = useDashboard();
+  const { business, setBrandColorPreview } = useDashboard();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bannerInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -156,6 +157,11 @@ export default function PersonalizacaoPage() {
   const onQrPreviewHostRef = useCallback((el: HTMLDivElement | null) => {
     setQrPreviewHostEl(el);
   }, []);
+
+  useEffect(() => {
+    setBrandColorPreview(form.primaryColor);
+    return () => setBrandColorPreview(null);
+  }, [form.primaryColor, setBrandColorPreview]);
 
   const loadData = useCallback(async () => {
     if (!business?.id) {
@@ -726,7 +732,7 @@ export default function PersonalizacaoPage() {
                 className={cn(
                   "flex shrink-0 items-center justify-center gap-1 rounded-lg px-3 py-2 text-xs font-semibold transition-all sm:px-3.5",
                   activeTab === tab.key
-                    ? "bg-primary text-black"
+                    ? "bg-primary text-on-brand-accent"
                     : isDark
                       ? "text-gray-400 hover:bg-white/10 hover:text-white"
                       : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
@@ -744,7 +750,7 @@ export default function PersonalizacaoPage() {
                 <div className="mb-3">
                   <h3 className={cn("text-sm font-bold", isDark ? "text-white" : "text-gray-900")}>Cor principal</h3>
                   <p className={cn("text-xs mt-0.5", isDark ? "text-gray-400" : "text-gray-500")}>
-                    Presets compactos ou qualquer cor com o seletor ou o código hexadecimal.
+                    Presets compactos ou qualquer cor com o seletor ou o código hexadecimal. (muda o tema da página pública e dashboard) 
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-1.5 mb-4">
@@ -844,14 +850,18 @@ export default function PersonalizacaoPage() {
               <div className={cn(surfaces.panel, "p-5")}>
                 <h3 className="text-sm font-bold text-gray-900 mb-4">Logo / Foto de perfil</h3>
                 <div className="flex flex-wrap items-start gap-4">
-                  <div className="size-16 rounded-xl overflow-hidden border-2 shrink-0 bg-gray-50 flex items-center justify-center">
+                  <div
+                    className="size-16 rounded-xl overflow-hidden border-2 shrink-0 flex items-center justify-center"
+                    style={
+                      form.logoUrl
+                        ? { backgroundColor: "#f9fafb" }
+                        : brandAccentFillStyle(form.primaryColor, undefined, { surfaceIsDark: isDark })
+                    }
+                  >
                     {form.logoUrl ? (
                       <Image key={form.logoUrl} src={form.logoUrl} alt="" width={64} height={64} className="size-16 object-cover" unoptimized />
                     ) : (
-                      <span
-                        className="text-2xl font-bold"
-                        style={{ color: form.primaryColor }}
-                      >
+                      <span className="text-2xl font-bold">
                         {form.businessName[0]?.toUpperCase() ?? "?"}
                       </span>
                     )}
@@ -1205,7 +1215,7 @@ export default function PersonalizacaoPage() {
                     onClick={handleCopy}
                     className={cn(
                       "h-11 px-4 rounded-xl font-semibold text-sm transition-all flex items-center gap-1.5 flex-shrink-0",
-                      copied ? "bg-primary text-black" : "bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700"
+                      copied ? "bg-primary text-on-brand-accent" : "bg-gray-100 border border-gray-200 hover:bg-gray-200 text-gray-700"
                     )}
                   >
                     <span className="material-symbols-outlined text-sm">{copied ? "check" : "content_copy"}</span>
@@ -1245,7 +1255,7 @@ export default function PersonalizacaoPage() {
             disabled={saving || uploading !== null}
             onClick={() => void saveAll()}
             className={cn(
-              "relative mt-3 flex w-full items-center justify-center gap-3 px-4 py-4 text-black shadow-[0_0_15px_rgba(19,236,91,0.2)] transition-all bg-primary hover:bg-primary/90 disabled:opacity-60 font-bold rounded-xl lg:pr-[4.75rem]",
+              "relative mt-3 flex w-full items-center justify-center gap-3 px-4 py-4 text-on-brand-accent shadow-[0_0_15px_rgba(19,236,91,0.2)] transition-all bg-primary hover:bg-primary/90 disabled:opacity-60 font-bold rounded-xl lg:pr-[4.75rem]",
               formDirty && "ring-2 ring-amber-500/45"
             )}
           >
@@ -1359,11 +1369,13 @@ function PagePreview({
   return (
     <div
       data-public-preview-theme={isDark ? "dark" : "light"}
+      data-public-accent-root
       className={cn(
         "relative flex max-h-[min(78vh,860px)] flex-col overflow-hidden overflow-y-auto overscroll-contain rounded-2xl border shadow-[0_16px_48px_-12px_rgba(0,0,0,0.35)]",
         isDark ? "border-white/10 bg-[#020403]" : "border-[#e5e7eb] bg-[#f9fafb]"
       )}
-      style={{ ["--public-accent"]: accent } as CSSProperties}
+      style={publicAccentCssProperties(accent, isDark)}
+      {...brandEdgeBorderDataAttribute(accent, isDark)}
     >
       <div
         className={cn("pointer-events-none absolute inset-0", isDark ? "opacity-[0.12]" : "opacity-[0.06]")}
@@ -1409,13 +1421,18 @@ function PagePreview({
               <div
                 className={cn(
                   "pointer-events-auto absolute bottom-0 left-1 translate-y-1/2 overflow-hidden rounded-2xl border-[3px] shadow-xl",
-                  "flex size-[3.75rem] items-center justify-center text-xl font-bold text-black",
+                  "flex size-[3.75rem] items-center justify-center text-xl font-bold",
                   avatarBorder
                 )}
-                style={{
-                  backgroundColor: form.logoUrl ? undefined : accent,
-                  boxShadow: `0 12px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.12)`,
-                }}
+                style={
+                  form.logoUrl
+                    ? {
+                        boxShadow: `0 12px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.12)`,
+                      }
+                    : brandAccentFillStyle(accent, {
+                        boxShadow: `0 12px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.12)`,
+                      }, { surfaceIsDark: isDark })
+                }
               >
                 {form.logoUrl ? (
                   <Image key={form.logoUrl} src={form.logoUrl} alt="" width={60} height={60} className="size-full object-cover" unoptimized />
@@ -1484,7 +1501,7 @@ function PagePreview({
               <button
                 type="button"
                 className={cn(
-                  "w-full rounded-xl px-4 py-3 text-xs font-bold text-black shadow-lg transition-transform",
+                  "w-full rounded-xl px-4 py-3 text-xs font-bold text-on-brand-accent shadow-lg transition-transform",
                   "hover:scale-[1.02] active:scale-[0.98]"
                 )}
                 style={{ backgroundColor: accent, boxShadow: `0 0 24px ${accent}55` }}

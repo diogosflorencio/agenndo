@@ -268,7 +268,7 @@ export function PublicBookingConfirmStep({
             onClick={onConfirm}
             disabled={!clientName.trim() || bookingSubmitting}
             style={{ boxShadow: `0 0 20px ${rgbaFromHex(accent, 0.3)}` }}
-            className="w-full py-4 bg-[var(--public-accent)] hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl text-lg transition-all flex items-center justify-center gap-2"
+            className="w-full py-4 bg-[var(--public-accent)] hover:brightness-95 disabled:opacity-50 disabled:cursor-not-allowed text-on-brand-accent font-bold rounded-xl text-lg transition-all flex items-center justify-center gap-2"
           >
             <span className={publicMaterialIconClass("lg", false)}>check_circle</span>
             {bookingSubmitting ? "Confirmando…" : confirmLabel}

@@ -8,12 +8,12 @@ const ThemeContext = createContext<{
   theme: Theme;
   setTheme: (t: Theme) => void;
   toggleTheme: () => void;
-}>({ theme: "dark", setTheme: () => {}, toggleTheme: () => {} });
+}>({ theme: "light", setTheme: () => {}, toggleTheme: () => {} });
 
 const STORAGE_KEY = "agenndo_dashboard_theme";
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

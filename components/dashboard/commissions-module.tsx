@@ -450,7 +450,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
             onClick={() => setSection(t.key)}
             className={cn(
               "px-4 py-2 rounded-xl text-sm font-bold transition-all",
-              section === t.key ? "bg-primary text-black" : tabIdle
+              section === t.key ? "bg-primary text-on-brand-accent" : tabIdle
             )}
           >
             {t.label}
@@ -513,7 +513,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
               type="button"
               disabled={savingSettings}
               onClick={() => void persistSettings()}
-              className="px-4 py-2.5 rounded-xl bg-primary text-black font-bold text-sm disabled:opacity-50"
+              className="px-4 py-2.5 rounded-xl bg-primary text-on-brand-accent font-bold text-sm disabled:opacity-50"
             >
               {savingSettings ? "Salvando…" : "Salvar configuração"}
             </button>
@@ -707,7 +707,7 @@ export function CommissionsModule({ businessId, profileId }: { businessId: strin
               type="button"
               disabled={!settings.enabled}
               onClick={() => void runPay(false)}
-              className="px-3 py-2 rounded-xl bg-primary text-black text-sm font-bold disabled:opacity-40"
+              className="px-3 py-2 rounded-xl bg-primary text-on-brand-accent text-sm font-bold disabled:opacity-40"
             >
               Marcar pagas
             </button>
