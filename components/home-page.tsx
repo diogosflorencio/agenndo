@@ -42,7 +42,6 @@ function HomePageContent() {
     t("common.noCardTrial"),
     trialDaysShortLabel(),
     t("landing.hero.trustBooking247"),
-    t("landing.hero.trustMultiLang"),
     t("common.cancelAnytime"),
   ].join(" · ");
 
